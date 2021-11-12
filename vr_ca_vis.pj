@@ -1,0 +1,15 @@
+@=
+projectType="application_plugin";
+projectName="vr_ca_vis";
+projectGUID="E0D9E6EA-C292-4F0D-AF53-E40B05585333";
+addProjectDirs=[CGV_DIR."/libs", CGV_DIR."/plugins", CGV_DIR."/test"];
+addIncDirs=[CGV_DIR."/libs"];
+addProjectDeps=["cgv_utils", "cgv_type", "cgv_reflect", "cgv_data", "cgv_signal", "cgv_base", "cgv_media", "cgv_gui", 
+"cgv_render", "cgv_os", "cgv_viewer","cg_fltk", "crg_light", "cmi_io", "crg_grid", "cgv_gl", "glew", "cmf_tt_gl_font", 
+"crg_vr_view", "vr_lab", "cg_vr", "vr_emulator", "openvr_driver"
+];
+
+addCommandLineArguments=[
+	'config:"'.INPUT_DIR.'/config.def"',
+	after('"type(shader_config):shader_path='."'".CGV_DIR."/libs/cgv_gl/glsl;".INPUT_DIR."'".'"',"cg_fltk")
+];
