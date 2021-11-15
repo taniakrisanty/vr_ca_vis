@@ -20,6 +20,7 @@
 #include <random>
 #include "endian.h"
 #include "cae_file_format.h"
+#include "logger_parser.h"
 
 #include <vr/vr_state.h>
 #include <vr/vr_kit.h>
@@ -45,6 +46,7 @@ protected:
 	std::vector<uint32_t> group_indices;
 	std::vector<float> attr_values;
 	std::vector<rgba8> colors;
+	std::vector<vec3> extents;
 
 	// attributes 
 	uint32_t selected_attr;
@@ -125,89 +127,192 @@ public:
 	{
 		return write(file_name, points, group_indices, attr_values);
 	}
+	//bool read_data_ascii(const std::string& file_name, float max_time_step = std::numeric_limits<float>::max())
+	//{
+	//	std::string fn = cgv::utils::file::drop_extension(file_name) + ".cae";
+	//	if (cgv::utils::file::exists(fn))
+	//		if (read_file(fn))
+	//			return true;
+
+	//	std::string content;
+	//	if (!cgv::utils::file::read(file_name, content, true))
+	//		return false;
+	//	std::vector<cgv::utils::line> lines;
+	//	cgv::utils::split_to_lines(content, lines);
+	//	cgv::utils::progression pr("parse lines", lines.size(), 20);
+	//	// extract the attribute names from first line
+	//	std::vector<cgv::utils::token> toks;
+	//	cgv::utils::split_to_tokens(lines.begin()->begin, lines.begin()->end, toks, "");
+	//	size_t ti = 0;
+	//	for (auto tok : toks) {
+	//		if (*tok.begin == '"')
+	//			++tok.begin;
+	//		if (tok.end > tok.begin && tok.end[-1] == '"')
+	//			--tok.end;
+	//		std::string name = to_string(tok);
+	//		switch (ti) {
+	//		case 0:
+	//			std::cout << "name of time: " << name << std::endl;
+	//			break;
+	//		case 1: 
+	//		case 2:
+	//		case 3: 
+	//			std::cout << "name of " << std::string("xyz")[ti-1] << ": " << name << std::endl;
+	//			break;
+	//		case 4:
+	//			std::cout << "name of cell id: " << name << std::endl;
+	//			break;
+	//		default:
+	//			attr_names.push_back(name);
+	//			std::cout << "name of attr" << ti - 5 << ": " << name << std::endl;
+	//			break;
+	//		}
+	//		++ti;
+	//	}
+	//	nr_attributes = uint32_t(attr_names.size());
+	//	// iterate through all lines
+	//	unsigned li = 0;
+	//	for (auto l : lines) {
+	//		pr.step();
+	//		if (++li % (lines.size() / 50) == 0) {
+	//			std::cout << "read " << file_name << " with " << points.size() << " points, " << times.size() << " time steps, and " << group_colors.size() << " ids." << std::endl;
+	//		}
+	//		std::vector<cgv::utils::token> toks;
+	//		cgv::utils::split_to_tokens(l.begin, l.end, toks, "");
+	//		if (toks.size() < 5)
+	//			continue;
+	//		int x, y, z, id;
+	//		double t;
+	//		std::vector<double> a(nr_attributes, 0.0);
+	//		if (!cgv::utils::is_double(toks[0].begin, toks[0].end, t))
+	//			continue;
+	//		if (!cgv::utils::is_integer(toks[1].begin, toks[1].end, x))
+	//			continue;
+	//		if (!cgv::utils::is_integer(toks[2].begin, toks[2].end, y))
+	//			continue;
+	//		if (!cgv::utils::is_integer(toks[3].begin, toks[3].end, z))
+	//			continue;
+	//		if (!cgv::utils::is_integer(toks[4].begin, toks[4].end, id))
+	//			continue;
+	//		uint32_t ai, attr_parse_cnt = std::min(uint32_t(toks.size()) - 5, nr_attributes);
+	//		for (ai = 0; ai < attr_parse_cnt; ++ai)
+	//			if (!cgv::utils::is_double(toks[ai+5].begin, toks[ai + 5].end, a[ai]))
+	//				continue;
+
+	//		if (t >= max_time_step)
+	//			break;
+	//		if (times.empty() || times.back() != float(t)) {
+	//			//std::cout << "t = " << t << " max = " << max_time_step << std::endl;
+	//			time_step_start.push_back(points.size());
+	//			times.push_back(float(t));
+	//		}
+	//		points.push_back(vec3(float(x), float(y), float(z)));
+	//		for (ai = 0; ai < nr_attributes; ++ai)
+	//			attr_values.push_back(float(a[ai]));
+	//		rgba col(float(a[0]), float(a[1]), float(a[2]), 0.5f);
+	//		colors.push_back(col);
+	//		group_indices.push_back(id);
+	//		while (id >= int(group_colors.size())) {
+	//			group_colors.push_back(rgba(1, 1, 1, 0.5f));
+	//			group_translations.push_back(vec3(0, 0, 0));
+	//			group_rotations.push_back(vec4(0, 0, 0, 1));
+	//		}
+	//	}
+	//	// define colors from hls
+	//	for (unsigned i = 0; i < group_colors.size(); ++i) {
+	//		float hue = float(i) / group_colors.size();
+	//		group_colors[i] = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f);
+	//	}
+	//	nr_points = points.size();
+	//	nr_groups = uint32_t(group_colors.size());
+	//	nr_time_steps = uint32_t(times.size());
+	//	std::cout << "read " << file_name << " with " 
+	//		<< points.size() << " points, " << times.size() << " time steps, and " << group_colors.size() << " ids and " 
+	//		<< nr_attributes << " attributes" << std::endl;
+	//	// concatenate 
+	//	write_file(fn);
+	//	return true;
+	//}
 	bool read_data_ascii(const std::string& file_name, float max_time_step = std::numeric_limits<float>::max())
 	{
-		std::string fn = cgv::utils::file::drop_extension(file_name) + ".cae";
-		if (cgv::utils::file::exists(fn))
-			if (read_file(fn))
-				return true;
+		// TODO
+		//std::string fn = cgv::utils::file::drop_extension(file_name) + ".cae";
+		//if (cgv::utils::file::exists(fn))
+		//	if (read_file(fn))
+		//		return true;
 
-		std::string content;
-		if (!cgv::utils::file::read(file_name, content, true))
-			return false;
-		std::vector<cgv::utils::line> lines;
-		cgv::utils::split_to_lines(content, lines);
-		cgv::utils::progression pr("parse lines", lines.size(), 20);
-		// extract the attribute names from first line
-		std::vector<cgv::utils::token> toks;
-		cgv::utils::split_to_tokens(lines.begin()->begin, lines.begin()->end, toks, "");
-		size_t ti = 0;
-		for (auto tok : toks) {
-			if (*tok.begin == '"')
-				++tok.begin;
-			if (tok.end > tok.begin && tok.end[-1] == '"')
-				--tok.end;
-			std::string name = to_string(tok);
-			switch (ti) {
-			case 0:
-				std::cout << "name of time: " << name << std::endl;
-				break;
-			case 1: 
-			case 2:
-			case 3: 
-				std::cout << "name of " << std::string("xyz")[ti-1] << ": " << name << std::endl;
-				break;
-			case 4:
-				std::cout << "name of cell id: " << name << std::endl;
-				break;
-			default:
-				attr_names.push_back(name);
-				std::cout << "name of attr" << ti - 5 << ": " << name << std::endl;
-				break;
-			}
-			++ti;
-		}
-		nr_attributes = uint32_t(attr_names.size());
-		// iterate through all lines
-		unsigned li = 0;
-		for (auto l : lines) {
-			pr.step();
-			if (++li % (lines.size() / 50) == 0) {
-				std::cout << "read " << file_name << " with " << points.size() << " points, " << times.size() << " time steps, and " << group_colors.size() << " ids." << std::endl;
-			}
-			std::vector<cgv::utils::token> toks;
-			cgv::utils::split_to_tokens(l.begin, l.end, toks, "");
-			if (toks.size() < 5)
-				continue;
-			int x, y, z, id;
-			double t;
+		//std::string content;
+		//if (!cgv::utils::file::read(file_name, content, true))
+		//	return false;
+		//std::vector<cgv::utils::line> lines;
+		//cgv::utils::split_to_lines(content, lines);
+		//cgv::utils::progression pr("parse lines", lines.size(), 20);
+		//// extract the attribute names from first line
+		//std::vector<cgv::utils::token> toks;
+		//cgv::utils::split_to_tokens(lines.begin()->begin, lines.begin()->end, toks, "");
+		//size_t ti = 0;
+		//for (auto tok : toks) {
+		//	if (*tok.begin == '"')
+		//		++tok.begin;
+		//	if (tok.end > tok.begin && tok.end[-1] == '"')
+		//		--tok.end;
+		//	std::string name = to_string(tok);
+		//	switch (ti) {
+		//	case 0:
+		//		std::cout << "name of time: " << name << std::endl;
+		//		break;
+		//	case 1:
+		//		std::cout << "name of cell id: " << name << std::endl;
+		//		break;
+		//	case 2:
+		//		std::cout << "name of boundary: " << name << std::endl;
+		//		break;
+		//	case 5:
+		//	case 6:
+		//	case 7:
+		//		std::cout << "name of " << std::string("xyz")[ti - 5] << ": " << name << std::endl;
+		//		break;
+		//	default:
+		//		attr_names.push_back(name);
+		//		std::cout << "name of attr: " << name << std::endl;
+		//		break;
+		//	}
+		//	++ti;
+		//}
+		//nr_attributes = uint32_t(attr_names.size());
+		// TODO 
+		nr_attributes = uint32_t(3);
+
+		logger_parser parser(file_name);
+
+		std::vector<std::string> headers = { "time", "cell.id", "cell.center.x", "cell.center.y", "cell.center.z" };
+		parser.read_header(headers);
+
+		double time, x, y, z, extent_x, extent_y, extent_z;
+		int id;
+
+		// TODO get extent from logger.csv
+		extent_x = extent_y = extent_z = 2;
+
+		while (parser.read_row(time, id, x, y, z))
+		{
 			std::vector<double> a(nr_attributes, 0.0);
-			if (!cgv::utils::is_double(toks[0].begin, toks[0].end, t))
-				continue;
-			if (!cgv::utils::is_integer(toks[1].begin, toks[1].end, x))
-				continue;
-			if (!cgv::utils::is_integer(toks[2].begin, toks[2].end, y))
-				continue;
-			if (!cgv::utils::is_integer(toks[3].begin, toks[3].end, z))
-				continue;
-			if (!cgv::utils::is_integer(toks[4].begin, toks[4].end, id))
-				continue;
-			uint32_t ai, attr_parse_cnt = std::min(uint32_t(toks.size()) - 5, nr_attributes);
-			for (ai = 0; ai < attr_parse_cnt; ++ai)
-				if (!cgv::utils::is_double(toks[ai+5].begin, toks[ai + 5].end, a[ai]))
-					continue;
+			uint32_t ai;
 
-			if (t >= max_time_step)
+			if (time >= max_time_step)
 				break;
-			if (times.empty() || times.back() != float(t)) {
+
+			if (times.empty() || times.back() != float(time)) {
 				//std::cout << "t = " << t << " max = " << max_time_step << std::endl;
 				time_step_start.push_back(points.size());
-				times.push_back(float(t));
+				times.push_back(float(time));
 			}
+			extents.push_back(vec3(float(extent_x), float(extent_y), float(extent_z)));
 			points.push_back(vec3(float(x), float(y), float(z)));
 			for (ai = 0; ai < nr_attributes; ++ai)
 				attr_values.push_back(float(a[ai]));
-			rgba col(float(a[0]), float(a[1]), float(a[2]), 0.5f);
+			//rgba col(float(a[0]), float(a[1]), float(a[2]), 0.5f);
+			rgba col(0.f, 0.f, 0.f, 0.5f);
 			colors.push_back(col);
 			group_indices.push_back(id);
 			while (id >= int(group_colors.size())) {
@@ -216,6 +321,7 @@ public:
 				group_rotations.push_back(vec4(0, 0, 0, 1));
 			}
 		}
+
 		// define colors from hls
 		for (unsigned i = 0; i < group_colors.size(); ++i) {
 			float hue = float(i) / group_colors.size();
@@ -224,11 +330,11 @@ public:
 		nr_points = points.size();
 		nr_groups = uint32_t(group_colors.size());
 		nr_time_steps = uint32_t(times.size());
-		std::cout << "read " << file_name << " with " 
-			<< points.size() << " points, " << times.size() << " time steps, and " << group_colors.size() << " ids and " 
+		std::cout << "read " << file_name << " with "
+			<< extents.size() << " extents, " << points.size() << " points, " << times.size() << " time steps, and " << group_colors.size() << " ids and "
 			<< nr_attributes << " attributes" << std::endl;
-		// concatenate 
-		write_file(fn);
+		//// concatenate 
+		//write_file(fn);
 		return true;
 	}
 	bool open_ooc(const std::string& file_name)
@@ -427,7 +533,9 @@ public:
 				read_ooc_time_step(ooc_file_name, time_step);
 		}
 		if (member_ptr == &file_name) {
-			read_data_ascii(file_name, 0.1f);
+			//read_data_ascii(file_name, 0.1f);
+			read_data_ascii(file_name);			
+
 			time_step = 0;
 			on_set(&time_step);
 			post_recreate_gui();
@@ -534,7 +642,8 @@ public:
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			}
-			b_renderer.set_extent(ctx, box_extent);
+			//b_renderer.set_extent(ctx, box_extent);
+			b_renderer.set_extent_array<vec3>(ctx, extents);
 			cgv::render::group_renderer& renderer = use_boxes ? static_cast<cgv::render::group_renderer&>(b_renderer) : s_renderer;
 			set_group_geometry(ctx, renderer);
 			set_geometry(ctx, renderer);
