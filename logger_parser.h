@@ -2,7 +2,7 @@
 //
 // Usage:
 // logger_parser lp(<file_name>);
-// std::vector<std::string> headers = { "time", "id", "cell.center.x", ... }; // column names does not have to be in the same order as in the csv
+// std::vector<std::string> headers = { "time", "id", "l.x", ... }; // column names does not have to be in the same order as in the csv
 //
 // double time, x, ...;
 // int id;
@@ -89,11 +89,12 @@ public:
 				++token_index;
 			}
 
-			if (column_orders.size() <= i)
-			{
-				// throw error column not found
-				break;
-			}
+			assert(column_orders.size() > i);
+
+			//{
+			//	// throw error column not found
+			//	break;
+			//}
 		}
 	}
 
