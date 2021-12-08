@@ -447,6 +447,35 @@ namespace cae {
 		return true;
 	}
 
+	//bool binary_file::read_time_step_void(
+	//	const std::string& file_name, uint64_t beg, uint64_t cnt,
+	//	void* pnt_ptr, CoordinateType pnt_type,
+	//	void* grp_ptr, CoordinateType grp_type) const
+	//{
+	//	uint64_t offset = 0;
+	//	FILE* fp = 0;
+	//	if ((format.flags & FF_SEPARATE_FRAME_FILE) != 0)
+	//		fp = fopen((file_name + ".caf").c_str(), "rb");
+	//	else {
+	//		fp = fopen((file_name + ".cae").c_str(), "rb");
+	//		offset = get_header_size();
+	//	}
+	//	if (!fp)
+	//		return false;
+
+	//	offset += beg * get_entry_size();
+
+	//	bool success = true;
+	//	if (fseek(fp, long(offset), SEEK_SET) != 0)
+	//		success = false;
+	//	else {
+	//		if (!read_variant_vector_void(fp, pnt_ptr, size_t(3 * cnt), CoordinateType(format.point_coord_type), pnt_type) ||
+	//			!read_variant_vector_void(fp, grp_ptr, size_t(cnt), CoordinateType(format.group_index_type), grp_type))
+	//			success = false;
+	//	}
+	//	fclose(fp);
+	//	return success;
+	//}
 	bool binary_file::read_time_step_void(
 		const std::string& file_name, uint64_t beg, uint64_t cnt,
 		void* pnt_ptr, CoordinateType pnt_type,
@@ -478,6 +507,30 @@ namespace cae {
 		fclose(fp);
 		return success;
 	}
+	//bool binary_file::write_time_step_void(const std::string& file_name, uint64_t cnt,
+	//	const void* pnt_ptr, CoordinateType pnt_type,
+	//	const void* grp_ptr, CoordinateType grp_type, bool write_hdr) const
+	//{
+	//	std::cout << "append time step to " << file_name << " with " << cnt << " items" << std::endl;
+
+	//	FILE* fp = 0;
+	//	if ((format.flags & FF_SEPARATE_FRAME_FILE) != 0)
+	//		fp = fopen((file_name + ".caf").c_str(), "ab");
+	//	else {
+	//		fp = fopen((file_name + ".cae").c_str(), "ab");
+	//	}
+	//	if (!fp)
+	//		return false;
+
+	//	bool success = true;
+	//	if (!write_variant_vector_void(fp, pnt_ptr, size_t(3 * cnt), CoordinateType(format.point_coord_type), pnt_type) ||
+	//		!write_variant_vector_void(fp, grp_ptr, size_t(cnt), CoordinateType(format.group_index_type), grp_type))
+	//		success = false;
+	//	fclose(fp);
+	//	if (write_hdr)
+	//		return write_header(file_name);
+	//	return success;
+	//}
 	bool binary_file::write_time_step_void(const std::string& file_name, uint64_t cnt,
 		const void* pnt_ptr, CoordinateType pnt_type,
 		const void* grp_ptr, CoordinateType grp_type,

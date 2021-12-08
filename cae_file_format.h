@@ -8,6 +8,8 @@
 #include <cgv/media/axis_aligned_box.h>
 #include "endian.h"
 
+#include "simulation_data.h"
+
 namespace cae {
 
 enum CoordinateType
@@ -272,12 +274,56 @@ protected:
 		void* grp_ptr, CoordinateType grp_type,
 		void* att_ptr, CoordinateType att_type) const;
 
+	//bool read_time_step_void(const std::string& file_name, uint64_t beg, uint64_t cnt,
+	//	void* pnt_ptr, CoordinateType pnt_type,
+	//	void* grp_ptr, CoordinateType grp_type) const;
+
 	bool write_time_step_void(const std::string& file_name, uint64_t cnt,
 		const void* pnt_ptr, CoordinateType pnt_type,
 		const void* grp_ptr, CoordinateType grp_type,
 		const void* att_ptr, CoordinateType att_type, bool write_hdr) const;
 
+	//bool write_time_step_void(const std::string& file_name, uint64_t cnt,
+	//	const void* pnt_ptr, CoordinateType pnt_type,
+	//	const void* grp_ptr, CoordinateType grp_type, bool write_hdr) const;
+
 public:
+	//template <typename P, typename I, typename A>
+	//bool read(const std::string& file_name,
+	//	std::vector<cgv::math::fvec<P, 3> >& points,
+	//	std::vector<I>& group_indices)
+	//{
+	//	FILE* fp = 0;
+	//	if (!read_header(file_name + ".cae", &fp))
+	//		return false;
+
+	//	if ((format.flags & FF_SEPARATE_FRAME_FILE) != 0) {
+	//		fclose(fp);
+	//		fp = fopen((file_name + ".caf").c_str(), "rb");
+	//		if (!fp)
+	//			return false;
+	//	}
+	//	if ((format.flags & FF_FRAME_BASED) == 0) {
+	//		bool success =
+	//			read_variant_vector(fp, points, size_t(nr_points), CoordinateType(format.point_coord_type)) &&
+	//			read_variant_vector(fp, group_indices, size_t(nr_points), CoordinateType(format.group_index_type));
+	//		fclose(fp);
+	//		return success;
+	//	}
+	//	else {
+	//		fclose(fp);
+	//		std::vector<cgv::math::fvec<P, 3> > tmp_points;
+	//		std::vector<I> tmp_group_indices;
+	//		for (size_t ti = 0; ti < nr_time_steps; ++ti) {
+	//			if (!read_time_step(file_name, uint32_t(ti), tmp_points, tmp_group_indices, tmp_attr_values))
+	//				return false;
+	//			points.insert(points.end(), tmp_points.begin(), tmp_points.end());
+	//			group_indices.insert(group_indices.end(), tmp_group_indices.begin(), tmp_group_indices.end());
+	//		}
+	//		return true;
+	//	}
+	//}
+
 	template <typename P, typename I, typename A>
 	bool read(const std::string& file_name, 
 		      std::vector<cgv::math::fvec<P,3> >& points,
@@ -317,6 +363,45 @@ public:
 			return true;
 		}
 	}
+
+	//template <typename P, typename I>
+	//bool write(const std::string& file_name,
+	//	const std::vector<cgv::math::fvec<P, 3> >& points,
+	//	const std::vector<I>& group_indices) const
+	//{
+	//	FILE* fp = 0;
+	//	if (!write_header(file_name, &fp))
+	//		return false;
+
+	//	if ((format.flags & FF_SEPARATE_FRAME_FILE) != 0) {
+	//		fclose(fp);
+	//		fp = fopen((file_name + ".caf").c_str(), "wb");
+	//		if (!fp)
+	//			return false;
+	//	}
+	//	if ((format.flags & FF_FRAME_BASED) == 0) {
+	//		bool success =
+	//			write_variant_vector(fp, points, CoordinateType(format.point_coord_type)) &&
+	//			write_variant_vector(fp, group_indices, CoordinateType(format.group_index_type));
+
+	//		fclose(fp);
+	//		return success;
+	//	}
+	//	else {
+	//		fclose(fp);
+	//		for (size_t ti = 0; ti < nr_time_steps; ++ti) {
+	//			size_t beg = size_t(time_step_start[ti]);
+	//			size_t end = size_t(get_time_step_end(ti));
+	//			std::vector<cgv::math::fvec<P, 3> > tmp_points;
+	//			std::vector<I> tmp_group_indices;
+	//			tmp_points.insert(tmp_points.end(), points.begin() + beg, points.begin() + end);
+	//			tmp_group_indices.insert(tmp_group_indices.end(), group_indices.begin() + beg, group_indices.begin() + end);
+	//			if (!write_time_step(file_name, tmp_points, tmp_group_indices))
+	//				return false;
+	//		}
+	//		return true;
+	//	}
+	//}
 
 	template <typename P, typename I, typename A>
 	bool write(const std::string& file_name,
@@ -435,6 +520,16 @@ public:
 		}
 		return write_time_step(file_name, points, group_indices, attr_values, write_hdr);
 	}
+	/// read a single time step
+	//template <typename P, typename I>
+	//bool write_time_step(const std::string& file_name,
+	//	const std::vector<cgv::math::fvec<P, 3> >& points,
+	//	const std::vector<I>& group_indices, bool write_hdr = false) const
+	//{
+	//	return write_time_step_void(file_name, points.size(),
+	//		&points.front(), coordinate_traits<P>::type,
+	//		&group_indices.front(), coordinate_traits<I>::type, write_hdr);
+	//}
 	/// read a single time step
 	template <typename P, typename I, typename A>
 	bool write_time_step(const std::string& file_name, 
