@@ -59,8 +59,13 @@ protected:
 	std::vector<int>  intersection_box_indices;
 	std::vector<int>  intersection_controller_indices;
 
+	float ray_length = 2;
+
 	// state of current interaction with boxes for all controllers
 	InteractionState state[4];
+
+	// render style for interaction
+	cgv::render::sphere_render_style srs;
 
 	// keep reference to vr_view_interactor
 	vr_view_interactor* vr_view_ptr;
@@ -73,7 +78,7 @@ protected:
 	std::vector<float> attr_values;
 	std::vector<rgba8> colors;
 
-	// attributes 
+	// attributes
 	uint32_t selected_attr;
 
 	// per group information
@@ -346,6 +351,8 @@ public:
 		double time, x, y, z, b;
 		int id, type;
 
+		model_parser parser(file_name, group_indices, points);
+
 		//while (parser.read_row(time, id, type, x, y, z, b))
 		//{
 		//	if (type == 0) // medium is ignored in code, maybe should just require user to uncheck medium in Morpheus logging? 
@@ -378,6 +385,21 @@ public:
 		//		group_rotations.push_back(vec4(0, 0, 0, 1));
 		//	}
 		//}
+
+		time_step_start.push_back(0);
+		times.push_back(0.f);
+
+		for (auto id : group_indices)
+		{
+			rgba col(0.f, 0.f, 0.f, 0.5f);
+			colors.push_back(col);
+			// cells of the same type should have the same color
+			while (id >= int(group_colors.size())) {
+				group_colors.push_back(rgba(1, 1, 1, 0.5f));
+				group_translations.push_back(vec3(0, 0, 0));
+				group_rotations.push_back(vec4(0, 0, 0, 1));
+			}
+		}
 
 		// define colors from hls
 		for (unsigned i = 0; i < group_colors.size(); ++i) {
@@ -581,6 +603,8 @@ public:
 		connect(cgv::gui::get_animation_trigger().shoot, this, &vr_ca_vis::timer_event);
 
 		vr_view_ptr = 0;
+
+		srs.radius = 0.005f;
 	}
 	std::string get_type_name() const
 	{
@@ -833,15 +857,6 @@ public:
 			//		cgv::render::attribute_array_binding::disable_global_array(ctx, prog.get_texcoord_index());
 			//	}
 			//}
-			float ray_length = 2;
-
-			enum InteractionState {
-				IS_NONE,
-				IS_OVER,
-				IS_GRAB
-			};
-
-			InteractionState state[4];
 
 			if (vr_view_ptr) {
 				std::vector<vec3> P;
@@ -864,28 +879,37 @@ public:
 				if (P.size() > 0) {
 					//auto& cr = cgv::render::ref_rounded_cone_renderer(ctx);
 					//cr.set_render_style(cone_style);
-					////cr.set_eye_position(vr_view_ptr->get_eye_of_kit());
+					//cr.set_eye_position(vr_view_ptr->get_eye_of_kit());
 					//cr.set_position_array(ctx, P);
 					//cr.set_color_array(ctx, C);
 					//cr.set_radius_array(ctx, R);
 					//if (!cr.render(ctx, 0, P.size())) {
-						//cgv::render::shader_program& prog = ctx.ref_default_shader_program();
-						//int pi = prog.get_position_index();
-						//int ci = prog.get_color_index();
-						//cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
-						//cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
-						//cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ci, C);
-						//cgv::render::attribute_array_binding::enable_global_array(ctx, ci);
-						//glLineWidth(3);
-						//prog.enable(ctx);
-						//glDrawArrays(GL_LINES, 0, (GLsizei)P.size());
-						//prog.disable(ctx);
-						//cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
-						//cgv::render::attribute_array_binding::disable_global_array(ctx, ci);
-						//glLineWidth(1);
+						cgv::render::shader_program& prog = ctx.ref_default_shader_program();
+						int pi = prog.get_position_index();
+						int ci = prog.get_color_index();
+						cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
+						cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
+						cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ci, C);
+						cgv::render::attribute_array_binding::enable_global_array(ctx, ci);
+						glLineWidth(3);
+						prog.enable(ctx);
+						glDrawArrays(GL_LINES, 0, (GLsizei)P.size());
+						prog.disable(ctx);
+						cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
+						cgv::render::attribute_array_binding::disable_global_array(ctx, ci);
+						glLineWidth(1);
 					//}
 				}
 			}
+		}
+
+		// draw intersection points
+		if (!intersection_points.empty()) {
+			auto& sr = cgv::render::ref_sphere_renderer(ctx);
+			sr.set_position_array(ctx, intersection_points);
+			sr.set_color_array(ctx, intersection_colors);
+			sr.set_render_style(srs);
+			sr.render(ctx, 0, intersection_points.size());
 		}
 	}
 	bool handle(cgv::gui::event& e)
@@ -978,14 +1002,18 @@ public:
 						compute_intersections(origin, direction, ci, ci == 0 ? rgb(1, 0, 0) : rgb(0, 0, 1));
 						//label_outofdate = true;
 
+						if (intersection_points.size() > 0)
+						{
+							std::cout << "ok" << std::endl;
+						}
 
 						// update state based on whether we have found at least 
 						// one intersection with controller ray
-						if (intersection_points.size() == i)
-							state[ci] = IS_NONE;
-						else
-							if (state[ci] == IS_NONE)
-								state[ci] = IS_OVER;
+						//if (intersection_points.size() == i)
+						//	state[ci] = IS_NONE;
+						//else
+						//	if (state[ci] == IS_NONE)
+						//		state[ci] = IS_OVER;
 					}
 					post_redraw();
 				}
@@ -1079,31 +1107,31 @@ public:
 	/// compute intersection points of controller ray with movable boxes
 	void compute_intersections(const vec3& origin, const vec3& direction, int ci, const rgb& color)
 	{
-		//for (size_t i = 0; i < movable_boxes.size(); ++i) {
-		//	vec3 origin_box_i = origin - movable_box_translations[i];
-		//	movable_box_rotations[i].inverse_rotate(origin_box_i);
-		//	vec3 direction_box_i = direction;
-		//	movable_box_rotations[i].inverse_rotate(direction_box_i);
-		//	float t_result;
-		//	vec3  p_result;
-		//	vec3  n_result;
-		//	if (cgv::media::ray_axis_aligned_box_intersection(
-		//		origin_box_i, direction_box_i,
-		//		movable_boxes[i],
-		//		t_result, p_result, n_result, 0.000001f)) {
+		for (size_t i = 0; i < points.size(); ++i) {
+			vec3 origin_box_i = origin - group_translations[i];
+			//group_rotations[i].inverse_rotate(origin_box_i);
+			vec3 direction_box_i = direction;
+			//group_rotations[i].inverse_rotate(direction_box_i);
+			float t_result;
+			vec3  p_result;
+			vec3  n_result;
+			//if (cgv::media::ray_axis_aligned_box_intersection(
+			//	origin_box_i, direction_box_i,
+			//	points[i],
+			//	t_result, p_result, n_result, 0.000001f)) {
 
-		//		// transform result back to world coordinates
-		//		movable_box_rotations[i].rotate(p_result);
-		//		p_result += movable_box_translations[i];
-		//		movable_box_rotations[i].rotate(n_result);
+			//	// transform result back to world coordinates
+			//	//group_rotations[i].rotate(p_result);
+			//	p_result += group_translations[i];
+			//	//group_rotations[i].rotate(n_result);
 
-		//		// store intersection information
-		//		intersection_points.push_back(p_result);
-		//		intersection_colors.push_back(color);
-		//		intersection_box_indices.push_back((int)i);
-		//		intersection_controller_indices.push_back(ci);
-		//	}
-		//}
+			//	// store intersection information
+			//	intersection_points.push_back(p_result);
+			//	intersection_colors.push_back(color);
+			//	intersection_box_indices.push_back((int)i);
+			//	intersection_controller_indices.push_back(ci);
+			//}
+		}
 	}
 };
 

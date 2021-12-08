@@ -14,7 +14,7 @@ public:
 	model_parser() = delete;
 	model_parser(const model_parser&) = delete;
 
-	model_parser(const std::string& file_name, std::vector<int>& ids, std::vector<vec3>& points)
+	model_parser(const std::string& file_name, std::vector<unsigned int>& ids, std::vector<vec3>& points)
 	{
 		rapidxml::xml_document<> doc;
 		rapidxml::xml_node<> *root_node;
@@ -41,13 +41,37 @@ public:
 					rapidxml::xml_node<>* n_node = c_node->first_node("Nodes");
 					if (n_node)
 					{
-						std::vector<cgv::utils::token> points_tokens;
-						cgv::utils::split_to_tokens(std::string(n_node->value()), points_tokens, ";");
+						std::vector<std::string> points_tokens;
+
+						char *token = strtok(n_node->value(), ";");
+
+						// Keep printing tokens while one of the
+						// delimiters present in str[].
+						while (token != NULL)
+						{
+							points_tokens.push_back(token);
+							token = strtok(NULL, ";");
+						}
+
+						//std::vector<cgv::utils::token> points_tokens;
+						//cgv::utils::split_to_tokens(std::string(n_node->value()), points_tokens, ";");
 
 						for (auto points_token : points_tokens)
 						{
-							std::vector<cgv::utils::token> point_tokens;
-							cgv::utils::split_to_tokens(points_token, point_tokens, ",");
+							std::vector<std::string> point_tokens;
+
+							token = strtok(&points_token[0], ", ");
+
+							// Keep printing tokens while one of the
+							// delimiters present in str[].
+							while (token != NULL)
+							{
+								point_tokens.push_back(token);
+								token = strtok(NULL, ", ");
+							}
+
+							//std::vector<cgv::utils::token> point_tokens;
+							//cgv::utils::split_to_tokens(points_token, point_tokens, ", ");
 
 							if (point_tokens.size() != 3)
 								continue;
@@ -55,7 +79,7 @@ public:
 							ids.push_back(id);
 
 							int x, y, z;
-							if (!cgv::utils::is_integer(to_string(point_tokens[0]), x) || !cgv::utils::is_integer(to_string(point_tokens[1]), y) || !cgv::utils::is_integer(to_string(point_tokens[2]) , z))
+							if (!cgv::utils::is_integer(point_tokens[0], x) || !cgv::utils::is_integer(point_tokens[1], y) || !cgv::utils::is_integer(point_tokens[2], z))
 								continue;
 
 							points.push_back(vec3(x, y, z));
