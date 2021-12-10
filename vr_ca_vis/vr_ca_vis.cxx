@@ -1320,7 +1320,7 @@ public:
 		for (int i = 0; i < 50; ++i, trav++)
 		{
 			auto bounds = vertexGrids[time_step].CellBounds(*trav);
-			AddBoxVertices(bounds, cellPositions);
+			//AddBoxVertices(bounds, cellPositions);
 		}
 	}
 };
