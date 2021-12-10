@@ -2,7 +2,7 @@
 //show all
 
 //name(vr_ca_vis):animate=true
-//name(vr_ca_vis):file_name="some_file_path"
+//name(vr_ca_vis):dir_name="some_directory_path"
 
 // configure startup window size and turn off gamma correction
 name(main):W=1280;H=720
