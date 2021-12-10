@@ -5,7 +5,7 @@
 #include "HashGrid.h"
 #include <iostream>
 
-void BuildHashGridFromVertices(const std::vector<ivec3>& points, HashGrid<Point>& grid, const vec3& cellSize)
+void BuildHashGridFromVertices(const std::vector<vec3>& points, HashGrid<Point>& grid, const vec3& cellSize)
 {
 	std::cout << "Building hash grid from vertices .." << std::endl;
 	grid = HashGrid<Point>(cellSize, 1);

@@ -254,4 +254,4 @@ public:
 };
 
 //helper function to construct a hashgrid data structure from the vertices of the halfedge mesh m
-void BuildHashGridFromVertices(const std::vector<ivec3>& points, HashGrid<Point>& grid, const vec3& cellSize);
+void BuildHashGridFromVertices(const std::vector<vec3>& points, HashGrid<Point>& grid, const vec3& cellSize);
