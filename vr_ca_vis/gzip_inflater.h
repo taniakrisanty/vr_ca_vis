@@ -41,70 +41,6 @@ public:
         int ret = inf(input, output);
 		if (ret != Z_OK)
 			zerr(ret);
-		
-        // Read the gz file into a string
-        //std::ifstream file(in_file_name);
-        //std::string compressedBytes((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-        //if (compressedBytes.size() == 0) {
-        //    uncompressedBytes = compressedBytes;
-        //    return;
-        //}
-
-        //uncompressedBytes.clear();
-
-        //unsigned full_length = compressedBytes.size();
-        //unsigned half_length = compressedBytes.size() / 2;
-
-        //unsigned uncompLength = full_length;
-        //char* uncomp = (char*)calloc(sizeof(char), uncompLength);
-
-        //z_stream strm;
-        //strm.next_in = (Bytef*)compressedBytes.c_str();
-        //strm.avail_in = compressedBytes.size();
-        //strm.total_out = 0;
-        //strm.zalloc = Z_NULL;
-        //strm.zfree = Z_NULL;
-
-        //bool done = false;
-
-        //if (inflateInit2(&strm, (16 + MAX_WBITS)) != Z_OK) {
-        //    free(uncomp);
-        //    return;
-        //}
-
-        //while (!done) {
-        //    // If our output buffer is too small  
-        //    if (strm.total_out >= uncompLength) {
-        //        // Increase size of output buffer  
-        //        char* uncomp2 = (char*)calloc(sizeof(char), uncompLength + half_length);
-        //        memcpy(uncomp2, uncomp, uncompLength);
-        //        uncompLength += half_length;
-        //        free(uncomp);
-        //        uncomp = uncomp2;
-        //    }
-
-        //    strm.next_out = (Bytef*)(uncomp + strm.total_out);
-        //    strm.avail_out = uncompLength - strm.total_out;
-
-        //    // Inflate another chunk.  
-        //    int err = inflate(&strm, Z_SYNC_FLUSH);
-        //    if (err == Z_STREAM_END) done = true;
-        //    else if (err != Z_OK) {
-        //        break;
-        //    }
-        //}
-
-        //if (inflateEnd(&strm) != Z_OK) {
-        //    free(uncomp);
-        //    return;
-        //    //return false;
-        //}
-
-        //for (size_t i = 0; i < strm.total_out; ++i) {
-        //    uncompressedBytes += uncomp[i];
-        //}
-        //free(uncomp);
     }
 
     /* Decompress from file source to file dest until stream ends or EOF.
@@ -127,7 +63,7 @@ public:
         strm.opaque = Z_NULL;
         strm.avail_in = 0;
         strm.next_in = Z_NULL;
-        ret = inflateInit(&strm);
+        ret = inflateInit2(&strm, 16 + MAX_WBITS);
         if (ret != Z_OK)
             return ret;
 
@@ -146,8 +82,7 @@ public:
             do {
                 strm.avail_out = CHUNK;
                 strm.next_out = out;
-                //ret = inflate(&strm, Z_NO_FLUSH);
-                ret = inflate(&strm, Z_FINISH);
+                ret = inflate(&strm, Z_NO_FLUSH);
                 assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
                 switch (ret) {
                 case Z_NEED_DICT:
