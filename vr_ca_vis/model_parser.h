@@ -14,7 +14,7 @@ public:
 	model_parser() = delete;
 	model_parser(const model_parser&) = delete;
 
-	model_parser(const std::string& file_name, std::vector<std::string>& types, std::vector<unsigned int>& ids, std::vector<vec3>& points)
+	model_parser(const std::string& file_name, std::vector<unsigned int>& ids, std::vector<vec3>& points, std::vector<unsigned int>& type_start, std::vector<std::string>& types)
 	{
 		// Read the xml file into a vector
 		std::ifstream file(file_name.c_str());
@@ -34,6 +34,9 @@ public:
 			for (rapidxml::xml_node<> *p_node = cp_node->first_node("Population"); p_node; p_node = p_node->next_sibling())
 			{
 				std::string type(p_node->first_attribute("type")->value());
+
+				type_start.push_back(points.size());
+				types.push_back(type);
 
 				for (rapidxml::xml_node<> *c_node = p_node->first_node("Cell"); c_node; c_node = c_node->next_sibling())
 				{
@@ -83,7 +86,7 @@ public:
 							if (!cgv::utils::is_integer(point_vector[0], x) || !cgv::utils::is_integer(point_vector[1], y) || !cgv::utils::is_integer(point_vector[2], z))
 								continue;
 
-							types.push_back(type);
+							//types.push_back(type);
 							ids.push_back(id);
 
 							points.push_back(vec3(x, y, z));

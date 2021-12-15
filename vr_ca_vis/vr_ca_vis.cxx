@@ -34,10 +34,7 @@
 #include <vr_view_interactor.h>
 #include <plugins/vr_lab/vr_tool.h>
 
-#include "intersection.h"
-
-#include "GridTraverser.h"
-#include "HashGrid.h"
+//#include "intersection.h"
 
 class vr_ca_vis :
 	public cgv::base::node,
@@ -73,6 +70,7 @@ protected:
 	//simulation_data data;
 
 	// stored data
+	std::vector<uint32_t> type_start;
 	std::vector<std::string> types;
 	std::vector<vec3> points;
 	std::vector<uint32_t> group_indices;
@@ -318,7 +316,7 @@ public:
 					times.push_back(float(time));
 				}
 
-				model_parser parser(file_name, types, group_indices, points);
+				model_parser parser(file_name, group_indices, points, type_start, types);
 
 				//rgba color(0.f, 0.f, 0.f, 0.5f);
 				////data.cells.push_back(cell_vis(time, id, type, x, y, z, b, color));
@@ -449,7 +447,6 @@ public:
 			//}
 
 			for (auto id : group_indices)
-			//for (auto type : types)
 			{
 				rgba col(0.f, 0.f, 0.f, 0.5f);
 				colors.push_back(col);
@@ -530,7 +527,7 @@ public:
 		attr_names.push_back("b");
 		nr_attributes = uint32_t(attr_names.size());
 
-		model_parser parser(file_name, types, group_indices, points);
+		model_parser parser(file_name, group_indices, points, type_start, types);
 
 		// reset simulation data
 		//data = {};
