@@ -22,6 +22,7 @@
 #include "cae_file_format.h"
 #include "logger_parser.h"
 #include "model_parser.h"
+#include "gzip_inflater.h"
 #include "simulation_data.h"
 #include <functional>
 #include <cgv/utils/dir.h>
@@ -77,7 +78,7 @@ protected:
 
 	std::vector<HashGrid<Point>> vertexGrids;
 
-	std::vector<vec3> hidden_points;
+	float a, b, c, d;
 
 	//simulation_data data;
 
@@ -87,6 +88,8 @@ protected:
 	std::vector<uint32_t> group_indices;
 	std::vector<float> attr_values;
 	std::vector<rgba8> colors;
+
+	std::vector<vec3> ps;
 
 	// attributes
 	uint32_t selected_attr;
@@ -128,7 +131,7 @@ protected:
 
 	void construct_group_information(unsigned nr_groups)
 	{
-		group_colors.resize(nr_groups);
+		 group_colors.resize(nr_groups);
 		group_translations.resize(nr_groups, vec3(0, 0, 0));
 		group_rotations.resize(nr_groups, vec4(0, 0, 0, 1));
 		// define colors from hls
@@ -304,6 +307,68 @@ public:
 	//	write_file(fn);
 	//	return true;
 	//}
+	bool read_xml_dir(const std::string& dir_name)
+	{
+		std::vector<std::string> file_names;
+		if (cgv::utils::dir::glob(dir_name, file_names, "*.xml"))
+		{
+			for (auto file_name : file_names)
+			{
+				std::string time_str = cgv::utils::file::get_file_name(file_name);
+				time_str = cgv::utils::file::drop_extension(time_str);
+				time_str = time_str.substr(time_str.size() - 6);
+
+				int time;
+				if (!cgv::utils::is_integer(time_str, time))
+					continue;
+
+				if (times.empty() || times.back() != float(time)) {
+					//std::cout << "t = " << t << " max = " << max_time_step << std::endl;
+					time_step_start.push_back(points.size());
+					times.push_back(float(time));
+				}
+
+				//types.push_back("1");
+				//group_indices.push_back(1);
+				//points.push_back(vec3(0));
+
+				model_parser parser(file_name, types, group_indices, points);
+
+				//rgba color(0.f, 0.f, 0.f, 0.5f);
+				////data.cells.push_back(cell_vis(time, id, type, x, y, z, b, color));
+
+				//points.push_back(vec3(float(x), float(y), float(z)));
+				////rgba col(float(a[0]), float(a[1]), float(a[2]), 0.5f);
+				//rgba col(0.f, 0.f, 0.f, 0.5f);
+				//colors.push_back(col);
+				//group_indices.push_back(id);
+				//// cells of the same type should have the same color
+				//while (id >= int(group_colors.size())) {
+				//	group_colors.push_back(rgba(1, 1, 1, 0.5f));
+				//	group_translations.push_back(vec3(0, 0, 0));
+				//	group_rotations.push_back(vec4(0, 0, 0, 1));
+				//}
+			}
+		}
+
+		return file_names.size() > 0;
+	}
+	bool read_gz_dir(const std::string& dir_name)
+	{
+		std::vector<std::string> file_names;
+		if (cgv::utils::dir::glob(dir_name, file_names, "*.xml.gz"))
+		{
+			for (auto file_name : file_names)
+			{
+				std::string xml_file_name = cgv::utils::file::drop_extension(file_name);
+
+				gzip_inflater(file_name, xml_file_name);
+				break;
+			}
+		}
+
+		return file_names.size() > 0;
+	}
 	bool read_data_dir_ascii(const std::string& dir_name)
 	{
 		//std::string fn = cgv::utils::file::drop_extension(file_name) + ".cae";
@@ -352,113 +417,82 @@ public:
 		attr_names.push_back("b");
 		nr_attributes = uint32_t(attr_names.size());
 
-		std::vector<std::string> file_names;
-		if (cgv::utils::dir::glob(dir_name, file_names, "*.xml"))
+		if (read_xml_dir(dir_name) || read_gz_dir(dir_name) && read_xml_dir(dir_name))
 		{
-			for (auto file_name : file_names)
+			// reset simulation data
+			//data = {};
+
+			//logger_parser parser(file_name);
+
+			//parser.read_header({ "time", "cell.id", "cell.type", "l.x", "l.y", "l.z", "b"});
+
+			//double time, x, y, z, b;
+			//int id, type;
+
+			//while (parser.read_row(time, id, type, x, y, z, b))
+			//{
+			//	if (type == 0) // medium is ignored in code, maybe should just require user to uncheck medium in Morpheus logging? 
+			//		continue;
+
+			//	//std::vector<double> a(nr_attributes, 0.0);
+			//	//uint32_t ai;
+
+			//	if (time >= max_time_step)
+			//		break;
+
+			//	if (times.empty() || times.back() != float(time)) {
+			//		//std::cout << "t = " << t << " max = " << max_time_step << std::endl;
+			//		time_step_start.push_back(points.size());
+			//		times.push_back(float(time));
+			//	}
+
+			//	rgba color(0.f, 0.f, 0.f, 0.5f);
+			//	//data.cells.push_back(cell_vis(time, id, type, x, y, z, b, color));
+
+			//	points.push_back(vec3(float(x), float(y), float(z)));
+			//	//rgba col(float(a[0]), float(a[1]), float(a[2]), 0.5f);
+			//	rgba col(0.f, 0.f, 0.f, 0.5f);
+			//	colors.push_back(col);
+			//	group_indices.push_back(id);
+			//	// cells of the same type should have the same color
+			//	while (id >= int(group_colors.size())) {
+			//		group_colors.push_back(rgba(1, 1, 1, 0.5f));
+			//		group_translations.push_back(vec3(0, 0, 0));
+			//		group_rotations.push_back(vec4(0, 0, 0, 1));
+			//	}
+			//}
+
+			for (auto id : group_indices)
 			{
-				std::string time_str = cgv::utils::file::get_file_name(file_name);
-				time_str = cgv::utils::file::drop_extension(time_str);
-				time_str = time_str.substr(time_str.size() - 6);
-
-				int time;
-				if (!cgv::utils::is_integer(time_str, time))
-					continue;
-
-				if (times.empty() || times.back() != float(time)) {
-					//std::cout << "t = " << t << " max = " << max_time_step << std::endl;
-					time_step_start.push_back(points.size());
-					times.push_back(float(time));
+				rgba col(0.f, 0.f, 0.f, 0.5f);
+				colors.push_back(col);
+				// cells of the same type should have the same color
+				while (id >= int(group_colors.size())) {
+					group_colors.push_back(rgba(1, 1, 1, 0.5f));
+					group_translations.push_back(vec3(0, 0, 0));
+					group_rotations.push_back(vec4(0, 0, 0, 1));
 				}
-
-				model_parser parser(file_name, types, group_indices, points);
-
-				//rgba color(0.f, 0.f, 0.f, 0.5f);
-				////data.cells.push_back(cell_vis(time, id, type, x, y, z, b, color));
-
-				//points.push_back(vec3(float(x), float(y), float(z)));
-				////rgba col(float(a[0]), float(a[1]), float(a[2]), 0.5f);
-				//rgba col(0.f, 0.f, 0.f, 0.5f);
-				//colors.push_back(col);
-				//group_indices.push_back(id);
-				//// cells of the same type should have the same color
-				//while (id >= int(group_colors.size())) {
-				//	group_colors.push_back(rgba(1, 1, 1, 0.5f));
-				//	group_translations.push_back(vec3(0, 0, 0));
-				//	group_rotations.push_back(vec4(0, 0, 0, 1));
-				//}
 			}
+
+			// define colors from hls
+			for (unsigned i = 0; i < group_colors.size(); ++i) {
+				float hue = float(i) / group_colors.size();
+				group_colors[i] = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f);
+			}
+			nr_points = points.size(); //data.cells.size();
+			nr_groups = uint32_t(group_colors.size());
+			nr_time_steps = uint32_t(times.size());
+			std::cout << "read " << file_name << " with "
+				<< points.size() << " points, " << times.size() << " time steps, and " << group_colors.size() << " ids and "
+				<< nr_attributes << " attributes" << std::endl;
+			//// concatenate
+			//write_file(fn);
+			return true;
 		}
-
-		// reset simulation data
-		//data = {};
-
-		//logger_parser parser(file_name);
-
-		//parser.read_header({ "time", "cell.id", "cell.type", "l.x", "l.y", "l.z", "b"});
-
-		//double time, x, y, z, b;
-		//int id, type;
-
-		//while (parser.read_row(time, id, type, x, y, z, b))
-		//{
-		//	if (type == 0) // medium is ignored in code, maybe should just require user to uncheck medium in Morpheus logging? 
-		//		continue;
-
-		//	//std::vector<double> a(nr_attributes, 0.0);
-		//	//uint32_t ai;
-
-		//	if (time >= max_time_step)
-		//		break;
-
-		//	if (times.empty() || times.back() != float(time)) {
-		//		//std::cout << "t = " << t << " max = " << max_time_step << std::endl;
-		//		time_step_start.push_back(points.size());
-		//		times.push_back(float(time));
-		//	}
-
-		//	rgba color(0.f, 0.f, 0.f, 0.5f);
-		//	//data.cells.push_back(cell_vis(time, id, type, x, y, z, b, color));
-
-		//	points.push_back(vec3(float(x), float(y), float(z)));
-		//	//rgba col(float(a[0]), float(a[1]), float(a[2]), 0.5f);
-		//	rgba col(0.f, 0.f, 0.f, 0.5f);
-		//	colors.push_back(col);
-		//	group_indices.push_back(id);
-		//	// cells of the same type should have the same color
-		//	while (id >= int(group_colors.size())) {
-		//		group_colors.push_back(rgba(1, 1, 1, 0.5f));
-		//		group_translations.push_back(vec3(0, 0, 0));
-		//		group_rotations.push_back(vec4(0, 0, 0, 1));
-		//	}
-		//}
-
-		for (auto id : group_indices)
+		else
 		{
-			rgba col(0.f, 0.f, 0.f, 0.5f);
-			colors.push_back(col);
-			// cells of the same type should have the same color
-			while (id >= int(group_colors.size())) {
-				group_colors.push_back(rgba(1, 1, 1, 0.5f));
-				group_translations.push_back(vec3(0, 0, 0));
-				group_rotations.push_back(vec4(0, 0, 0, 1));
-			}
+			return false;
 		}
-
-		// define colors from hls
-		for (unsigned i = 0; i < group_colors.size(); ++i) {
-			float hue = float(i) / group_colors.size();
-			group_colors[i] = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f);
-		}
-		nr_points = points.size(); //data.cells.size();
-		nr_groups = uint32_t(group_colors.size());
-		nr_time_steps = uint32_t(times.size());
-		std::cout << "read " << file_name << " with "
-			<< points.size() << " points, " << times.size() << " time steps, and " << group_colors.size() << " ids and "
-			<< nr_attributes << " attributes" << std::endl;
-		//// concatenate
-		//write_file(fn);
-		return true;
 	}
 	bool read_data_ascii(const std::string& file_name, float max_time_step = std::numeric_limits<float>::max())
 	{
@@ -785,13 +819,13 @@ public:
 
 			std::vector<vec3> p(points.begin() + beg, points.begin() + end);
 
-			if (time_step >= vertexGrids.size())
-			{
-				HashGrid<Point> grid;
-				BuildHashGridFromVertices(p, grid, vec3(1, 1, 1));
+			//if (time_step >= vertexGrids.size())
+			//{
+			//	HashGrid<Point> grid;
+			//	BuildHashGridFromVertices(p, grid, vec3(1, 1, 1));
 
-				vertexGrids.push_back(grid);
-			}
+			//	vertexGrids.push_back(grid);
+			//}
 
 			if (ooc_mode && !ooc_file_name.empty())
 				read_ooc_time_step(ooc_file_name, time_step);
@@ -886,22 +920,13 @@ public:
 	}
 	void set_geometry(cgv::render::context& ctx, cgv::render::group_renderer& sr)
 	{
-		//std::vector<vec3> points;
-
-		//std::transform(data.cells.begin(), data.cells.end(), std::back_inserter(points),
-		//	std::mem_fn(&cell_vis::get_point));
-
-		sr.set_position_array(ctx, points);
+		if (ps.size() > 0)
+		sr.set_position_array(ctx, ps);
 		sr.set_color_array(ctx, colors);
 		sr.set_group_index_array(ctx, group_indices);
 	}
 	void draw_points(unsigned ti) // draw voxels
 	{
-		//std::vector<vec3> points;
-
-		//std::transform(data.cells.begin(), data.cells.end(), std::back_inserter(points),
-		//	std::mem_fn(&cell_vis::get_point));
-
 		cgv::type::uint64_type beg = (ooc_mode? 0 : time_step_start[ti]);
 		cgv::type::uint64_type end = (ooc_mode? points.size() : ((ti + 1 == time_step_start.size()) ? points.size() : time_step_start[ti+1]));
 		cgv::type::uint64_type cnt = end - beg;
@@ -922,8 +947,9 @@ public:
 			std::sort(indices.begin(), indices.end(), sort_pred(points, view_dir));
 			glDrawElements(GL_POINTS, GLsizei(cnt), GL_UNSIGNED_INT, &indices.front());
 		}
-		else
-			glDrawArrays(GL_POINTS, GLsizei(beg), GLsizei(cnt));
+		else if (ps.size() > 0)
+			glDrawArrays(GL_POINTS, GLsizei(0), GLsizei(ps.size()));
+			//glDrawArrays(GL_POINTS, GLsizei(beg), GLsizei(cnt));
 	}
 	void draw_box(cgv::render::context& ctx)
 	{
@@ -944,12 +970,8 @@ public:
 
 		draw_box(ctx);
 
-		//std::vector<vec3> points;
-
-		//std::transform(data.cells.begin(), data.cells.end(), std::back_inserter(points),
-		//	std::mem_fn(&cell_vis::get_point));
-
-		if (!points.empty()) {
+		//if (!points.empty()) {
+		if (!ps.empty()) {
 			ctx.mul_modelview_matrix(cgv::math::scale4<double>(dvec3(0.01)));
 			if (blend) {
 				glEnable(GL_BLEND);
@@ -1052,17 +1074,18 @@ public:
 				std::vector<rgb> C;
 				const vr::vr_kit_state* state_ptr = vr_view_ptr->get_current_vr_state();
 				if (state_ptr) {
-					for (int ci = 0; ci < 4; ++ci) if (state_ptr->controller[ci].status == vr::VRS_TRACKED) {
-						vec3 ray_origin, ray_direction;
-						state_ptr->controller[ci].put_ray(&ray_origin(0), &ray_direction(0));
-						P.push_back(ray_origin);
-						R.push_back(0.002f);
-						P.push_back(ray_origin + ray_length * ray_direction);
-						R.push_back(0.003f);
-						rgb c(float(1 - ci), 0.5f * (int)state[ci], float(ci));
-						C.push_back(c);
-						C.push_back(c);
-					}
+					for (int ci = 0; ci < 4; ++ci)
+						if (state_ptr->controller[ci].status == vr::VRS_TRACKED) {
+							vec3 ray_origin, ray_direction;
+							state_ptr->controller[ci].put_ray(&ray_origin(0), &ray_direction(0));														//P.push_back(ray_origin);
+							P.push_back(ray_origin);
+							R.push_back(0.002f);
+							P.push_back(ray_origin + ray_length * ray_direction);
+							R.push_back(0.003f);
+							rgb c(float(1 - ci), 0.5f * (int)state[ci], float(ci));
+							C.push_back(c);
+							C.push_back(c);
+						}
 				}
 				if (P.size() > 0) {
 					//auto& cr = cgv::render::ref_rounded_cone_renderer(ctx);
@@ -1187,6 +1210,15 @@ public:
 						// compute intersections
 						vec3 origin, direction;
 						vrpe.get_state().controller[ci].put_ray(&origin(0), &direction(0));
+
+						//a = direction.x();
+						//b = direction.y();
+						//c = direction.z();
+						//d = (a * origin.x()) + (b * origin.y()) + (c * origin.z());
+						//d = -d;
+
+						direction.normalize();
+
 						compute_intersections(origin, direction, ci, ci == 0 ? rgb(1, 0, 0) : rgb(0, 0, 1));
 						//label_outofdate = true;
 
@@ -1295,7 +1327,37 @@ public:
 	/// compute intersection points of controller ray with movable boxes
 	void compute_intersections(const vec3& origin, const vec3& direction, int ci, const rgb& color)
 	{
+		ps.clear();
+
+		for (size_t i = 0; i < time_step_start[time_step]; ++i) {
 		//for (size_t i = 0; i < points.size(); ++i) {
+			vec4 p(points[i], 1.f);
+
+			mat4 mat;
+			mat.identity();
+
+			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+			mat *= cgv::math::scale4<double>(dvec3(scale));
+			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+			mat *= cgv::math::scale4<double>(dvec3(0.01));
+
+			vec4 point4(mat * p);
+			vec3 point(point4 / point4.w());
+
+			//float sign = (a * point.x()) + (b * point.y()) + (c * point.z()) + d;
+
+			float sign = dot(direction, point) - origin.length();
+
+			if (sign < 0)
+			{
+				ps.push_back(points[i]);
+			}
+			else
+			{ 
+				//std::cout << "wow" << std::endl;
+			}
+
 			//if (cgv::media::ray_axis_aligned_box_intersection(
 			//	origin_box_i, direction_box_i,
 			//	points[i],
@@ -1312,15 +1374,6 @@ public:
 			//	intersection_box_indices.push_back((int)i);
 			//	intersection_controller_indices.push_back(ci);
 			//}
-		//}
-
-		//Ray cells
-		std::vector<vec4> cellPositions;
-		GridTraverser trav(origin, direction, vertexGrids[time_step].CellExtents());
-		for (int i = 0; i < 50; ++i, trav++)
-		{
-			auto bounds = vertexGrids[time_step].CellBounds(*trav);
-			//AddBoxVertices(bounds, cellPositions);
 		}
 	}
 };
