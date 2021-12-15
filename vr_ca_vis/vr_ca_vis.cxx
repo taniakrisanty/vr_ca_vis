@@ -59,12 +59,6 @@ protected:
 		IS_GRAB
 	};
 
-	// intersection points
-	std::vector<vec3> intersection_points;
-	std::vector<rgb>  intersection_colors;
-	std::vector<int>  intersection_box_indices;
-	std::vector<int>  intersection_controller_indices;
-
 	float ray_length = 2;
 
 	// state of current interaction with boxes for all controllers
@@ -75,10 +69,6 @@ protected:
 
 	// keep reference to vr_view_interactor
 	vr_view_interactor* vr_view_ptr;
-
-	std::vector<HashGrid<Point>> vertexGrids;
-
-	float a, b, c, d;
 
 	//simulation_data data;
 
@@ -328,10 +318,6 @@ public:
 					times.push_back(float(time));
 				}
 
-				//types.push_back("1");
-				//group_indices.push_back(1);
-				//points.push_back(vec3(0));
-
 				model_parser parser(file_name, types, group_indices, points);
 
 				//rgba color(0.f, 0.f, 0.f, 0.5f);
@@ -463,11 +449,13 @@ public:
 			//}
 
 			for (auto id : group_indices)
+			//for (auto type : types)
 			{
 				rgba col(0.f, 0.f, 0.f, 0.5f);
 				colors.push_back(col);
 				// cells of the same type should have the same color
 				while (id >= int(group_colors.size())) {
+				//while (type >= group_colors.size())
 					group_colors.push_back(rgba(1, 1, 1, 0.5f));
 					group_translations.push_back(vec3(0, 0, 0));
 					group_rotations.push_back(vec4(0, 0, 0, 1));
@@ -1113,15 +1101,6 @@ public:
 				}
 			}
 		}
-
-		// draw intersection points
-		if (!intersection_points.empty()) {
-			auto& sr = cgv::render::ref_sphere_renderer(ctx);
-			sr.set_position_array(ctx, intersection_points);
-			sr.set_color_array(ctx, intersection_colors);
-			sr.set_render_style(srs);
-			sr.render(ctx, 0, intersection_points.size());
-		}
 	}
 	bool handle(cgv::gui::event& e)
 	{
@@ -1165,76 +1144,21 @@ public:
 				// check for controller pose events
 				int ci = vrpe.get_trackable_index();
 				if (ci != -1) {
-					if (state[ci] == IS_GRAB) {
-						// in grab mode apply relative transformation to grabbed boxes
+					// compute intersections
+					vec3 origin, direction;
+					vrpe.get_state().controller[ci].put_ray(&origin(0), &direction(0));
 
-						// get previous and current controller position
-						vec3 last_pos = vrpe.get_last_position();
-						vec3 pos = vrpe.get_position();
-						// get rotation from previous to current orientation
-						// this is the current orientation matrix times the
-						// inverse (or transpose) of last orientation matrix:
-						// vrpe.get_orientation()*transpose(vrpe.get_last_orientation())
-						mat3 rotation = vrpe.get_rotation_matrix();
-						// iterate intersection points of current controller
-						for (size_t i = 0; i < intersection_points.size(); ++i) {
-							if (intersection_controller_indices[i] != ci)
-								continue;
-							// extract box index
-							unsigned bi = intersection_box_indices[i];
-							// update translation with position change and rotation
-							//movable_box_translations[bi] =
-							//	rotation * (movable_box_translations[bi] - last_pos) + pos;
-							// update orientation with rotation, note that quaternions
-							// need to be multiplied in oposite order. In case of matrices
-							// one would write box_orientation_matrix *= rotation
-							//movable_box_rotations[bi] = quat(rotation) * movable_box_rotations[bi];
-							// update intersection points
-							intersection_points[i] = rotation * (intersection_points[i] - last_pos) + pos;
-						}
-					}
-					else {// not grab
-						// clear intersections of current controller 
-						size_t i = 0;
-						while (i < intersection_points.size()) {
-							if (intersection_controller_indices[i] == ci) {
-								intersection_points.erase(intersection_points.begin() + i);
-								intersection_colors.erase(intersection_colors.begin() + i);
-								intersection_box_indices.erase(intersection_box_indices.begin() + i);
-								intersection_controller_indices.erase(intersection_controller_indices.begin() + i);
-							}
-							else
-								++i;
-						}
+					compute_visible_points(origin, direction, ci, ci == 0 ? rgb(1, 0, 0) : rgb(0, 0, 1));
+					//label_outofdate = true;
 
-						// compute intersections
-						vec3 origin, direction;
-						vrpe.get_state().controller[ci].put_ray(&origin(0), &direction(0));
+					// update state based on whether we have found at least 
+					// one intersection with controller ray
+					//if (intersection_points.size() == i)
+					//	state[ci] = IS_NONE;
+					//else
+					//	if (state[ci] == IS_NONE)
+					//		state[ci] = IS_OVER;
 
-						//a = direction.x();
-						//b = direction.y();
-						//c = direction.z();
-						//d = (a * origin.x()) + (b * origin.y()) + (c * origin.z());
-						//d = -d;
-
-						direction.normalize();
-
-						compute_intersections(origin, direction, ci, ci == 0 ? rgb(1, 0, 0) : rgb(0, 0, 1));
-						//label_outofdate = true;
-
-						if (intersection_points.size() > 0)
-						{
-							std::cout << "ok" << std::endl;
-						}
-
-						// update state based on whether we have found at least 
-						// one intersection with controller ray
-						//if (intersection_points.size() == i)
-						//	state[ci] = IS_NONE;
-						//else
-						//	if (state[ci] == IS_NONE)
-						//		state[ci] = IS_OVER;
-					}
 					post_redraw();
 				}
 				return true;
@@ -1324,56 +1248,31 @@ public:
 			end_tree_node(box_style);
 		}
 	}
-	/// compute intersection points of controller ray with movable boxes
-	void compute_intersections(const vec3& origin, const vec3& direction, int ci, const rgb& color)
+	/// compute visible points, i.e. points that are past the cutting plane in the direction of the controller
+	void compute_visible_points(const vec3& origin, const vec3& direction, int ci, const rgb& color)
 	{
 		ps.clear();
 
+		mat4 mat;
+		mat.identity();
+
+		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+			mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+		mat *= cgv::math::scale4<double>(dvec3(scale));
+		mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+		mat *= cgv::math::scale4<double>(dvec3(0.01));
+
 		for (size_t i = 0; i < time_step_start[time_step]; ++i) {
 		//for (size_t i = 0; i < points.size(); ++i) {
-			vec4 p(points[i], 1.f);
-
-			mat4 mat;
-			mat.identity();
-
-			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
-			mat *= cgv::math::scale4<double>(dvec3(scale));
-			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
-			mat *= cgv::math::scale4<double>(dvec3(0.01));
-
-			vec4 point4(mat * p);
+			vec4 point4 = mat * vec4(points[i], 1.f);
 			vec3 point(point4 / point4.w());
 
-			//float sign = (a * point.x()) + (b * point.y()) + (c * point.z()) + d;
+			float sign = dot(direction, point - origin);
 
-			float sign = dot(direction, point) - origin.length();
-
-			if (sign < 0)
+			if (sign >= 0)
 			{
 				ps.push_back(points[i]);
 			}
-			else
-			{ 
-				//std::cout << "wow" << std::endl;
-			}
-
-			//if (cgv::media::ray_axis_aligned_box_intersection(
-			//	origin_box_i, direction_box_i,
-			//	points[i],
-			//	t_result, p_result, n_result, 0.000001f)) {
-
-			//	// transform result back to world coordinates
-			//	//group_rotations[i].rotate(p_result);
-			//	p_result += group_translations[i];
-			//	//group_rotations[i].rotate(n_result);
-
-			//	// store intersection information
-			//	intersection_points.push_back(p_result);
-			//	intersection_colors.push_back(color);
-			//	intersection_box_indices.push_back((int)i);
-			//	intersection_controller_indices.push_back(ci);
-			//}
 		}
 	}
 };
