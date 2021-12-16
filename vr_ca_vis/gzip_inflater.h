@@ -41,6 +41,9 @@ public:
         int ret = inf(input, output);
 		if (ret != Z_OK)
 			zerr(ret);
+
+        fclose(input);
+        fclose(output);
     }
 
     /* Decompress from file source to file dest until stream ends or EOF.

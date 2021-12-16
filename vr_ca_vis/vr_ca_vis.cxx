@@ -347,7 +347,6 @@ public:
 				std::string xml_file_name = cgv::utils::file::drop_extension(file_name);
 
 				gzip_inflater(file_name, xml_file_name);
-				break;
 			}
 		}
 
