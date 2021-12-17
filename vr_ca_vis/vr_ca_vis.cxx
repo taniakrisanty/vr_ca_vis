@@ -69,6 +69,10 @@ protected:
 
 	//simulation_data data;
 
+	vec3 control_origin;
+	vec3 control_direction;
+	float control_distance = 0;
+
 	// stored data
 	std::vector<uint32_t> type_start;
 	std::vector<std::string> types;
@@ -944,6 +948,66 @@ public:
 		ctx.tesselate_box(B, false, true);
 		ctx.ref_default_shader_program().disable(ctx);
 	}
+	void draw_cutting_plane(cgv::render::context& ctx)
+	{
+		//cgv::render::shader_program& prog = ctx.ref_default_shader_program();
+		//int pi = prog.get_position_index();
+		//int ci = prog.get_color_index();
+		//cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
+		//cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
+		//cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ci, C);
+		//cgv::render::attribute_array_binding::enable_global_array(ctx, ci);
+		//glLineWidth(3);
+		//prog.enable(ctx);
+		//glDrawArrays(GL_LINES, 0, (GLsizei)P.size());
+		//prog.disable(ctx);
+		//cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
+		//cgv::render::attribute_array_binding::disable_global_array(ctx, ci);
+		//glLineWidth(1);
+
+		ctx.ref_default_shader_program().enable(ctx);
+		ctx.set_color(rgb(0.0f, 1.0f, 0.0f));
+		glLineWidth(2.0f);
+		//ctx.tesselate_unit_disk();
+
+		std::vector<vec3> P;
+
+		std::vector<vec3> polygon;
+		construct_cutting_plane(polygon);
+
+		/************************************************************************************
+		 Tessellate the polygon (its points are stored in the *polygon* vector):
+					   Fill vector *P* with the vertex coordinates of each triangle. Due to the
+					   usage of glDrawArrays(GL_TRIANGLES...) each triangle consists of three vertices.
+					   You can utilize a triangle fan for this where all triangles share one vertex
+					   for easy iteration through the *polygon* vector.*/
+
+		if (!polygon.empty())
+		{
+			for (int i = 1; i < polygon.size() - 1; ++i)
+			{
+				P.push_back(polygon[0]);
+				P.push_back(polygon[i]);
+				P.push_back(polygon[i + 1]);
+			}
+		}
+
+		P = { vec3(0.f, 0.f, 0.f), vec3(1.f, 1.f, 1.f), vec3(0.5f, 0.5f, 0.5f) };
+
+		glDrawArrays(GL_TRIANGLES, 0, (GLsizei)P.size());
+		//glEnable(GL_CULL_FACE);
+
+		/************************************************************************************/
+		
+		ctx.ref_default_shader_program().disable(ctx);
+
+		//ctx.ref_default_shader_program().enable(ctx);
+		//ctx.set_color(rgb(0.0f, 1.0f, 0.0f));
+		//glLineWidth(4.0f);
+		//box3 B(vec3(0.0f), vec3(2.0f));
+		//ctx.tesselate_box(B, false, true);
+		//ctx.ref_default_shader_program().disable(ctx);
+	}
 	void draw(cgv::render::context& ctx)
 	{
 		ctx.push_modelview_matrix();
@@ -953,6 +1017,7 @@ public:
 		ctx.mul_modelview_matrix(cgv::math::translate4<double>(dvec3(-0.5,0.0,-0.5)));
 
 		draw_box(ctx);
+		draw_cutting_plane(ctx);
 
 		//if (!points.empty()) {
 		if (!ps.empty()) {
@@ -1061,7 +1126,7 @@ public:
 					for (int ci = 0; ci < 4; ++ci)
 						if (state_ptr->controller[ci].status == vr::VRS_TRACKED) {
 							vec3 ray_origin, ray_direction;
-							state_ptr->controller[ci].put_ray(&ray_origin(0), &ray_direction(0));														//P.push_back(ray_origin);
+							state_ptr->controller[ci].put_ray(&ray_origin(0), &ray_direction(0));
 							P.push_back(ray_origin);
 							R.push_back(0.002f);
 							P.push_back(ray_origin + ray_length * ray_direction);
@@ -1141,10 +1206,9 @@ public:
 				int ci = vrpe.get_trackable_index();
 				if (ci != -1) {
 					// compute intersections
-					vec3 origin, direction;
-					vrpe.get_state().controller[ci].put_ray(&origin(0), &direction(0));
+					vrpe.get_state().controller[ci].put_ray(&control_origin(0), &control_direction(0));
 
-					compute_visible_points(origin, direction, ci, ci == 0 ? rgb(1, 0, 0) : rgb(0, 0, 1));
+					compute_visible_points(control_origin, control_direction, ci, ci == 0 ? rgb(1, 0, 0) : rgb(0, 0, 1));
 					//label_outofdate = true;
 
 					// update state based on whether we have found at least 
@@ -1243,6 +1307,118 @@ public:
 			align("\b");
 			end_tree_node(box_style);
 		}
+	}
+	///
+	float signed_distance_from_cutting_plane(const vec3& p)
+	{
+		/************************************************************************************
+		 The signed distance between the given point p and the slice which
+					   is defined through cutting_plane_normal and cutting_plane_distance. */
+
+		return dot(control_direction, p) - control_distance;
+
+		/************************************************************************************/
+	}
+	/// returns the 3D-texture coordinates of the polygon edges describing the cutting plane through
+	/// the volume
+	void construct_cutting_plane(std::vector<vec3>& polygon)
+	{
+		/************************************************************************************
+		 Classify the volume box corners (vertices) as inside or outside vertices.
+					   Use a unit cube for the volume box since the vertex coordinates of the unit cube
+					   correspond to the texture coordinates for the volume.
+					   You can use the signed_distance_from_cutting_plane()-method to get the
+					   distance between each box corner and the slice. Assume that outside vertices
+					   have a positive distance.*/
+
+					   /************************************************************************************/
+
+		vec3 corners[8] = { vec3(0, 0, 0), vec3(1, 0, 0), vec3(1, 1, 0), vec3(0, 1, 0), vec3(0, 0, 1), vec3(1, 0, 1), vec3(1, 1, 1), vec3(0, 1, 1) };
+		float values[8];
+		bool corner_classifications[8]; // true = outside, false = inside
+
+		for (int i = 0; i < 8; ++i)
+		{
+			float value = signed_distance_from_cutting_plane(corners[i]);
+
+			values[i] = value;
+			corner_classifications[i] = value >= 0;
+		}
+
+		/************************************************************************************
+		 Construct the edge points on each edge connecting differently classified
+					   corners. Remember that the edge point coordinates are in range [0,1] for
+					   all dimensions since they are 3D-texture coordinates. These points are
+					   stored in the polygon-vector.
+		 Arrange the points along face adjacencies for easier tessellation of the
+					   polygon. Store the ordered edge points in the polygon-vector. Create your own
+					   helper structures for edge-face adjacenies etc.*/
+
+		int a_corner_comparisons[12] = { 0, 3, 7, 4, 0, 4, 5, 1, 0, 1, 2, 3 };
+		int b_corner_comparisons[12] = { 1, 2, 6, 5, 3, 7, 6, 2, 4, 5, 6, 7 };
+		int  comparison_to_edges[12] = { 0, 2, 6, 4, 3, 7, 5, 1, 8, 9, 10, 11 };
+
+		std::vector<vec3> p;
+
+		for (int i = 0; i < 12; ++i)
+		{
+			int a_corner_index = a_corner_comparisons[i];
+			int b_corner_index = b_corner_comparisons[i];
+
+			if (corner_classifications[a_corner_index] != corner_classifications[b_corner_index])
+			{
+				vec3 coord = corners[a_corner_index];
+				float a_value = abs(values[a_corner_index]);
+				float b_value = abs(values[b_corner_index]);
+
+				float new_value = a_value / (a_value + b_value);
+
+				coord(i / 4) = new_value;
+
+				p.push_back(coord);
+			}
+		}
+
+		if (p.empty())
+			return;
+
+		vec3 p0 = p[0];
+		p.erase(p.begin());
+
+		polygon.push_back(p0);
+
+		while (p.size() > 1)
+		{
+			bool found = false;
+
+			for (unsigned int i = 0; i < 3; ++i)
+			{
+				if (p0(i) < std::numeric_limits<float>::epsilon() || p0(i) > 1 - std::numeric_limits<float>::epsilon())
+				{
+					for (int j = 0; j < p.size(); ++j)
+					{
+						vec3 f = p[j];
+
+						if (fabs(f(i) - p0(i)) < std::numeric_limits<float>::epsilon())
+						{
+							p.erase(p.begin() + j);
+
+							polygon.push_back(f);
+
+							p0 = f;
+							found = true;
+							break;
+						}
+					}
+				}
+
+				if (found) break;
+			}
+		}
+
+		polygon.push_back(p[0]);
+
+		/************************************************************************************/
 	}
 	/// compute visible points, i.e. points that are past the cutting plane in the direction of the controller
 	void compute_visible_points(const vec3& origin, const vec3& direction, int ci, const rgb& color)
