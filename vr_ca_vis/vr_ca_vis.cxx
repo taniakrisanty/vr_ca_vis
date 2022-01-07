@@ -69,20 +69,23 @@ protected:
 
 	//simulation_data data;
 
-	vec3 control_origin;
-	vec3 control_direction;
+	bool control_inited, control_changed;
+	vec3 control_origin, control_direction;
 	float control_distance = 0;
 
 	// stored data
 	std::vector<uint32_t> type_start;
 	std::vector<std::string> types;
+	std::vector<uint32_t> ids;
 	std::vector<vec3> points;
 	std::vector<uint32_t> group_indices;
 	std::vector<float> attr_values;
 	std::vector<rgba8> colors;
 
-	std::vector<vec3> ps;
-
+	// visible data
+	std::vector<vec3> visible_points;
+	std::vector<uint32_t> visible_types;
+	 
 	// attributes
 	uint32_t selected_attr;
 
@@ -123,7 +126,7 @@ protected:
 
 	void construct_group_information(unsigned nr_groups)
 	{
-		 group_colors.resize(nr_groups);
+		group_colors.resize(nr_groups);
 		group_translations.resize(nr_groups, vec3(0, 0, 0));
 		group_rotations.resize(nr_groups, vec4(0, 0, 0, 1));
 		// define colors from hls
@@ -320,7 +323,10 @@ public:
 					times.push_back(float(time));
 				}
 
-				model_parser parser(file_name, group_indices, points, type_start, types);
+				model_parser parser(file_name, ids, group_indices, points, type_start, types);
+
+				visible_points.reserve(points.size());
+				visible_types.reserve(points.size());
 
 				//rgba color(0.f, 0.f, 0.f, 0.5f);
 				////data.cells.push_back(cell_vis(time, id, type, x, y, z, b, color));
@@ -454,8 +460,8 @@ public:
 				rgba col(0.f, 0.f, 0.f, 0.5f);
 				colors.push_back(col);
 				// cells of the same type should have the same color
+				//while (id >= int(group_colors.size())) {
 				while (id >= int(group_colors.size())) {
-				//while (type >= group_colors.size())
 					group_colors.push_back(rgba(1, 1, 1, 0.5f));
 					group_translations.push_back(vec3(0, 0, 0));
 					group_rotations.push_back(vec4(0, 0, 0, 1));
@@ -530,7 +536,7 @@ public:
 		attr_names.push_back("b");
 		nr_attributes = uint32_t(attr_names.size());
 
-		model_parser parser(file_name, group_indices, points, type_start, types);
+		model_parser parser(file_name, ids, group_indices, points, type_start, types);
 
 		// reset simulation data
 		//data = {};
@@ -793,6 +799,9 @@ public:
 
 		vr_view_ptr = 0;
 
+		control_inited = false;
+		control_changed = true;
+
 		srs.radius = 0.005f;
 	}
 	std::string get_type_name() const
@@ -805,7 +814,7 @@ public:
 			cgv::type::uint64_type beg = (ooc_mode ? 0 : time_step_start[time_step]);
 			cgv::type::uint64_type end = (ooc_mode ? points.size() : ((time_step + 1 == time_step_start.size()) ? points.size() : time_step_start[time_step + 1]));
 
-			std::vector<vec3> p(points.begin() + beg, points.begin() + end);
+			//std::vector<vec3> p(points.begin() + beg, points.begin() + end);
 
 			//if (time_step >= vertexGrids.size())
 			//{
@@ -817,6 +826,8 @@ public:
 
 			if (ooc_mode && !ooc_file_name.empty())
 				read_ooc_time_step(ooc_file_name, time_step);
+
+			control_changed = true;
 		}
 		if (member_ptr == &dir_name) {
 			read_data_dir_ascii(dir_name);			
@@ -895,6 +906,14 @@ public:
 		}
 		return true;
 	}
+	void init_frame(cgv::render::context& ctx)
+	{
+		if (control_changed)
+		{
+			control_changed = false;
+			compute_visible_points(control_origin, control_direction);
+		}
+	}
 	void clear(cgv::render::context& ctx)
 	{
 		s_renderer.clear(ctx);
@@ -908,10 +927,13 @@ public:
 	}
 	void set_geometry(cgv::render::context& ctx, cgv::render::group_renderer& sr)
 	{
-		if (ps.size() > 0)
-		sr.set_position_array(ctx, ps);
+		if (!visible_points.empty())
+			sr.set_position_array(ctx, visible_points);
+		//if (!points.empty())
+		//	sr.set_position_array(ctx, points);
 		sr.set_color_array(ctx, colors);
-		sr.set_group_index_array(ctx, group_indices);
+		//sr.set_group_index_array(ctx, group_indices);
+		sr.set_group_index_array(ctx, visible_types);
 	}
 	void draw_points(unsigned ti) // draw voxels
 	{
@@ -921,7 +943,7 @@ public:
 		if (sort_points) {
 			indices.resize(size_t(cnt));
 			for (unsigned i = 0; i < indices.size(); ++i)
-				indices[i] = unsigned(i+beg);
+				indices[i] = unsigned(i + beg);
 			struct sort_pred {
 				const std::vector<vec3>& points;
 				const vec3& view_dir;
@@ -935,9 +957,10 @@ public:
 			std::sort(indices.begin(), indices.end(), sort_pred(points, view_dir));
 			glDrawElements(GL_POINTS, GLsizei(cnt), GL_UNSIGNED_INT, &indices.front());
 		}
-		else if (ps.size() > 0)
-			glDrawArrays(GL_POINTS, GLsizei(0), GLsizei(ps.size()));
-			//glDrawArrays(GL_POINTS, GLsizei(beg), GLsizei(cnt));
+		else if (visible_points.size() > 0)
+			glDrawArrays(GL_POINTS, GLsizei(0), GLsizei(visible_points.size()));
+		//else if (!points.empty())
+		//	glDrawArrays(GL_POINTS, GLsizei(beg), GLsizei(cnt));
 	}
 	void draw_box(cgv::render::context& ctx)
 	{
@@ -966,9 +989,9 @@ public:
 		//glLineWidth(1);
 
 		ctx.ref_default_shader_program().enable(ctx);
-		ctx.set_color(rgb(0.0f, 1.0f, 0.0f));
+		ctx.set_color(rgb(0.0f, 1.0f, 1.0f));
 		glLineWidth(2.0f);
-		//ctx.tesselate_unit_disk();
+		ctx.tesselate_unit_disk(25, false, true);
 
 		std::vector<vec3> P;
 
@@ -992,7 +1015,7 @@ public:
 			}
 		}
 
-		P = { vec3(0.f, 0.f, 0.f), vec3(1.f, 1.f, 1.f), vec3(0.5f, 0.5f, 0.5f) };
+		P = { vec3(0.f, 0.f, 0.f), vec3(1.f, 1.f, 1.f), vec3(1.f, 0.f, 1.f) };
 
 		glDrawArrays(GL_TRIANGLES, 0, (GLsizei)P.size());
 		//glEnable(GL_CULL_FACE);
@@ -1010,6 +1033,22 @@ public:
 	}
 	void draw(cgv::render::context& ctx)
 	{
+		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
+		{
+			ctx.push_modelview_matrix();
+			ctx.mul_modelview_matrix(pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_RIGHT_CONTROLLER)));
+
+			//draw_cutting_plane(ctx);
+
+			ctx.ref_default_shader_program().enable(ctx);
+			ctx.set_color(rgb(0.0f, 1.0f, 1.0f));
+			glLineWidth(2.0f);
+			ctx.tesselate_unit_disk(25, false, true);
+			ctx.ref_default_shader_program().disable(ctx);
+
+			ctx.pop_modelview_matrix();
+		}
+
 		ctx.push_modelview_matrix();
 		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
 			ctx.mul_modelview_matrix(pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE)));
@@ -1017,10 +1056,9 @@ public:
 		ctx.mul_modelview_matrix(cgv::math::translate4<double>(dvec3(-0.5,0.0,-0.5)));
 
 		draw_box(ctx);
-		draw_cutting_plane(ctx);
 
+		if (!visible_points.empty()) {
 		//if (!points.empty()) {
-		if (!ps.empty()) {
 			ctx.mul_modelview_matrix(cgv::math::scale4<double>(dvec3(0.01)));
 			if (blend) {
 				glEnable(GL_BLEND);
@@ -1204,12 +1242,21 @@ public:
 				cgv::gui::vr_pose_event& vrpe = static_cast<cgv::gui::vr_pose_event&>(e);
 				// check for controller pose events
 				int ci = vrpe.get_trackable_index();
-				if (ci != -1) {
+				//if (ci != -1) {
+				if (ci == 1) {
 					// compute intersections
-					vrpe.get_state().controller[ci].put_ray(&control_origin(0), &control_direction(0));
+					control_inited = true;
+	
+					vec3 co, cd;
+					vrpe.get_state().controller[ci].put_ray(co, cd);
 
-					compute_visible_points(control_origin, control_direction, ci, ci == 0 ? rgb(1, 0, 0) : rgb(0, 0, 1));
-					//label_outofdate = true;
+					if (control_origin != co || control_direction != cd)
+					{
+						control_changed = true;
+
+						control_origin = co;
+						control_direction = cd;
+					}
 
 					// update state based on whether we have found at least 
 					// one intersection with controller ray
@@ -1421,30 +1468,54 @@ public:
 		/************************************************************************************/
 	}
 	/// compute visible points, i.e. points that are past the cutting plane in the direction of the controller
-	void compute_visible_points(const vec3& origin, const vec3& direction, int ci, const rgb& color)
+	void compute_visible_points(const vec3& origin, const vec3& direction)
 	{
-		ps.clear();
+		if (control_inited)
+		{
+			visible_points.clear();
+			visible_types.clear();
 
-		mat4 mat;
-		mat.identity();
+			mat4 mat;
+			mat.identity();
 
-		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-			mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
-		mat *= cgv::math::scale4<double>(dvec3(scale));
-		mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
-		mat *= cgv::math::scale4<double>(dvec3(0.01));
+			//mat *= cgv::math::scale4<double>(dvec3(0.01));
+			//mat *= cgv::math::translate4<double>(dvec3(0.5, 0.0, 0.5));
+			//mat *= cgv::math::scale4<double>(dvec3(scale));
+			//if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+			//	mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
 
-		for (size_t i = 0; i < time_step_start[time_step]; ++i) {
-		//for (size_t i = 0; i < points.size(); ++i) {
-			vec4 point4 = mat * vec4(points[i], 1.f);
-			vec3 point(point4 / point4.w());
+			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+			mat *= cgv::math::scale4<double>(dvec3(scale));
+			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+			mat *= cgv::math::scale4<double>(dvec3(0.01));
 
-			float sign = dot(direction, point - origin);
+			//mat = inv(mat);
 
-			if (sign >= 0)
+			//vec4 origin4(mat * vec4(origin, 1.f)), direction4(mat * vec4(direction, 1.f));
+			//vec3 o(origin4 / origin4.w()), d(direction4 / direction4.w());
+			//d.normalize();
+
+			for (size_t i = time_step_start[time_step], j = (time_step + 1 == time_step_start.size() ? points.size() : time_step_start[time_step + 1]); i < j; ++i)
 			{
-				ps.push_back(points[i]);
+				vec4 point4(mat * vec4(points[i], 1.f));
+				vec3 point(point4 / point4.w());
+
+				float sign = dot(direction, point - origin);
+
+				//float sign = dot(d, points[i] - o);
+
+				if (sign >= 0)
+				{
+					visible_points.push_back(points[i]);
+					visible_types.push_back(group_indices[i]);
+				}
 			}
+		}
+		else
+		{
+			visible_points = points;
+			visible_types = group_indices;
 		}
 	}
 };
