@@ -14,7 +14,7 @@ public:
 	model_parser() = delete;
 	model_parser(const model_parser&) = delete;
 
-	model_parser(const std::string& file_name, std::vector<unsigned int>& ids, std::vector<vec3>& points, std::vector<unsigned int>& type_start, std::vector<std::string>& types)
+	model_parser(const std::string& file_name, std::vector<unsigned int>& ids, std::vector<unsigned int>& group_ids, std::vector<vec3>& points, std::vector<unsigned int>& type_start, std::vector<std::string>& types)
 	{
 		// Read the xml file into a vector
 		std::ifstream file(file_name.c_str());
@@ -22,76 +22,84 @@ public:
 		buffer.push_back('\0');
 
 		// Parse the buffer using the xml file parsing library into doc 
-		rapidxml::xml_document<> *doc = new rapidxml::xml_document<>();
+		rapidxml::xml_document<>* doc = new rapidxml::xml_document<>();
 		doc->parse<0>(&buffer[0]);
 		
 		// Find our root node
-		rapidxml::xml_node<> *root_node = doc->first_node("MorpheusModel");
-		
-		// Iterate over cell populations
-		for (rapidxml::xml_node<> *cp_node = root_node->first_node("CellPopulations"); cp_node; cp_node = cp_node->next_sibling())
+		rapidxml::xml_node<>* root_node = doc->first_node("MorpheusModel");		
+		if (root_node != NULL)
 		{
-			for (rapidxml::xml_node<> *p_node = cp_node->first_node("Population"); p_node; p_node = p_node->next_sibling())
+			// Iterate over cell populations
+			rapidxml::xml_node<>* cp_node = root_node->first_node("CellPopulations");
+			if (cp_node != NULL)
 			{
-				std::string type(p_node->first_attribute("type")->value());
+				unsigned int type_index = 0;
 
-				type_start.push_back(points.size());
-				types.push_back(type);
-
-				for (rapidxml::xml_node<> *c_node = p_node->first_node("Cell"); c_node; c_node = c_node->next_sibling())
+				for (rapidxml::xml_node<>* p_node = cp_node->first_node("Population"); p_node; p_node = p_node->next_sibling())
 				{
-					int id;
-					if (!cgv::utils::is_integer(std::string(c_node->first_attribute("id")->value()), id) || id == 0)
-						continue;
+					std::string type(p_node->first_attribute("type")->value());
 
-					rapidxml::xml_node<> *n_node = c_node->first_node("Nodes");
-					if (n_node)
+					type_start.push_back(points.size());
+					types.push_back(type);
+
+					for (rapidxml::xml_node<>* c_node = p_node->first_node("Cell"); c_node; c_node = c_node->next_sibling())
 					{
-						std::vector<std::string> points_vector;
+						int id;
+						if (!cgv::utils::is_integer(std::string(c_node->first_attribute("id")->value()), id) || id == 0)
+							continue;
 
-						char *token = strtok(n_node->value(), ";");
-
-						// Keep printing tokens while one of the
-						// delimiters present in str[].
-						while (token != NULL)
+						rapidxml::xml_node<>* n_node = c_node->first_node("Nodes");
+						if (n_node)
 						{
-							points_vector.push_back(token);
-							token = strtok(NULL, ";");
-						}
+							std::vector<std::string> points_vector;
 
-						//std::vector<cgv::utils::token> points_tokens;
-						//cgv::utils::split_to_tokens(std::string(n_node->value()), points_tokens, ";");
-
-						for (auto point : points_vector)
-						{
-							std::vector<std::string> point_vector;
-
-							token = strtok(&point[0], ", ");
+							char* token = strtok(n_node->value(), ";");
 
 							// Keep printing tokens while one of the
 							// delimiters present in str[].
 							while (token != NULL)
 							{
-								point_vector.push_back(token);
-								token = strtok(NULL, ", ");
+								points_vector.push_back(token);
+								token = strtok(NULL, ";");
 							}
 
-							//std::vector<cgv::utils::token> point_tokens;
-							//cgv::utils::split_to_tokens(points_token, point_tokens, ", ");
+							//std::vector<cgv::utils::token> points_tokens;
+							//cgv::utils::split_to_tokens(std::string(n_node->value()), points_tokens, ";");
 
-							if (point_vector.size() != 3)
-								continue;
+							for (auto point : points_vector)
+							{
+								std::vector<std::string> point_vector;
 
-							int x, y, z;
-							if (!cgv::utils::is_integer(point_vector[0], x) || !cgv::utils::is_integer(point_vector[1], y) || !cgv::utils::is_integer(point_vector[2], z))
-								continue;
+								token = strtok(&point[0], ", ");
 
-							//types.push_back(type);
-							ids.push_back(id);
+								// Keep printing tokens while one of the
+								// delimiters present in str[].
+								while (token != NULL)
+								{
+									point_vector.push_back(token);
+									token = strtok(NULL, ", ");
+								}
 
-							points.push_back(vec3(x, y, z));
+								//std::vector<cgv::utils::token> point_tokens;
+								//cgv::utils::split_to_tokens(points_token, point_tokens, ", ");
+
+								if (point_vector.size() != 3)
+									continue;
+
+								int x, y, z;
+								if (!cgv::utils::is_integer(point_vector[0], x) || !cgv::utils::is_integer(point_vector[1], y) || !cgv::utils::is_integer(point_vector[2], z))
+									continue;
+
+								ids.push_back(id);
+
+								group_ids.push_back(type_index);
+
+								points.push_back(vec3(x, y, z));
+							}
 						}
 					}
+
+					++type_index;
 				}
 			}
 		}
