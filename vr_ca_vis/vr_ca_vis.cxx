@@ -16,6 +16,7 @@
 #include <cgv/media/color_scale.h>
 #include <cgv_gl/sphere_renderer.h>
 #include <cgv_gl/box_renderer.h>
+#include <cgv_gl/surfel_renderer.h>
 #include <cgv_gl/gl/gl.h>
 #include <random>
 #include "endian.h"
@@ -123,6 +124,7 @@ protected:
 	cgv::render::sphere_renderer s_renderer;
 	cgv::render::surface_render_style box_style;
 	cgv::render::box_renderer b_renderer;
+	cgv::render::surfel_render_style surf_rs;
 
 	void construct_group_information(unsigned nr_groups)
 	{
@@ -803,6 +805,16 @@ public:
 		control_changed = true;
 
 		srs.radius = 0.005f;
+
+		surf_rs.illumination_mode = cgv::render::IlluminationMode::IM_OFF;
+		surf_rs.culling_mode = cgv::render::CullingMode::CM_OFF;
+		surf_rs.measure_point_size_in_pixel = false;
+		surf_rs.blend_points = true;
+		surf_rs.point_size = 1.8f;
+		surf_rs.percentual_halo_width = 5.0f;
+		surf_rs.surface_color = rgba(0, 0.8f, 1.0f);
+		surf_rs.material.set_transparency(0.75f);
+		surf_rs.halo_color = rgba(0, 0.8f, 1.0f, 0.8f);
 	}
 	std::string get_type_name() const
 	{
@@ -866,6 +878,7 @@ public:
 	}
 	bool init(cgv::render::context& ctx)
 	{
+		cgv::render::ref_surfel_renderer(ctx, 1);
 		ctx.set_bg_clr_idx(4);
 
 		if (!b_renderer.init(ctx))
@@ -918,6 +931,7 @@ public:
 	{
 		s_renderer.clear(ctx);
 		b_renderer.clear(ctx);
+		cgv::render::ref_surfel_renderer(ctx, -1);
 	}
 	void set_group_geometry(cgv::render::context& ctx, cgv::render::group_renderer& sr)
 	{
@@ -970,6 +984,15 @@ public:
 		box3 B(vec3(0.0f), vec3(1.0f));
 		ctx.tesselate_box(B, false, true);
 		ctx.ref_default_shader_program().disable(ctx);
+	}
+	void draw_circle(cgv::render::context& ctx, const vec3& position, const vec3& normal)
+	{
+		auto& sr = cgv::render::ref_surfel_renderer(ctx);
+		sr.set_reference_point_size(1.0f);
+		sr.set_render_style(surf_rs);
+		sr.set_position(ctx, position);
+		sr.set_normal(ctx, normal);
+		sr.render(ctx, 0, 1);
 	}
 	void draw_cutting_plane(cgv::render::context& ctx)
 	{
@@ -1031,22 +1054,38 @@ public:
 		//ctx.tesselate_box(B, false, true);
 		//ctx.ref_default_shader_program().disable(ctx);
 	}
-	void draw(cgv::render::context& ctx)
+	void finish_frame(cgv::render::context& ctx)
 	{
 		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
 		{
 			ctx.push_modelview_matrix();
 			ctx.mul_modelview_matrix(pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_RIGHT_CONTROLLER)));
-
-			//draw_cutting_plane(ctx);
-
-			ctx.ref_default_shader_program().enable(ctx);
-			ctx.set_color(rgb(0.0f, 1.0f, 1.0f));
-			glLineWidth(2.0f);
-			ctx.tesselate_unit_disk(25, false, true);
-			ctx.ref_default_shader_program().disable(ctx);
-
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			draw_circle(ctx, vec3(0.0f), vec3(0, 0, 1));
+			glDisable(GL_BLEND);
 			ctx.pop_modelview_matrix();
+		}
+
+	}
+	void draw(cgv::render::context& ctx)
+	{
+		if (false) {
+			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
+			{
+				ctx.push_modelview_matrix();
+				ctx.mul_modelview_matrix(pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_RIGHT_CONTROLLER)));
+
+				//draw_cutting_plane(ctx);
+
+				ctx.ref_default_shader_program().enable(ctx);
+				ctx.set_color(rgb(0.0f, 1.0f, 1.0f));
+				glLineWidth(2.0f);
+				ctx.tesselate_unit_disk(25, false, true);
+				ctx.ref_default_shader_program().disable(ctx);
+
+				ctx.pop_modelview_matrix();
+			}
 		}
 
 		ctx.push_modelview_matrix();
@@ -1347,6 +1386,12 @@ public:
 			add_gui("sphere_style", sphere_style);
 			align("\b");
 			end_tree_node(sphere_style);
+		}
+		if (begin_tree_node("Surfel Rendering", surf_rs, false)) {
+			align("\a");
+			add_gui("surfel_style", surf_rs);
+			align("\b");
+			end_tree_node(surf_rs);
 		}
 		if (begin_tree_node("Box Rendering", box_style, false)) {
 			align("\a");
