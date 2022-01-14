@@ -19,8 +19,10 @@
 #include <cgv_gl/surfel_renderer.h>
 #include <cgv_gl/gl/gl.h>
 #include <random>
+#include <unordered_set>
 #include "endian.h"
 #include "cae_file_format.h"
+#include "cells_container.h"
 #include "logger_parser.h"
 #include "model_parser.h"
 #include "gzip_inflater.h"
@@ -35,12 +37,14 @@
 #include <vr_view_interactor.h>
 #include <plugins/vr_lab/vr_tool.h>
 
-//#include "intersection.h"
+#include <cg_nui/focusable.h>
+#include <cg_nui/transforming.h>
 
 class vr_ca_vis :
-	public cgv::base::node,
+	public cgv::base::group,
 	public cgv::render::drawable,
-	public cgv::gui::event_handler,
+	public cgv::nui::focusable,
+	public cgv::nui::transforming,
 	public cgv::gui::provider,
 	public vr::vr_tool,
 	public cae::binary_file
@@ -49,6 +53,8 @@ public:
 	typedef cgv::render::drawable::vec2 vec2;
 	typedef cgv::render::drawable::vec3 vec3;
 	typedef cgv::render::drawable::vec4 vec4;
+
+	cells_container_ptr container;
 protected:
 	// different interaction states for the controllers
 	enum InteractionState {
@@ -57,26 +63,20 @@ protected:
 		IS_GRAB
 	};
 
-	float ray_length = 2;
-
 	// state of current interaction with boxes for all controllers
 	InteractionState state[4];
-
-	// render style for interaction
-	cgv::render::sphere_render_style srs;
 
 	// keep reference to vr_view_interactor
 	vr_view_interactor* vr_view_ptr;
 
 	//simulation_data data;
 
-	bool control_inited, control_changed;
+	bool cutting_plane_visible;
 	vec3 control_origin, control_direction;
 	float control_distance = 0;
 
 	// stored data
-	std::vector<uint32_t> type_start;
-	std::vector<std::string> types;
+	std::unordered_set<std::string> types;
 	std::vector<uint32_t> ids;
 	std::vector<vec3> points;
 	std::vector<uint32_t> group_indices;
@@ -86,7 +86,8 @@ protected:
 	// visible data
 	std::vector<vec3> visible_points;
 	std::vector<uint32_t> visible_types;
-	 
+	std::vector<rgb> visible_colors;
+	
 	// attributes
 	uint32_t selected_attr;
 
@@ -100,6 +101,8 @@ protected:
 
 	// current time step 
 	uint32_t time_step;
+	// first frame in current time step
+	bool first_frame;
 
 	// ooc handling
 	bool ooc_mode;
@@ -159,19 +162,8 @@ protected:
 public:
 	bool read_file(const std::string& file_name)
 	{
-		//std::vector<cgv::math::fvec<int16_t, 3>> points;
-		//std::vector<uint16_t> ids;
-		//std::vector<float> attr;
-
 		if (!read(file_name, points, group_indices, attr_values))
 			return false;
-
-		//data.cells.reserve(points.size());
-
-		//for (int i = 0; i < points.size(); ++i)
-		//{
-		//	data.cells.push_back(cell_vis(ids[i], points[i].x(), points[i].y(), points[i].z(), attr[i]));
-		//}
 
 		construct_group_information(nr_groups);
 		update_colors();
@@ -180,130 +172,8 @@ public:
 	bool write_file(const std::string& file_name) const
 	{
 		return write(file_name, points, group_indices, attr_values);
-
-		//std::vector<cgv::math::fvec<int16_t, 3>> points;
-
-		//std::transform(data.cells.begin(), data.cells.end(), std::back_inserter(points),
-		//	std::mem_fn(&cell_vis::get_point));
-
-		//std::vector<uint16_t> ids;
-
-		//std::transform(data.cells.begin(), data.cells.end(), std::back_inserter(ids),
-		//	std::mem_fn(&cell_vis::get_id));
-
-		//std::vector<float> attr;
-
-		//std::transform(data.cells.begin(), data.cells.end(), std::back_inserter(attr),
-		//	std::mem_fn(&cell_vis::get_attr));
-
-		//return write(file_name, points, ids, attr);
 	}
-	//bool read_data_ascii(const std::string& file_name, float max_time_step = std::numeric_limits<float>::max())
-	//{
-	//	std::string fn = cgv::utils::file::drop_extension(file_name) + ".cae";
-	//	if (cgv::utils::file::exists(fn))
-	//		if (read_file(fn))
-	//			return true;
 
-	//	std::string content;
-	//	if (!cgv::utils::file::read(file_name, content, true))
-	//		return false;
-	//	std::vector<cgv::utils::line> lines;
-	//	cgv::utils::split_to_lines(content, lines);
-	//	cgv::utils::progression pr("parse lines", lines.size(), 20);
-	//	// extract the attribute names from first line
-	//	std::vector<cgv::utils::token> toks;
-	//	cgv::utils::split_to_tokens(lines.begin()->begin, lines.begin()->end, toks, "");
-	//	size_t ti = 0;
-	//	for (auto tok : toks) {
-	//		if (*tok.begin == '"')
-	//			++tok.begin;
-	//		if (tok.end > tok.begin && tok.end[-1] == '"')
-	//			--tok.end;
-	//		std::string name = to_string(tok);
-	//		switch (ti) {
-	//		case 0:
-	//			std::cout << "name of time: " << name << std::endl;
-	//			break;
-	//		case 1: 
-	//		case 2:
-	//		case 3: 
-	//			std::cout << "name of " << std::string("xyz")[ti-1] << ": " << name << std::endl;
-	//			break;
-	//		case 4:
-	//			std::cout << "name of cell id: " << name << std::endl;
-	//			break;
-	//		default:
-	//			attr_names.push_back(name);
-	//			std::cout << "name of attr" << ti - 5 << ": " << name << std::endl;
-	//			break;
-	//		}
-	//		++ti;
-	//	}
-	//	nr_attributes = uint32_t(attr_names.size());
-	//	// iterate through all lines
-	//	unsigned li = 0;
-	//	for (auto l : lines) {
-	//		pr.step();
-	//		if (++li % (lines.size() / 50) == 0) {
-	//			std::cout << "read " << file_name << " with " << points.size() << " points, " << times.size() << " time steps, and " << group_colors.size() << " ids." << std::endl;
-	//		}
-	//		std::vector<cgv::utils::token> toks;
-	//		cgv::utils::split_to_tokens(l.begin, l.end, toks, "");
-	//		if (toks.size() < 5)
-	//			continue;
-	//		int x, y, z, id;
-	//		double t;
-	//		std::vector<double> a(nr_attributes, 0.0);
-	//		if (!cgv::utils::is_double(toks[0].begin, toks[0].end, t))
-	//			continue;
-	//		if (!cgv::utils::is_integer(toks[1].begin, toks[1].end, x))
-	//			continue;
-	//		if (!cgv::utils::is_integer(toks[2].begin, toks[2].end, y))
-	//			continue;
-	//		if (!cgv::utils::is_integer(toks[3].begin, toks[3].end, z))
-	//			continue;
-	//		if (!cgv::utils::is_integer(toks[4].begin, toks[4].end, id))
-	//			continue;
-	//		uint32_t ai, attr_parse_cnt = std::min(uint32_t(toks.size()) - 5, nr_attributes);
-	//		for (ai = 0; ai < attr_parse_cnt; ++ai)
-	//			if (!cgv::utils::is_double(toks[ai+5].begin, toks[ai + 5].end, a[ai]))
-	//				continue;
-
-	//		if (t >= max_time_step)
-	//			break;
-	//		if (times.empty() || times.back() != float(t)) {
-	//			//std::cout << "t = " << t << " max = " << max_time_step << std::endl;
-	//			time_step_start.push_back(points.size());
-	//			times.push_back(float(t));
-	//		}
-	//		points.push_back(vec3(float(x), float(y), float(z)));
-	//		for (ai = 0; ai < nr_attributes; ++ai)
-	//			attr_values.push_back(float(a[ai]));
-	//		rgba col(float(a[0]), float(a[1]), float(a[2]), 0.5f);
-	//		colors.push_back(col);
-	//		group_indices.push_back(id);
-	//		while (id >= int(group_colors.size())) {
-	//			group_colors.push_back(rgba(1, 1, 1, 0.5f));
-	//			group_translations.push_back(vec3(0, 0, 0));
-	//			group_rotations.push_back(vec4(0, 0, 0, 1));
-	//		}
-	//	}
-	//	// define colors from hls
-	//	for (unsigned i = 0; i < group_colors.size(); ++i) {
-	//		float hue = float(i) / group_colors.size();
-	//		group_colors[i] = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f);
-	//	}
-	//	nr_points = points.size();
-	//	nr_groups = uint32_t(group_colors.size());
-	//	nr_time_steps = uint32_t(times.size());
-	//	std::cout << "read " << file_name << " with " 
-	//		<< points.size() << " points, " << times.size() << " time steps, and " << group_colors.size() << " ids and " 
-	//		<< nr_attributes << " attributes" << std::endl;
-	//	// concatenate 
-	//	write_file(fn);
-	//	return true;
-	//}
 	bool read_xml_dir(const std::string& dir_name)
 	{
 		std::vector<std::string> file_names;
@@ -325,26 +195,11 @@ public:
 					times.push_back(float(time));
 				}
 
-				model_parser parser(file_name, ids, group_indices, points, type_start, types);
-
-				visible_points.reserve(points.size());
-				visible_types.reserve(points.size());
-
-				//rgba color(0.f, 0.f, 0.f, 0.5f);
-				////data.cells.push_back(cell_vis(time, id, type, x, y, z, b, color));
-
-				//points.push_back(vec3(float(x), float(y), float(z)));
-				////rgba col(float(a[0]), float(a[1]), float(a[2]), 0.5f);
-				//rgba col(0.f, 0.f, 0.f, 0.5f);
-				//colors.push_back(col);
-				//group_indices.push_back(id);
-				//// cells of the same type should have the same color
-				//while (id >= int(group_colors.size())) {
-				//	group_colors.push_back(rgba(1, 1, 1, 0.5f));
-				//	group_translations.push_back(vec3(0, 0, 0));
-				//	group_rotations.push_back(vec4(0, 0, 0, 1));
-				//}
+				model_parser parser(file_name, ids, group_indices, points, types);
 			}
+
+			visible_points.reserve(points.size());
+			visible_types.reserve(points.size());
 		}
 
 		return file_names.size() > 0;
@@ -366,97 +221,11 @@ public:
 	}
 	bool read_data_dir_ascii(const std::string& dir_name)
 	{
-		//std::string fn = cgv::utils::file::drop_extension(file_name) + ".cae";
-		//if (cgv::utils::file::exists(fn))
-		//	if (read_file(fn))
-		//		return true;
-
-		//std::string content;
-		//if (!cgv::utils::file::read(file_name, content, true))
-		//	return false;
-		//std::vector<cgv::utils::line> lines;
-		//cgv::utils::split_to_lines(content, lines);
-		//cgv::utils::progression pr("parse lines", lines.size(), 20);
-		//// extract the attribute names from first line
-		//std::vector<cgv::utils::token> toks;
-		//cgv::utils::split_to_tokens(lines.begin()->begin, lines.begin()->end, toks, "");
-		//size_t ti = 0;
-		//for (auto tok : toks) {
-		//	if (*tok.begin == '"')
-		//		++tok.begin;
-		//	if (tok.end > tok.begin && tok.end[-1] == '"')
-		//		--tok.end;
-		//	std::string name = to_string(tok);
-		//	switch (ti) {
-		//	case 0:
-		//		std::cout << "name of time: " << name << std::endl;
-		//		break;
-		//	case 1:
-		//		std::cout << "name of cell id: " << name << std::endl;
-		//		break;
-		//	case 2:
-		//		std::cout << "name of boundary: " << name << std::endl;
-		//		break;
-		//	case 5:
-		//	case 6:
-		//	case 7:
-		//		std::cout << "name of " << std::string("xyz")[ti - 5] << ": " << name << std::endl;
-		//		break;
-		//	default:
-		//		attr_names.push_back(name);
-		//		std::cout << "name of attr: " << name << std::endl;
-		//		break;
-		//	}
-		//	++ti;
-		//}
 		attr_names.push_back("b");
 		nr_attributes = uint32_t(attr_names.size());
 
 		if (read_xml_dir(dir_name) || read_gz_dir(dir_name) && read_xml_dir(dir_name))
 		{
-			// reset simulation data
-			//data = {};
-
-			//logger_parser parser(file_name);
-
-			//parser.read_header({ "time", "cell.id", "cell.type", "l.x", "l.y", "l.z", "b"});
-
-			//double time, x, y, z, b;
-			//int id, type;
-
-			//while (parser.read_row(time, id, type, x, y, z, b))
-			//{
-			//	if (type == 0) // medium is ignored in code, maybe should just require user to uncheck medium in Morpheus logging? 
-			//		continue;
-
-			//	//std::vector<double> a(nr_attributes, 0.0);
-			//	//uint32_t ai;
-
-			//	if (time >= max_time_step)
-			//		break;
-
-			//	if (times.empty() || times.back() != float(time)) {
-			//		//std::cout << "t = " << t << " max = " << max_time_step << std::endl;
-			//		time_step_start.push_back(points.size());
-			//		times.push_back(float(time));
-			//	}
-
-			//	rgba color(0.f, 0.f, 0.f, 0.5f);
-			//	//data.cells.push_back(cell_vis(time, id, type, x, y, z, b, color));
-
-			//	points.push_back(vec3(float(x), float(y), float(z)));
-			//	//rgba col(float(a[0]), float(a[1]), float(a[2]), 0.5f);
-			//	rgba col(0.f, 0.f, 0.f, 0.5f);
-			//	colors.push_back(col);
-			//	group_indices.push_back(id);
-			//	// cells of the same type should have the same color
-			//	while (id >= int(group_colors.size())) {
-			//		group_colors.push_back(rgba(1, 1, 1, 0.5f));
-			//		group_translations.push_back(vec3(0, 0, 0));
-			//		group_rotations.push_back(vec4(0, 0, 0, 1));
-			//	}
-			//}
-
 			for (auto id : group_indices)
 			{
 				rgba col(0.f, 0.f, 0.f, 0.5f);
@@ -489,129 +258,6 @@ public:
 		{
 			return false;
 		}
-	}
-	bool read_data_ascii(const std::string& file_name, float max_time_step = std::numeric_limits<float>::max())
-	{
-		std::string fn = cgv::utils::file::drop_extension(file_name) + ".cae";
-		//if (cgv::utils::file::exists(fn))
-		//	if (read_file(fn))
-		//		return true;
-
-		//std::string content;
-		//if (!cgv::utils::file::read(file_name, content, true))
-		//	return false;
-		//std::vector<cgv::utils::line> lines;
-		//cgv::utils::split_to_lines(content, lines);
-		//cgv::utils::progression pr("parse lines", lines.size(), 20);
-		//// extract the attribute names from first line
-		//std::vector<cgv::utils::token> toks;
-		//cgv::utils::split_to_tokens(lines.begin()->begin, lines.begin()->end, toks, "");
-		//size_t ti = 0;
-		//for (auto tok : toks) {
-		//	if (*tok.begin == '"')
-		//		++tok.begin;
-		//	if (tok.end > tok.begin && tok.end[-1] == '"')
-		//		--tok.end;
-		//	std::string name = to_string(tok);
-		//	switch (ti) {
-		//	case 0:
-		//		std::cout << "name of time: " << name << std::endl;
-		//		break;
-		//	case 1:
-		//		std::cout << "name of cell id: " << name << std::endl;
-		//		break;
-		//	case 2:
-		//		std::cout << "name of boundary: " << name << std::endl;
-		//		break;
-		//	case 5:
-		//	case 6:
-		//	case 7:
-		//		std::cout << "name of " << std::string("xyz")[ti - 5] << ": " << name << std::endl;
-		//		break;
-		//	default:
-		//		attr_names.push_back(name);
-		//		std::cout << "name of attr: " << name << std::endl;
-		//		break;
-		//	}
-		//	++ti;
-		//}
-		attr_names.push_back("b");
-		nr_attributes = uint32_t(attr_names.size());
-
-		model_parser parser(file_name, ids, group_indices, points, type_start, types);
-
-		// reset simulation data
-		//data = {};
-
-		//logger_parser parser(file_name);
-
-		//parser.read_header({ "time", "cell.id", "cell.type", "l.x", "l.y", "l.z", "b"});
-
-		double time, x, y, z, b;
-		int id, type;
-
-		//while (parser.read_row(time, id, type, x, y, z, b))
-		//{
-		//	if (type == 0) // medium is ignored in code, maybe should just require user to uncheck medium in Morpheus logging? 
-		//		continue;
-
-		//	//std::vector<double> a(nr_attributes, 0.0);
-		//	//uint32_t ai;
-
-		//	if (time >= max_time_step)
-		//		break;
-
-		//	if (times.empty() || times.back() != float(time)) {
-		//		//std::cout << "t = " << t << " max = " << max_time_step << std::endl;
-		//		time_step_start.push_back(points.size());
-		//		times.push_back(float(time));
-		//	}
-
-		//	rgba color(0.f, 0.f, 0.f, 0.5f);
-		//	//data.cells.push_back(cell_vis(time, id, type, x, y, z, b, color));
-
-		//	points.push_back(vec3(float(x), float(y), float(z)));
-		//	//rgba col(float(a[0]), float(a[1]), float(a[2]), 0.5f);
-		//	rgba col(0.f, 0.f, 0.f, 0.5f);
-		//	colors.push_back(col);
-		//	group_indices.push_back(id);
-		//	// cells of the same type should have the same color
-		//	while (id >= int(group_colors.size())) {
-		//		group_colors.push_back(rgba(1, 1, 1, 0.5f));
-		//		group_translations.push_back(vec3(0, 0, 0));
-		//		group_rotations.push_back(vec4(0, 0, 0, 1));
-		//	}
-		//}
-
-		time_step_start.push_back(0);
-		times.push_back(0.f);
-
-		for (auto id : group_indices)
-		{
-			rgba col(0.f, 0.f, 0.f, 0.5f);
-			colors.push_back(col);
-			// cells of the same type should have the same color
-			while (id >= int(group_colors.size())) {
-				group_colors.push_back(rgba(1, 1, 1, 0.5f));
-				group_translations.push_back(vec3(0, 0, 0));
-				group_rotations.push_back(vec4(0, 0, 0, 1));
-			}
-		}
-
-		// define colors from hls
-		for (unsigned i = 0; i < group_colors.size(); ++i) {
-			float hue = float(i) / group_colors.size();
-			group_colors[i] = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f);
-		}
-		nr_points = points.size(); //data.cells.size();
-		nr_groups = uint32_t(group_colors.size());
-		nr_time_steps = uint32_t(times.size());
-		std::cout << "read " << file_name << " with "
-			<< points.size() << " points, " << times.size() << " time steps, and " << group_colors.size() << " ids and "
-			<< nr_attributes << " attributes" << std::endl;
-		//// concatenate 
-		//write_file(fn);
-		return true;
 	}
 	bool open_ooc(const std::string& file_name)
 	{
@@ -661,92 +307,6 @@ public:
 		fclose(fp);
 		return false;
 	}
-	// convert a csv log file to a cae file based on previously to be configured format member
-	//bool convert_log_to_cae(const std::string& log_fn, const std::string& cae_fn)
-	//{	
-	//	// extract attribute names from log file
-	//	FILE* log_fp;
-	//	if (!read_log_file_header(log_fn, attr_names, nr_attributes, &log_fp))
-	//		return false;
-
-	//	nr_time_steps = 0;
-	//	times.clear();
-	//	time_step_start.clear();
-	//	nr_points = 0;
-	//	nr_groups = 0;
-	//	data.cells.clear();
-	//	group_indices.clear();
-	//	attr_values.clear();
-
-	//	if (!write_header(cae_fn))
-	//		return false;
-
-	//	std::vector<float> A(nr_attributes);
-	//	char buffer[1024];
-	//	int li = 1;
-	//	float last_time = 0.0f;
-	//	while (fgets(buffer, 1024, log_fp)) {
-	//		cgv::utils::token l(buffer, buffer + strlen(buffer));
-	//		// iterate over all lines and print progression in console in 20 steps
-	//		int ai, max_id = 0;
-	//		// split line into tokens
-	//		std::vector<cgv::utils::token> toks;
-	//		cgv::utils::split_to_tokens(l.begin, l.end, toks, "", true, "\"", "\"");
-	//		// check for correct number of values
-	//		if (toks.size() != 5 + nr_attributes)
-	//			continue;
-
-	//		// extract values from tokens and ignore line if not all values could be extracted
-	//		int x, y, z, id;
-	//		double t;
-	//		if (!cgv::utils::is_double(toks[0].begin, toks[0].end, t))
-	//			continue;
-	//		if (!cgv::utils::is_integer(toks[1].begin, toks[1].end, x))
-	//			continue;
-	//		if (!cgv::utils::is_integer(toks[2].begin, toks[2].end, y))
-	//			continue;
-	//		if (!cgv::utils::is_integer(toks[3].begin, toks[3].end, z))
-	//			continue;
-	//		if (!cgv::utils::is_integer(toks[4].begin, toks[4].end, id))
-	//			continue;
-	//		bool attr_success = true;
-	//		for (ai = 0; ai < int(nr_attributes); ++ai) {
-	//			double a;
-	//			if (!cgv::utils::is_double(toks[5].begin, toks[5].end, a)) {
-	//				attr_success = false;
-	//				break;
-	//			}
-	//			A[ai] = float(a);
-	//		}
-	//		if (!attr_success)
-	//			continue;
-
-	//		// extract time step information
-	//		if (times.empty())
-	//			last_time = float(t);
-	//		else if (last_time != float(t)) {
-	//			append_time_step(cae_fn, last_time, data.points, group_indices, attr_values);
-	//			last_time = float(t);
-	//			data.points.clear();
-	//			group_indices.clear();
-	//			attr_values.clear();
-	//		}
-
-	//		data.points.push_back(vec3(float(x), float(y), float(z)));
-	//		group_indices.push_back(id);
-	//		attr_values.insert(attr_values.end(), A.begin(), A.end());
-
-	//		// keep track of line and point count and maximum cell id
-	//		++li;
-	//	}
-	//	append_time_step(cae_fn, last_time, data.points, group_indices, attr_values);
-	//	std::cout << "converted " << log_fn << " with " << nr_points << " points, " << times.size() << " time steps, and " << nr_groups << " ids." << std::endl;
-	//	construct_group_information(nr_groups);
-	//	ooc_file_name = cae_fn;
-	//	time_step = uint32_t(times.size() - 1);
-	//	post_redraw();
-	//	return true;
-	//}
 	void step()
 	{
 		++time_step;
@@ -765,7 +325,8 @@ public:
 	void timer_event(double, double dt)
 	{
 		if (trigger[1] > 0.1f) {
-			time_delta += 60 * trigger[1] * dt;
+			double d = 60.0 * (double)trigger[1] * dt;
+			time_delta += (float)d;
 			if (time_delta >= 1.0f) {
 				time_step += (int)time_delta;
 				time_delta -= (int)time_delta;
@@ -779,7 +340,7 @@ public:
 		}
 	}
 	/// define format and texture filters in constructor
-	vr_ca_vis() : cgv::base::node("vr_ca_vis"), box_extent(1, 1, 1)
+	vr_ca_vis() : cgv::base::group("vr_ca_vis"), box_extent(1, 1, 1)
 	{
 		animate = false;
 		sort_points = false;
@@ -797,14 +358,12 @@ public:
 		box_style.map_color_to_material = cgv::render::CM_COLOR;
 		box_style.use_group_color = true;
 		time_step = 0;
+		first_frame = true;
 		connect(cgv::gui::get_animation_trigger().shoot, this, &vr_ca_vis::timer_event);
 
 		vr_view_ptr = 0;
 
-		control_inited = false;
-		control_changed = true;
-
-		srs.radius = 0.005f;
+		cutting_plane_visible = false;
 
 		surf_rs.illumination_mode = cgv::render::IlluminationMode::IM_OFF;
 		surf_rs.culling_mode = cgv::render::CullingMode::CM_OFF;
@@ -815,6 +374,9 @@ public:
 		surf_rs.surface_color = rgba(0, 0.8f, 1.0f);
 		surf_rs.material.set_transparency(0.75f);
 		surf_rs.halo_color = rgba(0, 0.8f, 1.0f, 0.8f);
+
+		container = new cells_container("cells");
+		append_child(container);
 	}
 	std::string get_type_name() const
 	{
@@ -826,20 +388,10 @@ public:
 			cgv::type::uint64_type beg = (ooc_mode ? 0 : time_step_start[time_step]);
 			cgv::type::uint64_type end = (ooc_mode ? points.size() : ((time_step + 1 == time_step_start.size()) ? points.size() : time_step_start[time_step + 1]));
 
-			//std::vector<vec3> p(points.begin() + beg, points.begin() + end);
-
-			//if (time_step >= vertexGrids.size())
-			//{
-			//	HashGrid<Point> grid;
-			//	BuildHashGridFromVertices(p, grid, vec3(1, 1, 1));
-
-			//	vertexGrids.push_back(grid);
-			//}
-
 			if (ooc_mode && !ooc_file_name.empty())
 				read_ooc_time_step(ooc_file_name, time_step);
 
-			control_changed = true;
+			first_frame = true;
 		}
 		if (member_ptr == &dir_name) {
 			read_data_dir_ascii(dir_name);			
@@ -848,14 +400,6 @@ public:
 			on_set(&time_step);
 			post_recreate_gui();
 		}
-		//if (member_ptr == &file_name) {
-		//	//read_data_ascii(file_name, 0.1f);
-		//	read_data_ascii(file_name);			
-
-		//	time_step = 0;
-		//	on_set(&time_step);
-		//	post_recreate_gui();
-		//}
 		if (member_ptr == &opacity) {
 			if (use_boxes ? box_style.use_group_color : sphere_style.use_group_color)
 				for (auto& c : group_colors) {
@@ -921,10 +465,41 @@ public:
 	}
 	void init_frame(cgv::render::context& ctx)
 	{
-		if (control_changed)
+		//if (control_changed)
+		//{
+		//	control_changed = false;
+		//	compute_visible_points(control_origin, control_direction);
+		//}
+
+		vr::vr_scene* scene_ptr = get_scene_ptr();
+		if (!scene_ptr)
+			return;
+
+		// always update visibility of visibility changing labels
+		vr_view_interactor* vr_view_ptr = get_view_ptr();
+		if (!vr_view_ptr)
+			return;
+
+		const vr::vr_kit_state* state_ptr = vr_view_ptr->get_current_vr_state();
+		if (!state_ptr)
+			return;
+
+		if (first_frame)
 		{
-			control_changed = false;
-			compute_visible_points(control_origin, control_direction);
+			first_frame = false;
+
+			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
+			{
+				cutting_plane_visible = true;
+			}
+			else
+			{
+				cutting_plane_visible = false;
+			}
+
+			compute_visible_points();
+
+			container->set_cells(visible_points, visible_colors);
 		}
 	}
 	void clear(cgv::render::context& ctx)
@@ -949,33 +524,33 @@ public:
 		//sr.set_group_index_array(ctx, group_indices);
 		sr.set_group_index_array(ctx, visible_types);
 	}
-	void draw_points(unsigned ti) // draw voxels
-	{
-		cgv::type::uint64_type beg = (ooc_mode? 0 : time_step_start[ti]);
-		cgv::type::uint64_type end = (ooc_mode? points.size() : ((ti + 1 == time_step_start.size()) ? points.size() : time_step_start[ti+1]));
-		cgv::type::uint64_type cnt = end - beg;
-		if (sort_points) {
-			indices.resize(size_t(cnt));
-			for (unsigned i = 0; i < indices.size(); ++i)
-				indices[i] = unsigned(i + beg);
-			struct sort_pred {
-				const std::vector<vec3>& points;
-				const vec3& view_dir;
-				bool operator () (GLint i, GLint j) const {
-					return dot(points[i], view_dir) > dot(points[j], view_dir);
-				}
-				sort_pred(const std::vector<vec3>& _points, const vec3& _view_dir) : points(_points), view_dir(_view_dir) {}
-			};
-			vec3 view_dir = view_ptr->get_view_dir();
+	//void draw_points(unsigned ti) // draw voxels
+	//{
+	//	cgv::type::uint64_type beg = (ooc_mode? 0 : time_step_start[ti]);
+	//	cgv::type::uint64_type end = (ooc_mode? points.size() : ((ti + 1 == time_step_start.size()) ? points.size() : time_step_start[ti+1]));
+	//	cgv::type::uint64_type cnt = end - beg;
+	//	if (sort_points) {
+	//		indices.resize(size_t(cnt));
+	//		for (unsigned i = 0; i < indices.size(); ++i)
+	//			indices[i] = unsigned(i + beg);
+	//		struct sort_pred {
+	//			const std::vector<vec3>& points;
+	//			const vec3& view_dir;
+	//			bool operator () (GLint i, GLint j) const {
+	//				return dot(points[i], view_dir) > dot(points[j], view_dir);
+	//			}
+	//			sort_pred(const std::vector<vec3>& _points, const vec3& _view_dir) : points(_points), view_dir(_view_dir) {}
+	//		};
+	//		vec3 view_dir = view_ptr->get_view_dir();
 
-			std::sort(indices.begin(), indices.end(), sort_pred(points, view_dir));
-			glDrawElements(GL_POINTS, GLsizei(cnt), GL_UNSIGNED_INT, &indices.front());
-		}
-		else if (visible_points.size() > 0)
-			glDrawArrays(GL_POINTS, GLsizei(0), GLsizei(visible_points.size()));
-		//else if (!points.empty())
-		//	glDrawArrays(GL_POINTS, GLsizei(beg), GLsizei(cnt));
-	}
+	//		std::sort(indices.begin(), indices.end(), sort_pred(points, view_dir));
+	//		glDrawElements(GL_POINTS, GLsizei(cnt), GL_UNSIGNED_INT, &indices.front());
+	//	}
+	//	else if (visible_points.size() > 0)
+	//		glDrawArrays(GL_POINTS, GLsizei(0), GLsizei(visible_points.size()));
+	//	//else if (!points.empty())
+	//	//	glDrawArrays(GL_POINTS, GLsizei(beg), GLsizei(cnt));
+	//}
 	void draw_box(cgv::render::context& ctx)
 	{
 		ctx.ref_default_shader_program().enable(ctx);
@@ -996,25 +571,9 @@ public:
 	}
 	void draw_cutting_plane(cgv::render::context& ctx)
 	{
-		//cgv::render::shader_program& prog = ctx.ref_default_shader_program();
-		//int pi = prog.get_position_index();
-		//int ci = prog.get_color_index();
-		//cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
-		//cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
-		//cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ci, C);
-		//cgv::render::attribute_array_binding::enable_global_array(ctx, ci);
-		//glLineWidth(3);
-		//prog.enable(ctx);
-		//glDrawArrays(GL_LINES, 0, (GLsizei)P.size());
-		//prog.disable(ctx);
-		//cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
-		//cgv::render::attribute_array_binding::disable_global_array(ctx, ci);
-		//glLineWidth(1);
-
 		ctx.ref_default_shader_program().enable(ctx);
 		ctx.set_color(rgb(0.0f, 1.0f, 1.0f));
 		glLineWidth(2.0f);
-		ctx.tesselate_unit_disk(25, false, true);
 
 		std::vector<vec3> P;
 
@@ -1030,7 +589,7 @@ public:
 
 		if (!polygon.empty())
 		{
-			for (int i = 1; i < polygon.size() - 1; ++i)
+			for (unsigned int i = 1; i < polygon.size() - 1; ++i)
 			{
 				P.push_back(polygon[0]);
 				P.push_back(polygon[i]);
@@ -1046,13 +605,6 @@ public:
 		/************************************************************************************/
 		
 		ctx.ref_default_shader_program().disable(ctx);
-
-		//ctx.ref_default_shader_program().enable(ctx);
-		//ctx.set_color(rgb(0.0f, 1.0f, 0.0f));
-		//glLineWidth(4.0f);
-		//box3 B(vec3(0.0f), vec3(2.0f));
-		//ctx.tesselate_box(B, false, true);
-		//ctx.ref_default_shader_program().disable(ctx);
 	}
 	void finish_frame(cgv::render::context& ctx)
 	{
@@ -1066,279 +618,144 @@ public:
 			glDisable(GL_BLEND);
 			ctx.pop_modelview_matrix();
 		}
-
 	}
 	void draw(cgv::render::context& ctx)
 	{
-		if (false) {
-			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
-			{
-				ctx.push_modelview_matrix();
-				ctx.mul_modelview_matrix(pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_RIGHT_CONTROLLER)));
-
-				//draw_cutting_plane(ctx);
-
-				ctx.ref_default_shader_program().enable(ctx);
-				ctx.set_color(rgb(0.0f, 1.0f, 1.0f));
-				glLineWidth(2.0f);
-				ctx.tesselate_unit_disk(25, false, true);
-				ctx.ref_default_shader_program().disable(ctx);
-
-				ctx.pop_modelview_matrix();
-			}
-		}
-
-		ctx.push_modelview_matrix();
 		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-			ctx.mul_modelview_matrix(pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE)));
-		ctx.mul_modelview_matrix(cgv::math::scale4<double>(dvec3(scale)));
-		ctx.mul_modelview_matrix(cgv::math::translate4<double>(dvec3(-0.5,0.0,-0.5)));
+		{
+			mat4 model_transform(pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE)));
+			model_transform *= cgv::math::scale4<double>(dvec3(scale));
+			model_transform *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
 
-		draw_box(ctx);
+			ctx.push_modelview_matrix();
+			ctx.mul_modelview_matrix(model_transform);
 
-		if (!visible_points.empty()) {
-		//if (!points.empty()) {
+			draw_box(ctx);
+
 			ctx.mul_modelview_matrix(cgv::math::scale4<double>(dvec3(0.01)));
 			if (blend) {
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			}
-			b_renderer.set_extent(ctx, box_extent);
-			cgv::render::group_renderer& renderer = use_boxes ? static_cast<cgv::render::group_renderer&>(b_renderer) : s_renderer;
-			set_group_geometry(ctx, renderer);
-			set_geometry(ctx, renderer);
-			renderer.validate_and_enable(ctx);
-			draw_points(time_step);
-			renderer.disable(ctx);
-			if (blend)
-				glDisable(GL_BLEND);
-		}
-		ctx.pop_modelview_matrix();
-
-		if (vr_view_ptr) {
-			//if ((!shared_texture && camera_tex.is_created()) || (shared_texture && camera_tex_id != -1)) {
-			//	if (vr_view_ptr->get_rendered_vr_kit() != 0 && vr_view_ptr->get_rendered_vr_kit() == vr_view_ptr->get_current_vr_kit()) {
-			//		int eye = vr_view_ptr->get_rendered_eye();
-
-			//		// compute billboard
-			//		dvec3 vd = vr_view_ptr->get_view_dir_of_kit();
-			//		dvec3 y = vr_view_ptr->get_view_up_dir_of_kit();
-			//		dvec3 x = normalize(cross(vd, y));
-			//		y = normalize(cross(x, vd));
-			//		x *= camera_aspect * background_extent * background_distance;
-			//		y *= background_extent * background_distance;
-			//		vd *= background_distance;
-			//		dvec3 eye_pos = vr_view_ptr->get_eye_of_kit(eye);
-			//		std::vector<vec3> P;
-			//		std::vector<vec2> T;
-			//		P.push_back(eye_pos + vd - x - y);
-			//		P.push_back(eye_pos + vd + x - y);
-			//		P.push_back(eye_pos + vd - x + y);
-			//		P.push_back(eye_pos + vd + x + y);
-			//		double v_offset = 0.5 * (1 - eye);
-			//		T.push_back(dvec2(0.0, 0.5 + v_offset));
-			//		T.push_back(dvec2(1.0, 0.5 + v_offset));
-			//		T.push_back(dvec2(0.0, v_offset));
-			//		T.push_back(dvec2(1.0, v_offset));
-
-			//		cgv::render::shader_program& prog = seethrough;
-			//		cgv::render::attribute_array_binding::set_global_attribute_array(ctx, prog.get_position_index(), P);
-			//		cgv::render::attribute_array_binding::set_global_attribute_array(ctx, prog.get_texcoord_index(), T);
-			//		cgv::render::attribute_array_binding::enable_global_array(ctx, prog.get_position_index());
-			//		cgv::render::attribute_array_binding::enable_global_array(ctx, prog.get_texcoord_index());
-
-			//		GLint active_texture, texture_binding;
-			//		if (shared_texture) {
-			//			glGetIntegerv(GL_ACTIVE_TEXTURE, &active_texture);
-			//			glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture_binding);
-			//			glActiveTexture(GL_TEXTURE0);
-			//			glBindTexture(GL_TEXTURE_2D, camera_tex_id);
-			//		}
-			//		else
-			//			camera_tex.enable(ctx, 0);
-			//		prog.set_uniform(ctx, "texture", 0);
-			//		prog.set_uniform(ctx, "seethrough_gamma", seethrough_gamma);
-			//		prog.set_uniform(ctx, "use_matrix", use_matrix);
-
-			//		// use of convenience function
-			//		vr::configure_seethrough_shader_program(ctx, prog, frame_width, frame_height,
-			//			vr_view_ptr->get_current_vr_kit(), *vr_view_ptr->get_current_vr_state(),
-			//			0.01f, 2 * background_distance, eye, undistorted);
-
-			//		/* equivalent detailed code relies on more knowledge on program parameters
-			//		mat4 TM = vr::get_texture_transform(vr_view_ptr->get_current_vr_kit(), *vr_view_ptr->get_current_vr_state(), 0.01f, 2 * background_distance, eye, undistorted);
-			//		prog.set_uniform(ctx, "texture_matrix", TM);
-			//		prog.set_uniform(ctx, "extent_texcrd", extent_texcrd);
-			//		prog.set_uniform(ctx, "frame_split", frame_split);
-			//		prog.set_uniform(ctx, "center_left", center_left);
-			//		prog.set_uniform(ctx, "center_right", center_right);
-			//		prog.set_uniform(ctx, "eye", eye);
-			//		*/
-			//		prog.enable(ctx);
-			//		ctx.set_color(rgba(1, 1, 1, 1));
-
-			//		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-
-			//		prog.disable(ctx);
-
-			//		if (shared_texture) {
-			//			glActiveTexture(active_texture);
-			//			glBindTexture(GL_TEXTURE_2D, texture_binding);
-			//		}
-			//		else
-			//			camera_tex.disable(ctx);
-
-			//		cgv::render::attribute_array_binding::disable_global_array(ctx, prog.get_position_index());
-			//		cgv::render::attribute_array_binding::disable_global_array(ctx, prog.get_texcoord_index());
-			//	}
-			//}
-
-			if (vr_view_ptr) {
-				std::vector<vec3> P;
-				std::vector<float> R;
-				std::vector<rgb> C;
-				const vr::vr_kit_state* state_ptr = vr_view_ptr->get_current_vr_state();
-				if (state_ptr) {
-					for (int ci = 0; ci < 4; ++ci)
-						if (state_ptr->controller[ci].status == vr::VRS_TRACKED) {
-							vec3 ray_origin, ray_direction;
-							state_ptr->controller[ci].put_ray(&ray_origin(0), &ray_direction(0));
-							P.push_back(ray_origin);
-							R.push_back(0.002f);
-							P.push_back(ray_origin + ray_length * ray_direction);
-							R.push_back(0.003f);
-							rgb c(float(1 - ci), 0.5f * (int)state[ci], float(ci));
-							C.push_back(c);
-							C.push_back(c);
-						}
-				}
-				if (P.size() > 0) {
-					//auto& cr = cgv::render::ref_rounded_cone_renderer(ctx);
-					//cr.set_render_style(cone_style);
-					//cr.set_eye_position(vr_view_ptr->get_eye_of_kit());
-					//cr.set_position_array(ctx, P);
-					//cr.set_color_array(ctx, C);
-					//cr.set_radius_array(ctx, R);
-					//if (!cr.render(ctx, 0, P.size())) {
-						cgv::render::shader_program& prog = ctx.ref_default_shader_program();
-						int pi = prog.get_position_index();
-						int ci = prog.get_color_index();
-						cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
-						cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
-						cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ci, C);
-						cgv::render::attribute_array_binding::enable_global_array(ctx, ci);
-						glLineWidth(3);
-						prog.enable(ctx);
-						glDrawArrays(GL_LINES, 0, (GLsizei)P.size());
-						prog.disable(ctx);
-						cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
-						cgv::render::attribute_array_binding::disable_global_array(ctx, ci);
-						glLineWidth(1);
-					//}
-				}
-			}
 		}
 	}
-	bool handle(cgv::gui::event& e)
+	void finish_draw(cgv::render::context& ctx)
 	{
-		// check if vr event flag is not set and don't process events in this case
-		if ((e.get_flags() & cgv::gui::EF_VR) != 0) {
-			switch (e.get_kind()) {
-			case cgv::gui::EID_KEY:
-			{
-				cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
-				if (vrke.get_action() != cgv::gui::KA_RELEASE) {
-					switch (vrke.get_key()) {
-					case vr::VR_DPAD_RIGHT:
-						if (vrke.get_controller_index() == 0) { // only left controller
-							if (time_step + 1 < times.size()) {
-								time_step += 1;
-								on_set(&time_step);
-							}
-							return true;
-						}
-						return false;
-					case vr::VR_DPAD_LEFT:
-						if (time_step > 0) {
-							time_step -= 1;
-							on_set(&time_step);
-						}
-						return true;
-					}
-				}
-				break;
-			}
-			case cgv::gui::EID_THROTTLE:
-			{
-				cgv::gui::vr_throttle_event& vrte = static_cast<cgv::gui::vr_throttle_event&>(e);
-				trigger[vrte.get_controller_index()] = vrte.get_value();
-				update_member(&trigger[vrte.get_controller_index()]);
-				return true;
-			}
-			case cgv::gui::EID_POSE:
-			{
-				cgv::gui::vr_pose_event& vrpe = static_cast<cgv::gui::vr_pose_event&>(e);
-				// check for controller pose events
-				int ci = vrpe.get_trackable_index();
-				//if (ci != -1) {
-				if (ci == 1) {
-					// compute intersections
-					control_inited = true;
+		// TODO: need to check CS_TABLE coordinate?
 	
-					vec3 co, cd;
-					vrpe.get_state().controller[ci].put_ray(co, cd);
+		if (blend)
+			glDisable(GL_BLEND);
 
-					if (control_origin != co || control_direction != cd)
-					{
-						control_changed = true;
-
-						control_origin = co;
-						control_direction = cd;
-					}
-
-					// update state based on whether we have found at least 
-					// one intersection with controller ray
-					//if (intersection_points.size() == i)
-					//	state[ci] = IS_NONE;
-					//else
-					//	if (state[ci] == IS_NONE)
-					//		state[ci] = IS_OVER;
-
-					post_redraw();
-				}
-				return true;
-			}
-			return false;
-			}
-		}
-
-		if (e.get_kind() != cgv::gui::EID_KEY)
-			return false;
-		cgv::gui::key_event& ke = static_cast<cgv::gui::key_event&>(e);
-		if (ke.get_action() == cgv::gui::KA_RELEASE)
-			return false;
-		switch (ke.get_key()) {
-		case cgv::gui::KEY_Right:
-			step();
-			return true;
-		case cgv::gui::KEY_Left:
-			step_back();
-			return true;
-		case cgv::gui::KEY_Home:
-			time_step = 0;
-			on_set(&time_step);
-			return true;
-		case cgv::gui::KEY_End:
-			time_step = uint32_t(times.size()-1);
-			on_set(&time_step);
-			return true;
-		}
+		ctx.pop_modelview_matrix();
+	}
+	bool focus_change(cgv::nui::focus_change_action action, cgv::nui::refocus_action rfa, const cgv::nui::focus_demand& demand, const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info)
+	{
 		return false;
 	}
+	bool handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request)
+	{
+		return false;
+	}
+	//bool handle(cgv::gui::event& e)
+	//{
+	//	// check if vr event flag is not set and don't process events in this case
+	//	if ((e.get_flags() & cgv::gui::EF_VR) != 0) {
+	//		switch (e.get_kind()) {
+	//		case cgv::gui::EID_KEY:
+	//		{
+	//			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
+	//			if (vrke.get_action() != cgv::gui::KA_RELEASE) {
+	//				switch (vrke.get_key()) {
+	//				case vr::VR_DPAD_RIGHT:
+	//					if (vrke.get_controller_index() == 0) { // only left controller
+	//						if (time_step + 1 < times.size()) {
+	//							time_step += 1;
+	//							on_set(&time_step);
+	//						}
+	//						return true;
+	//					}
+	//					return false;
+	//				case vr::VR_DPAD_LEFT:
+	//					if (time_step > 0) {
+	//						time_step -= 1;
+	//						on_set(&time_step);
+	//					}
+	//					return true;
+	//				}
+	//			}
+	//			break;
+	//		}
+	//		case cgv::gui::EID_THROTTLE:
+	//		{
+	//			cgv::gui::vr_throttle_event& vrte = static_cast<cgv::gui::vr_throttle_event&>(e);
+	//			trigger[vrte.get_controller_index()] = vrte.get_value();
+	//			update_member(&trigger[vrte.get_controller_index()]);
+	//			return true;
+	//		}
+	//		case cgv::gui::EID_POSE:
+	//		{
+	//			cgv::gui::vr_pose_event& vrpe = static_cast<cgv::gui::vr_pose_event&>(e);
+	//			// check for controller pose events
+	//			int ci = vrpe.get_trackable_index();
+	//			//if (ci != -1) {
+	//			if (ci == 1) {
+	//				// compute intersections
+	//				control_inited = true;
+	//
+	//				vec3 co, cd;
+	//				vrpe.get_state().controller[ci].put_ray(co, cd);
+
+	//				if (control_origin != co || control_direction != cd)
+	//				{
+	//					control_changed = true;
+
+	//					control_origin = co;
+	//					control_direction = cd;
+	//				}
+
+	//				// update state based on whether we have found at least 
+	//				// one intersection with controller ray
+	//				//if (intersection_points.size() == i)
+	//				//	state[ci] = IS_NONE;
+	//				//else
+	//				//	if (state[ci] == IS_NONE)
+	//				//		state[ci] = IS_OVER;
+
+	//				post_redraw();
+	//			}
+	//			return true;
+	//		}
+	//		return false;
+	//		}
+	//	}
+
+	//	if (e.get_kind() != cgv::gui::EID_KEY)
+	//		return false;
+	//	cgv::gui::key_event& ke = static_cast<cgv::gui::key_event&>(e);
+	//	if (ke.get_action() == cgv::gui::KA_RELEASE)
+	//		return false;
+	//	switch (ke.get_key()) {
+	//	case cgv::gui::KEY_Right:
+	//		step();
+	//		return true;
+	//	case cgv::gui::KEY_Left:
+	//		step_back();
+	//		return true;
+	//	case cgv::gui::KEY_Home:
+	//		time_step = 0;
+	//		on_set(&time_step);
+	//		return true;
+	//	case cgv::gui::KEY_End:
+	//		time_step = uint32_t(times.size()-1);
+	//		on_set(&time_step);
+	//		return true;
+	//	}
+	//	return false;
+	//}
 	void stream_help(std::ostream & os)
 	{
 		os << "vr_ca_vis: use <left>, <right>, <home>, and <end> to navigate time\n";
+		os << "vr_ca_vis: select draw <M>ode, press vr pad or trigger to draw, grip to change color" << std::endl;
 	}
 	void create_gui()
 	{
@@ -1398,6 +815,12 @@ public:
 			add_gui("box_style", box_style);
 			align("\b");
 			end_tree_node(box_style);
+		}
+		if (begin_tree_node("container", container)) {
+			align("\a");
+			inline_object_gui(container);
+			align("\b");
+			end_tree_node(container);
 		}
 	}
 	///
@@ -1487,7 +910,7 @@ public:
 			{
 				if (p0(i) < std::numeric_limits<float>::epsilon() || p0(i) > 1 - std::numeric_limits<float>::epsilon())
 				{
-					for (int j = 0; j < p.size(); ++j)
+					for (unsigned int j = 0; j < p.size(); ++j)
 					{
 						vec3 f = p[j];
 
@@ -1513,54 +936,73 @@ public:
 		/************************************************************************************/
 	}
 	/// compute visible points, i.e. points that are past the cutting plane in the direction of the controller
-	void compute_visible_points(const vec3& origin, const vec3& direction)
+	void compute_visible_points()
 	{
-		if (control_inited)
+		if (cutting_plane_visible)		
 		{
+			vr_view_interactor* vr_view_ptr = get_view_ptr();
+			if (!vr_view_ptr)
+				return;
+
+			const vr::vr_kit_state* state_ptr = vr_view_ptr->get_current_vr_state();
+			if (!state_ptr)
+				return;
+
 			visible_points.clear();
 			visible_types.clear();
+			visible_colors.clear();
 
-			mat4 mat;
-			mat.identity();
+			control_direction = -reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[6]);
+			control_origin = reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[9]);
 
-			//mat *= cgv::math::scale4<double>(dvec3(0.01));
-			//mat *= cgv::math::translate4<double>(dvec3(0.5, 0.0, 0.5));
-			//mat *= cgv::math::scale4<double>(dvec3(scale));
-			//if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-			//	mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+				mat4 mat;
+				mat.identity();
 
-			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
-			mat *= cgv::math::scale4<double>(dvec3(scale));
-			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
-			mat *= cgv::math::scale4<double>(dvec3(0.01));
+				if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+					mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+				mat *= cgv::math::scale4<double>(dvec3(scale));
+				mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+				mat *= cgv::math::scale4<double>(dvec3(0.01));
 
-			//mat = inv(mat);
+				//mat = inv(mat);
 
-			//vec4 origin4(mat * vec4(origin, 1.f)), direction4(mat * vec4(direction, 1.f));
-			//vec3 o(origin4 / origin4.w()), d(direction4 / direction4.w());
-			//d.normalize();
+				//vec4 origin4(mat * vec4(origin, 1.f)), direction4(mat * vec4(direction, 1.f));
+				//vec3 o(origin4 / origin4.w()), d(direction4 / direction4.w());
+				//d.normalize();
 
-			for (size_t i = time_step_start[time_step], j = (time_step + 1 == time_step_start.size() ? points.size() : time_step_start[time_step + 1]); i < j; ++i)
-			{
-				vec4 point4(mat * vec4(points[i], 1.f));
-				vec3 point(point4 / point4.w());
-
-				float sign = dot(direction, point - origin);
-
-				//float sign = dot(d, points[i] - o);
-
-				if (sign >= 0)
+				for (uint64_t i = time_step_start[time_step], j = (time_step + 1 == time_step_start.size() ? points.size() : time_step_start[time_step + 1]); i < j; ++i)
 				{
-					visible_points.push_back(points[i]);
-					visible_types.push_back(group_indices[i]);
+					vec4 point4(mat * vec4(points[i], 1.f));
+					vec3 point(point4 / point4.w());
+
+					float sign = dot(control_direction, point - control_origin);
+
+					//float sign = dot(d, points[i] - o);
+
+					if (sign >= 0)
+					{
+						visible_points.push_back(points[i]);
+						visible_types.push_back(group_indices[i]);
+						visible_colors.push_back(group_colors[group_indices[i]]);
+					}
 				}
-			}
 		}
 		else
 		{
-			visible_points = points;
-			visible_types = group_indices;
+			visible_points.clear();
+			visible_types.clear();
+			visible_colors.clear();
+
+			uint64_t start = time_step_start[time_step];
+			uint64_t end = (time_step + 1 == time_step_start.size() ? points.size() : time_step_start[time_step + 1]);
+
+			visible_points.insert(visible_points.end(), points.begin() + start, points.begin() + end);
+			visible_types.insert(visible_types.end(), group_indices.begin() + start, group_indices.begin() + end);
+
+			for (size_t i = 0; i < visible_types.size(); ++i)
+			{
+				visible_colors.push_back(group_colors[group_indices[i]]);
+			}
 		}
 	}
 };
