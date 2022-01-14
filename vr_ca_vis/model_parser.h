@@ -14,7 +14,7 @@ public:
 	model_parser() = delete;
 	model_parser(const model_parser&) = delete;
 
-	model_parser(const std::string& file_name, std::vector<unsigned int>& ids, std::vector<unsigned int>& group_ids, std::vector<vec3>& points, std::vector<unsigned int>& type_start, std::vector<std::string>& types)
+	model_parser(const std::string& file_name, std::vector<unsigned int>& ids, std::vector<unsigned int>& group_ids, std::vector<vec3>& points, std::unordered_set<std::string>& types)
 	{
 		// Read the xml file into a vector
 		std::ifstream file(file_name.c_str());
@@ -39,8 +39,8 @@ public:
 				{
 					std::string type(p_node->first_attribute("type")->value());
 
-					type_start.push_back(points.size());
-					types.push_back(type);
+					//type_start.push_back(points.size());
+					types.insert(type);
 
 					for (rapidxml::xml_node<>* c_node = p_node->first_node("Cell"); c_node; c_node = c_node->next_sibling())
 					{
@@ -49,7 +49,7 @@ public:
 							continue;
 
 						rapidxml::xml_node<>* n_node = c_node->first_node("Nodes");
-						if (n_node)
+						if (n_node != NULL)
 						{
 							std::vector<std::string> points_vector;
 
@@ -94,7 +94,7 @@ public:
 
 								group_ids.push_back(type_index);
 
-								points.push_back(vec3(x, y, z));
+								points.push_back(vec3(float(x), float(y), float(z)));
 							}
 						}
 					}
