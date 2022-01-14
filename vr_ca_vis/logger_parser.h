@@ -69,7 +69,7 @@ public:
 		std::vector<cgv::utils::token> tokens;
 		cgv::utils::split_to_tokens(lines.begin()->begin, lines.begin()->end, tokens, "");
 
-		for (int i = 0, column_count = column_names.size(); i < column_count; ++i)
+		for (unsigned int i = 0, column_count = column_names.size(); i < column_count; ++i)
 		{
 			int token_index = 0;
 			for (auto token : tokens)
