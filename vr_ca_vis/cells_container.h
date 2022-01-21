@@ -8,8 +8,8 @@
 #include <cg_nui/pointable.h>
 #include <cg_nui/grabable.h>
 #include <cgv/gui/provider.h>
-#include <cgv_gl/box_renderer.h>
 #include <cgv_gl/sphere_renderer.h>
+#include "clipped_box_renderer.h"
 
 class cells_container :
 	public cgv::base::node,
@@ -42,6 +42,7 @@ protected:
 	std::vector<vec3> positions;
 	//std::vector<float> radii;
 	std::vector<rgb> colors;
+	std::vector<vec4> clipping_planes;
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
 	// index of focused primitive
@@ -69,6 +70,7 @@ public:
 	void create_gui();
 
 	void set_cells(const std::vector<vec3>& positions, const std::vector<rgb>& colors);
+	void set_clipping_planes(const std::vector<vec4>& clipping_planes);
 };
 
 typedef cgv::data::ref_ptr<cells_container> cells_container_ptr;

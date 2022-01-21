@@ -187,21 +187,26 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 }
 bool cells_container::init(cgv::render::context& ctx)
 {
-	cgv::render::ref_box_renderer(ctx, 1);
+	//cgv::render::ref_box_renderer(ctx, 1);
+	ref_clipped_box_renderer(ctx, 1);
 	cgv::render::ref_sphere_renderer(ctx, 1);
 	return true;
 }
 void cells_container::clear(cgv::render::context& ctx)
 {
-	cgv::render::ref_box_renderer(ctx, -1);
+	//cgv::render::ref_box_renderer(ctx, -1);
+	ref_clipped_box_renderer(ctx, -1);
 	cgv::render::ref_sphere_renderer(ctx, -1);
 }
 void cells_container::draw(cgv::render::context& ctx)
 {
+	//if (clipping_plane)
+	glEnable(GL_CLIP_DISTANCE0);
+
 	// show box
 	if (!positions.empty() && !colors.empty())
 	{
-		auto& br = cgv::render::ref_box_renderer(ctx);
+		auto& br = ref_clipped_box_renderer(ctx);
 		br.set_render_style(brs);
 		br.set_position_array(ctx, positions);
 		rgb tmp_color;
@@ -212,10 +217,14 @@ void cells_container::draw(cgv::render::context& ctx)
 		br.set_color_array(ctx, colors);
 		br.set_extent(ctx, extent);
 		//br.set_rotation_array(ctx, &rotation, positions.size());
+		br.set_clipping_planes(clipping_planes);
 		br.render(ctx, 0, positions.size());
 		if (prim_idx >= 0 && prim_idx < positions.size())
 			colors[prim_idx] = tmp_color;
 	}
+
+	//if (clipping_plane)
+	glDisable(GL_CLIP_DISTANCE0);
 
 	// show points
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
@@ -249,4 +258,9 @@ void cells_container::set_cells(const std::vector<vec3>& positions, const std::v
 {
 	this->positions = positions;
 	this->colors = colors;
+}
+
+void cells_container::set_clipping_planes(const std::vector<vec4>& clipping_planes)
+{
+	this->clipping_planes = clipping_planes;
 }

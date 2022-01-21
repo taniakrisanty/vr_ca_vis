@@ -71,7 +71,6 @@ protected:
 
 	//simulation_data data;
 
-	bool cutting_plane_visible;
 	vec3 control_origin, control_direction;
 	float control_distance = 0;
 
@@ -83,11 +82,14 @@ protected:
 	std::vector<float> attr_values;
 	std::vector<rgba8> colors;
 
+	// clipping plane
+	std::vector<vec4> clipping_planes = {vec4(0.0f, 30.0f, -40.f, 0.0f)};
+
 	// visible data
 	std::vector<vec3> visible_points;
 	std::vector<uint32_t> visible_types;
 	std::vector<rgb> visible_colors;
-	
+
 	// attributes
 	uint32_t selected_attr;
 
@@ -145,7 +147,7 @@ protected:
 	{
 		if (colors.size() != points.size())
 			colors.resize(points.size());
-		
+
 		float offset = 0.0;
 		float scale = 1.0f;
 		if (((format.flags & cae::FF_ATTRIBUTE_RANGES) != 0) && attribute_ranges.size() == nr_attributes) {
@@ -153,7 +155,7 @@ protected:
 			scale = 1.0f / (attribute_ranges[selected_attr][1] - attribute_ranges[selected_attr][0]);
 		}
 		for (size_t i = 0; i < colors.size(); ++i) {
-			float v = scale*(attr_values[i*nr_attributes + selected_attr] - offset);
+			float v = scale * (attr_values[i * nr_attributes + selected_attr] - offset);
 			//float v = scale * (data.cells[i * nr_attributes + selected_attr].get_attr() - offset);
 			colors[i] = cgv::media::color_scale(v, clr_scale);
 		}
@@ -281,7 +283,7 @@ public:
 			return false;
 		char buffer[1024];
 		if (fgets(buffer, 1024, fp)) {
-			cgv::utils::token l(buffer, buffer+strlen(buffer));
+			cgv::utils::token l(buffer, buffer + strlen(buffer));
 			// split line into tokens
 			std::vector<cgv::utils::token> toks;
 			cgv::utils::split_to_tokens(l.begin, l.end, toks, "", true, "\"", "\"");
@@ -363,8 +365,6 @@ public:
 
 		vr_view_ptr = 0;
 
-		cutting_plane_visible = false;
-
 		surf_rs.illumination_mode = cgv::render::IlluminationMode::IM_OFF;
 		surf_rs.culling_mode = cgv::render::CullingMode::CM_OFF;
 		surf_rs.measure_point_size_in_pixel = false;
@@ -394,7 +394,7 @@ public:
 			first_frame = true;
 		}
 		if (member_ptr == &dir_name) {
-			read_data_dir_ascii(dir_name);			
+			read_data_dir_ascii(dir_name);
 
 			time_step = 0;
 			on_set(&time_step);
@@ -408,7 +408,7 @@ public:
 				}
 			else
 				for (auto& c : colors)
-					c.alpha() = cgv::type::uint8_type(255*opacity);
+					c.alpha() = cgv::type::uint8_type(255 * opacity);
 		}
 		update_member(member_ptr);
 		post_redraw();
@@ -488,18 +488,11 @@ public:
 		{
 			first_frame = false;
 
-			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
-			{
-				cutting_plane_visible = true;
-			}
-			else
-			{
-				cutting_plane_visible = false;
-			}
-
 			compute_visible_points();
+			//compute_clipping_planes();
 
 			container->set_cells(visible_points, visible_colors);
+			container->set_clipping_planes(clipping_planes);
 		}
 	}
 	void clear(cgv::render::context& ctx)
@@ -599,11 +592,54 @@ public:
 
 		P = { vec3(0.f, 0.f, 0.f), vec3(1.f, 1.f, 1.f), vec3(1.f, 0.f, 1.f) };
 
-		glDrawArrays(GL_TRIANGLES, 0, (GLsizei)P.size());
+		//glDrawArrays(GL_TRIANGLES, 0, (GLsizei)P.size());
 		//glEnable(GL_CULL_FACE);
 
 		/************************************************************************************/
-		
+
+		std::vector<float> N, V, T;
+		std::vector<int> FN, F;
+
+		vec3 a(P[0] - P[1]);
+		vec3 b(P[0] - P[2]);
+		vec3 n(cross(a, b));
+
+		for (int i = 0; i < 3; ++i)
+		{
+			N.push_back(n[i]);
+		}
+
+		int i = 0;
+		for (auto point : P)
+		{
+			V.push_back(point.x());
+			V.push_back(point.y());
+			V.push_back(point.z());
+
+			FN.push_back(0);
+			F.push_back(i++);
+		}
+
+		//	float N[1 * 3] = {
+		//0,0,+1
+		//	};
+		//	float V[4 * 3] = {
+		//		-1,-1,0, +1,-1,0,
+		//		+1,+1,0, -1,+1,0
+		//	};
+		//	float T[4 * 2] = {
+		//		0,0, 1,0,
+		//		1,1, 0,1
+		//	};
+		//	int FN[1 * 4] = {
+		//		0,0,0,0
+		//	};
+		//	int F[1 * 4] = {
+		//		0,1,2,3
+		//	};
+
+		//ctx.draw_faces(V.data(), N.data(), 0, F.data(), FN.data(), F.data(), 1, P.size());
+
 		ctx.ref_default_shader_program().disable(ctx);
 	}
 	void finish_frame(cgv::render::context& ctx)
@@ -631,6 +667,7 @@ public:
 			ctx.mul_modelview_matrix(model_transform);
 
 			draw_box(ctx);
+			draw_cutting_plane(ctx);
 
 			ctx.mul_modelview_matrix(cgv::math::scale4<double>(dvec3(0.01)));
 			if (blend) {
@@ -642,7 +679,7 @@ public:
 	void finish_draw(cgv::render::context& ctx)
 	{
 		// TODO: need to check CS_TABLE coordinate?
-	
+
 		if (blend)
 			glDisable(GL_BLEND);
 
@@ -752,7 +789,7 @@ public:
 	//	}
 	//	return false;
 	//}
-	void stream_help(std::ostream & os)
+	void stream_help(std::ostream& os)
 	{
 		os << "vr_ca_vis: use <left>, <right>, <home>, and <end> to navigate time\n";
 		os << "vr_ca_vis: select draw <M>ode, press vr pad or trigger to draw, grip to change color" << std::endl;
@@ -938,7 +975,7 @@ public:
 	/// compute visible points, i.e. points that are past the cutting plane in the direction of the controller
 	void compute_visible_points()
 	{
-		if (cutting_plane_visible)		
+		if (false)
 		{
 			vr_view_interactor* vr_view_ptr = get_view_ptr();
 			if (!vr_view_ptr)
@@ -955,37 +992,37 @@ public:
 			control_direction = -reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[6]);
 			control_origin = reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[9]);
 
-				mat4 mat;
-				mat.identity();
+			mat4 mat;
+			mat.identity();
 
-				if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-					mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
-				mat *= cgv::math::scale4<double>(dvec3(scale));
-				mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
-				mat *= cgv::math::scale4<double>(dvec3(0.01));
+			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+			mat *= cgv::math::scale4<double>(dvec3(scale));
+			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+			mat *= cgv::math::scale4<double>(dvec3(0.01));
 
-				//mat = inv(mat);
+			//mat = inv(mat);
 
-				//vec4 origin4(mat * vec4(origin, 1.f)), direction4(mat * vec4(direction, 1.f));
-				//vec3 o(origin4 / origin4.w()), d(direction4 / direction4.w());
-				//d.normalize();
+			//vec4 origin4(mat * vec4(origin, 1.f)), direction4(mat * vec4(direction, 1.f));
+			//vec3 o(origin4 / origin4.w()), d(direction4 / direction4.w());
+			//d.normalize();
 
-				for (uint64_t i = time_step_start[time_step], j = (time_step + 1 == time_step_start.size() ? points.size() : time_step_start[time_step + 1]); i < j; ++i)
+			for (uint64_t i = time_step_start[time_step], j = (time_step + 1 == time_step_start.size() ? points.size() : time_step_start[time_step + 1]); i < j; ++i)
+			{
+				vec4 point4(mat * vec4(points[i], 1.f));
+				vec3 point(point4 / point4.w());
+
+				float sign = dot(control_direction, point - control_origin);
+
+				//float sign = dot(d, points[i] - o);
+
+				if (sign >= 0)
 				{
-					vec4 point4(mat * vec4(points[i], 1.f));
-					vec3 point(point4 / point4.w());
-
-					float sign = dot(control_direction, point - control_origin);
-
-					//float sign = dot(d, points[i] - o);
-
-					if (sign >= 0)
-					{
-						visible_points.push_back(points[i]);
-						visible_types.push_back(group_indices[i]);
-						visible_colors.push_back(group_colors[group_indices[i]]);
-					}
+					visible_points.push_back(points[i]);
+					visible_types.push_back(group_indices[i]);
+					visible_colors.push_back(group_colors[group_indices[i]]);
 				}
+			}
 		}
 		else
 		{
@@ -1003,6 +1040,46 @@ public:
 			{
 				visible_colors.push_back(group_colors[group_indices[i]]);
 			}
+		}
+	}
+	/// do not call this until the performance issue in clipped_box shaders is resolved
+	void compute_clipping_planes()
+	{
+		clipping_planes.clear();
+
+		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
+		{
+			vr_view_interactor* vr_view_ptr = get_view_ptr();
+			if (!vr_view_ptr)
+				return;
+
+			const vr::vr_kit_state* state_ptr = vr_view_ptr->get_current_vr_state();
+			if (!state_ptr)
+				return;
+
+			// world/lab coord system
+			control_direction = -reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[6]);
+			control_origin = reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[9]);
+
+			mat4 mat;
+			mat.identity();
+
+			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+			mat *= cgv::math::scale4<double>(dvec3(scale));
+			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+			mat *= cgv::math::scale4<double>(dvec3(0.01));
+
+			mat = inv(mat);
+
+			vec4 origin4(mat * vec4(control_origin, 1.f));
+			vec4 direction4(mat * vec4(control_direction, 1.f));
+
+			vec3 origin(origin4 / origin4.w());
+			vec3 direction(direction4 / direction4.w());
+			direction.normalize();
+
+			clipping_planes = { vec4(direction, -dot(origin, direction)) };
 		}
 	}
 };
