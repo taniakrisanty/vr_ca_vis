@@ -148,14 +148,14 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 {
 	float min_dist = std::numeric_limits<float>::max();
 	vec3 q, n;
-	for (size_t i = 0; i < positions.size(); ++i) {
-		vec3 p = point - positions[i];
-		rotation.inverse_rotate(p);
-		for (int i = 0; i < 3; ++i)
-			p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
-		rotation.rotate(p);
-		prj_point = p + positions[i];
-	}
+	//for (size_t i = 0; i < positions.size(); ++i) {
+	//	vec3 p = point - positions[i];
+	//	rotation.inverse_rotate(p);
+	//	for (int i = 0; i < 3; ++i)
+	//		p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
+	//	rotation.rotate(p);
+	//	prj_point = p + positions[i];
+	//}
 	//std::cout << "min_dist = " << positions[0] << " <-> " << point << " | " << radii[0] << " at " << min_dist << " for " << primitive_idx << std::endl;
 	return min_dist < std::numeric_limits<float>::max();
 }
@@ -164,25 +164,25 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 	vec3 ro = ray_start;
 	vec3 rd = ray_direction;
 	hit_param = std::numeric_limits<float>::max();
-	for (size_t i = 0; i < positions.size(); ++i) {
-		vec3 n;
-		vec2 res;
-		if (cgv::math::ray_box_intersection(ro - positions[i], rd, 0.5f * extent, res, n) == 0)
-			continue;
-		float param;
-		if (res[0] < 0) {
-			if (res[1] < 0)
-				continue;
-			param = res[1];
-		}
-		else
-			param = res[0];
-		if (param < hit_param) {
-			primitive_idx = i;
-			hit_param = param;
-			hit_normal = n;
-		}
-	}
+	//for (size_t i = 0; i < positions.size(); ++i) {
+	//	vec3 n;
+	//	vec2 res;
+	//	if (cgv::math::ray_box_intersection(ro - positions[i], rd, 0.5f * extent, res, n) == 0)
+	//		continue;
+	//	float param;
+	//	if (res[0] < 0) {
+	//		if (res[1] < 0)
+	//			continue;
+	//		param = res[1];
+	//	}
+	//	else
+	//		param = res[0];
+	//	if (param < hit_param) {
+	//		primitive_idx = i;
+	//		hit_param = param;
+	//		hit_normal = n;
+	//	}
+	//}
 	return hit_param < std::numeric_limits<float>::max();
 }
 bool cells_container::init(cgv::render::context& ctx)
