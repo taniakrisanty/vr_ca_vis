@@ -13,6 +13,8 @@ out vec4 color_fs;
 out vec3 position;
 flat out int side;
 
+uniform vec4 clipping_plane;// = vec4(1.0);
+
 //***** begin interface of side.glsl ***********************************
 bool keep_this_side(in vec3 position, in vec3 normal, out int side);
 void update_material_color_and_transparency(inout vec3 mat_color, inout float transparency, in int side, in vec4 color);
@@ -42,19 +44,19 @@ void emit_face(in vec3 normal_in, in vec4 c0, in vec4 c1, in vec4 c2, in vec4 c3
 
 	// emit face
 	gl_Position = get_projection_matrix() * c0;
-	gl_ClipDistance[0] = gl_in[0].gl_ClipDistance[0];
+	gl_ClipDistance[0] = dot(get_inverse_modelview_matrix() * c0, clipping_plane);
 	EmitVertex();
 	position = c1.xyz;
 	gl_Position = get_projection_matrix() * c1;
-	gl_ClipDistance[0] = gl_in[0].gl_ClipDistance[0];
+	gl_ClipDistance[0] = dot(get_inverse_modelview_matrix() * c1, clipping_plane);
 	EmitVertex();
 	position = c2.xyz;
 	gl_Position = get_projection_matrix() * c2;
-	gl_ClipDistance[0] = gl_in[0].gl_ClipDistance[0];
+	gl_ClipDistance[0] = dot(get_inverse_modelview_matrix() * c2, clipping_plane);
 	EmitVertex();
 	position = c3.xyz;
 	gl_Position = get_projection_matrix() * c3;
-	gl_ClipDistance[0] = gl_in[0].gl_ClipDistance[0];
+	gl_ClipDistance[0] = dot(get_inverse_modelview_matrix() * c3, clipping_plane);
 	EmitVertex();
 	EndPrimitive();
 }
