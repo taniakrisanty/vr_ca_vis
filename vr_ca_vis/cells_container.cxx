@@ -200,8 +200,8 @@ void cells_container::clear(cgv::render::context& ctx)
 }
 void cells_container::draw(cgv::render::context& ctx)
 {
-	//if (clipping_plane)
-	glEnable(GL_CLIP_DISTANCE0);
+	for (int i = 0; i < clipping_planes.size(); ++i)
+		glEnable(GL_CLIP_DISTANCE0 + i);
 
 	// show box
 	if (!positions.empty() && !colors.empty())
@@ -223,8 +223,8 @@ void cells_container::draw(cgv::render::context& ctx)
 			colors[prim_idx] = tmp_color;
 	}
 
-	//if (clipping_plane)
-	glDisable(GL_CLIP_DISTANCE0);
+	for (int i = 0; i < clipping_planes.size(); ++i)
+		glDisable(GL_CLIP_DISTANCE0 + i);
 
 	// show points
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);

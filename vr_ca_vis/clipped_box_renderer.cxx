@@ -29,7 +29,7 @@ bool clipped_box_renderer::build_shader_program(cgv::render::context& ctx, cgv::
 bool clipped_box_renderer::enable(cgv::render::context& ctx)
 {
 	box_renderer::enable(ctx);
-	if (!clipping_planes.empty())
-		ref_prog().set_uniform(ctx, "clipping_plane", clipping_planes[0]);
+	ref_prog().set_uniform(ctx, "num_clipping_planes", 8);
+	ref_prog().set_uniform_array(ctx, "clipping_planes", clipping_planes);
 	return true;
 }
