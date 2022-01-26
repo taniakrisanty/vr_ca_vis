@@ -465,12 +465,6 @@ public:
 	}
 	void init_frame(cgv::render::context& ctx)
 	{
-		//if (control_changed)
-		//{
-		//	control_changed = false;
-		//	compute_visible_points(control_origin, control_direction);
-		//}
-
 		vr::vr_scene* scene_ptr = get_scene_ptr();
 		if (!scene_ptr)
 			return;
@@ -564,10 +558,10 @@ public:
 		sr.set_normal(ctx, normal);
 		sr.render(ctx, 0, 1);
 	}
-	void draw_cutting_plane(cgv::render::context& ctx)
+	void draw_clipping_plane(cgv::render::context& ctx)
 	{
 		std::vector<vec3> polygon;
-		construct_cutting_plane(polygon);
+		construct_clipping_plane(polygon);
 
 		if (polygon.size() < 3)
 			return;
@@ -575,25 +569,6 @@ public:
 		ctx.ref_default_shader_program().enable(ctx);
 		ctx.set_color(rgb(0.0f, 1.0f, 1.0f));
 		glLineWidth(2.0f);
-
-		/************************************************************************************
-		 Tessellate the polygon (its points are stored in the *polygon* vector):
-					   Fill vector *P* with the vertex coordinates of each triangle. Due to the
-					   usage of glDrawArrays(GL_TRIANGLES...) each triangle consists of three vertices.
-					   You can utilize a triangle fan for this where all triangles share one vertex
-					   for easy iteration through the *polygon* vector.*/
-
-		//if (!polygon.empty())
-		//{
-		//	for (unsigned int i = 1; i < polygon.size() - 1; ++i)
-		//	{
-		//		P.push_back(polygon[0]);
-		//		P.push_back(polygon[i]);
-		//		P.push_back(polygon[i + 1]);
-		//	}
-		//}
-
-		//P = { vec3(0.f, 0.f, 0.f), vec3(1.f, 1.f, 1.f), vec3(1.f, 0.f, 1.f) };
 
 		std::vector<float> N, V, T;
 		std::vector<int> FN, F;
@@ -640,6 +615,7 @@ public:
 		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
 		{
 			mat4 model_transform(pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE)));
+
 			model_transform *= cgv::math::scale4<double>(dvec3(scale));
 			model_transform *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
 
@@ -647,7 +623,7 @@ public:
 			ctx.mul_modelview_matrix(model_transform);
 
 			draw_box(ctx);
-			draw_cutting_plane(ctx);
+			draw_clipping_plane(ctx);
 
 			ctx.mul_modelview_matrix(cgv::math::scale4<double>(dvec3(0.01)));
 			if (blend) {
@@ -857,30 +833,38 @@ public:
 			if (!state_ptr)
 				return 0;
 
-			// world/lab coord system
 			control_direction = -reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[6]);
 			control_origin = reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[9]);
 
 			mat4 mat;
 			mat.identity();
 
-			//if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-			//	mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
-			//mat *= cgv::math::scale4<double>(dvec3(scale));
-			//mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
-			mat *= cgv::math::translate4<double>(dvec3(0.0, -1.22, 0.0));
+			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+			mat *= cgv::math::scale4<double>(dvec3(scale));
+			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
 
-			//mat = inv(mat);
-
-			vec4 origin4(mat * vec4(control_origin, 1.f));
+			vec4 origin4(inv(mat) * vec4(control_origin, 1.f));
 			vec3 origin(origin4 / origin4.w());
 
-			vec3 o(origin + vec3(0.5));
+			////if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+			////	mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+			////mat *= cgv::math::scale4<double>(dvec3(scale));
+			////mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+			//mat *= cgv::math::translate4<double>(dvec3(0.0, -1.22, 0.0));
 
-			if (o.x() < 0.0 || o.y() < 0.0 || o.z() < 0.0 || o.x() > 1.0 || o.y() > 1.0 || o.z() > 1.0)
-				return 0;
+			////mat = inv(mat);
 
-			return dot(control_direction, p) - 0.5;// length(o);
+			//vec4 origin4(mat * vec4(control_origin, 1.f));
+			//vec3 origin(origin4 / origin4.w());
+
+			//vec3 o(origin + vec3(0.5));
+
+			//if (origin.x() < 0.0 || origin.y() < 0.0 || origin.z() < 0.0 || origin.x() > 1.0 || origin.y() > 1.0 || origin.z() > 1.0)
+			//	return 0;
+
+			//return dot(control_direction, p) - 0.5;// length(o);
+			return dot(control_direction, p) - length(origin);
 		}
 		else
 		{
@@ -891,7 +875,7 @@ public:
 	}
 	/// returns the 3D-texture coordinates of the polygon edges describing the cutting plane through
 	/// the volume
-	void construct_cutting_plane(std::vector<vec3>& polygon)
+	void construct_clipping_plane(std::vector<vec3>& polygon)
 	{
 		/************************************************************************************
 		 Classify the volume box corners (vertices) as inside or outside vertices.
@@ -900,8 +884,6 @@ public:
 					   You can use the signed_distance_from_cutting_plane()-method to get the
 					   distance between each box corner and the slice. Assume that outside vertices
 					   have a positive distance.*/
-
-					   /************************************************************************************/
 
 		vec3 corners[8] = { vec3(0, 0, 0), vec3(1, 0, 0), vec3(1, 1, 0), vec3(0, 1, 0), vec3(0, 0, 1), vec3(1, 0, 1), vec3(1, 1, 1), vec3(0, 1, 1) };
 		float values[8];
@@ -987,8 +969,6 @@ public:
 		}
 
 		polygon.push_back(p[0]);
-
-		/************************************************************************************/
 	}
 	/// compute visible points, i.e. points that are past the cutting plane in the direction of the controller
 	void compute_visible_points()
@@ -1060,7 +1040,6 @@ public:
 			}
 		}
 	}
-	/// do not call this until the performance issue in clipped_box shaders is resolved
 	void compute_clipping_planes()
 	{
 		clipping_planes.clear();
@@ -1075,29 +1054,28 @@ public:
 			if (!state_ptr)
 				return;
 
-			// world/lab coord system
 			control_direction = -reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[6]);
+			// control_origin have to be transformed to local space of the cells
 			control_origin = reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[9]);
 
 			mat4 mat;
 			mat.identity();
 
-			//if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
-			//	mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_RIGHT_CONTROLLER));
-			//mat *= cgv::math::scale4<double>(dvec3(scale));
-			//mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+			mat *= cgv::math::scale4<double>(dvec3(scale));
+			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
 			mat *= cgv::math::scale4<double>(dvec3(0.01));
 
-			mat = inv(mat);
-
-			vec4 origin4(mat * vec4(control_origin, 1.f));
-			vec4 direction4(mat * vec4(control_direction, 1.f));
-
+			vec4 origin4(inv(mat) * vec4(control_origin, 1.f));
 			vec3 origin(origin4 / origin4.w());
-			vec3 direction(direction4 / direction4.w());
-			direction.normalize();
+			
+			clipping_planes = { vec4(control_direction, -dot(origin, control_direction)) };
 
-			clipping_planes = { vec4(direction, -dot(origin, direction)) };
+			for (int i = 1; i < 8; ++i)
+			{
+				clipping_planes.emplace_back(vec4(0.0, 1.0, 0.0, 0.0));
+			}
 		}
 	}
 };
