@@ -13,8 +13,11 @@ extern clipped_box_renderer& ref_clipped_box_renderer(cgv::render::context& ctx,
 /// renderer that supports point splatting
 class clipped_box_renderer : public cgv::render::box_renderer
 {
+public:
+	static const int MAX_CLIPPING_PLANES = 8;
 protected:
-	std::vector<vec4> clipping_planes;
+	int num_clipping_planes;
+	vec4 clipping_planes[MAX_CLIPPING_PLANES];
 public:
 	/// initializes position_is_center to true 
 	clipped_box_renderer();
