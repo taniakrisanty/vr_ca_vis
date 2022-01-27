@@ -83,7 +83,8 @@ protected:
 	std::vector<rgba8> colors;
 
 	// clipping plane
-	std::vector<vec4> clipping_planes;// = { vec4(0.0f, 30.0f, -40.f, 0.0f) };
+	int temp_clipping_plane_idx = -1;
+	std::vector<vec4> clipping_planes;
 
 	// visible data
 	std::vector<vec3> visible_points;
@@ -1042,7 +1043,8 @@ public:
 	}
 	void compute_clipping_planes()
 	{
-		clipping_planes.clear();
+		if (temp_clipping_plane_idx > -1)
+			clipping_planes.erase(clipping_planes.begin() + temp_clipping_plane_idx);
 
 		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
 		{
@@ -1069,13 +1071,32 @@ public:
 
 			vec4 origin4(inv(mat) * vec4(control_origin, 1.f));
 			vec3 origin(origin4 / origin4.w());
-			
-			clipping_planes = { vec4(control_direction, -dot(origin, control_direction)) };
 
-			for (int i = 1; i < 8; ++i)
-			{
-				clipping_planes.emplace_back(vec4(0.0, 1.0, 0.0, 0.0));
-			}
+			vec4 clipping_plane(control_direction, -dot(origin, control_direction));
+			temp_clipping_plane_idx = clipping_planes.size();
+			clipping_planes.push_back(clipping_plane);
+
+			//for (int i = 1; i < 8; ++i)
+			//{
+			//	clipping_planes.emplace_back(vec4(0.0, 1.0, 0.0, 0.0));
+			//}
+		}
+		else
+		{
+			temp_clipping_plane_idx = -1;
+		}
+	}
+	void reset_clipping_plane()
+	{
+		if (temp_clipping_plane_idx == -1)
+		{
+			clipping_planes.clear();
+		}
+		else
+		{
+			clipping_planes.assign(clipping_planes.begin() + temp_clipping_plane_idx, clipping_planes.begin() + temp_clipping_plane_idx + 1);
+
+			temp_clipping_plane_idx = 0;
 		}
 	}
 };
