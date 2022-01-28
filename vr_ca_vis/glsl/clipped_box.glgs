@@ -15,7 +15,7 @@ flat out int side;
 
 const int MAX_CLIPPING_PLANES = 8;
 
-float gl_ClipDistance[MAX_CLIPPING_PLANES];
+out float gl_ClipDistance[MAX_CLIPPING_PLANES];
 
 uniform int num_clipping_planes;
 uniform vec4 clipping_planes[MAX_CLIPPING_PLANES];
