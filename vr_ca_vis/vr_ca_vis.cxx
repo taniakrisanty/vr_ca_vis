@@ -54,7 +54,13 @@ public:
 	typedef cgv::render::drawable::vec3 vec3;
 	typedef cgv::render::drawable::vec4 vec4;
 
-	cells_container_ptr container;
+	// different possible object states
+	enum class state_enum {
+		idle,
+		close,
+		pressed
+	};
+
 protected:
 	// different interaction states for the controllers
 	enum InteractionState {
@@ -63,8 +69,15 @@ protected:
 		IS_GRAB
 	};
 
+	// hid with focus on object
+	cgv::nui::hid_identifier hid_id;
+	// state of object
+	state_enum state = state_enum::idle;
+
+	cells_container_ptr container;
+
 	// state of current interaction with boxes for all controllers
-	InteractionState state[4];
+	//InteractionState state[4];
 
 	// keep reference to vr_view_interactor
 	vr_view_interactor* vr_view_ptr;
@@ -648,6 +661,19 @@ public:
 	}
 	bool handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request)
 	{
+		// ignore all events in idle mode
+		if (state == state_enum::idle)
+			return false;
+		// ignore events from other hids
+		if (!(dis_info.hid_id == hid_id))
+			return false;
+		bool pressed = false;
+		// TODO assign button which triggers putting clipping plane permanently
+		if (pressed)
+		{
+			temp_clipping_plane_idx = -1;
+		}
+
 		return false;
 	}
 	//bool handle(cgv::gui::event& e)
@@ -848,24 +874,13 @@ public:
 			vec4 origin4(inv(mat) * vec4(control_origin, 1.f));
 			vec3 origin(origin4 / origin4.w());
 
-			////if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-			////	mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
-			////mat *= cgv::math::scale4<double>(dvec3(scale));
-			////mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
-			//mat *= cgv::math::translate4<double>(dvec3(0.0, -1.22, 0.0));
+			//float a = control_direction.x();
+			//float b = control_direction.y();
+			//float c = control_direction.z();
+			//float d = -(control_direction.x() * origin.x() + control_direction.y() * origin.y() + control_direction.z() * origin.z());
+			//return (a * p.x() + b * p.y() + c * p.z() + d) / sqrt(a * a + b * b + c * c);
 
-			////mat = inv(mat);
-
-			//vec4 origin4(mat * vec4(control_origin, 1.f));
-			//vec3 origin(origin4 / origin4.w());
-
-			//vec3 o(origin + vec3(0.5));
-
-			//if (origin.x() < 0.0 || origin.y() < 0.0 || origin.z() < 0.0 || origin.x() > 1.0 || origin.y() > 1.0 || origin.z() > 1.0)
-			//	return 0;
-
-			//return dot(control_direction, p) - 0.5;// length(o);
-			return dot(control_direction, p) - length(origin);
+			return dot(control_direction, p - origin);
 		}
 		else
 		{
@@ -1046,6 +1061,8 @@ public:
 		if (temp_clipping_plane_idx > -1)
 			clipping_planes.erase(clipping_planes.begin() + temp_clipping_plane_idx);
 
+		temp_clipping_plane_idx = -1;
+
 		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
 		{
 			vr_view_interactor* vr_view_ptr = get_view_ptr();
@@ -1072,18 +1089,8 @@ public:
 			vec4 origin4(inv(mat) * vec4(control_origin, 1.f));
 			vec3 origin(origin4 / origin4.w());
 
-			vec4 clipping_plane(control_direction, -dot(origin, control_direction));
 			temp_clipping_plane_idx = clipping_planes.size();
-			clipping_planes.push_back(clipping_plane);
-
-			//for (int i = 1; i < 8; ++i)
-			//{
-			//	clipping_planes.emplace_back(vec4(0.0, 1.0, 0.0, 0.0));
-			//}
-		}
-		else
-		{
-			temp_clipping_plane_idx = -1;
+			clipping_planes.emplace_back(control_direction, -dot(origin, control_direction));
 		}
 	}
 	void reset_clipping_plane()
