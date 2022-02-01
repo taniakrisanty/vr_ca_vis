@@ -58,7 +58,9 @@ public:
 	enum class state_enum {
 		idle,
 		close,
-		pressed
+		pointed,
+		grabbed,
+		triggered
 	};
 
 protected:
@@ -501,6 +503,17 @@ public:
 			container->set_cells(visible_points, visible_colors);
 		}
 
+		mat4 mat;
+		mat.identity();
+
+		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+			mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+		mat *= cgv::math::scale4<double>(dvec3(scale));
+		mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+		mat *= cgv::math::scale4<double>(dvec3(0.01));
+
+		container->set_modelview_matrix(inv(mat));
+
 		compute_clipping_planes();
 
 		container->set_clipping_planes(clipping_planes);
@@ -661,19 +674,6 @@ public:
 	}
 	bool handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request)
 	{
-		// ignore all events in idle mode
-		if (state == state_enum::idle)
-			return false;
-		// ignore events from other hids
-		if (!(dis_info.hid_id == hid_id))
-			return false;
-		bool pressed = false;
-		// TODO assign button which triggers putting clipping plane permanently
-		if (pressed)
-		{
-			temp_clipping_plane_idx = -1;
-		}
-
 		return false;
 	}
 	//bool handle(cgv::gui::event& e)

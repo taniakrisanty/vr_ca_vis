@@ -38,6 +38,7 @@ protected:
 	// geometry of cubes with color
 	vec3 extent;
 	quat rotation;
+	mat4 modelview_matrix;
 
 	std::vector<vec3> positions;
 	//std::vector<float> radii;
@@ -69,6 +70,7 @@ public:
 
 	void create_gui();
 
+	void set_modelview_matrix(const mat4& modelview_matrix);
 	void set_cells(const std::vector<vec3>& positions, const std::vector<rgb>& colors);
 	void set_clipping_planes(const std::vector<vec4>& clipping_planes);
 };
