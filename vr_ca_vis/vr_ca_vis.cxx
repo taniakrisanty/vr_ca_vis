@@ -512,7 +512,7 @@ public:
 		mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
 		mat *= cgv::math::scale4<double>(dvec3(0.01));
 
-		container->set_modelview_matrix(inv(mat));
+		container->set_inv_modelview_matrix(inv(mat));
 
 		compute_clipping_planes();
 
@@ -594,8 +594,7 @@ public:
 			return;
 
 		ctx.ref_default_shader_program().enable(ctx);
-		ctx.set_color(rgb(0.0f, 1.0f, 1.0f));
-		glLineWidth(2.0f);
+		ctx.set_color(rgb(0.0f, 1.0f, 1.0f), 0.1f);
 
 		std::vector<float> N, V, T;
 		std::vector<int> FN, F;
