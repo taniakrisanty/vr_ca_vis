@@ -9,6 +9,7 @@
 #include <cg_nui/grabable.h>
 #include <cgv/gui/provider.h>
 #include <cgv_gl/sphere_renderer.h>
+#include "regular_grid.h"
 #include "clipped_box_renderer.h"
 
 class cells_container :
@@ -35,10 +36,13 @@ public:
 		triggered
 	};
 protected:
+	// acceleration data structure
+	regular_grid grid;
+
 	// geometry of cubes with color
 	vec3 extent;
 	quat rotation;
-	mat4 modelview_matrix;
+	mat4 inv_modelview_matrix;
 
 	std::vector<vec3> positions;
 	//std::vector<float> radii;
@@ -70,7 +74,7 @@ public:
 
 	void create_gui();
 
-	void set_modelview_matrix(const mat4& modelview_matrix);
+	void set_inv_modelview_matrix(const mat4& inv_modelview_matrix);
 	void set_cells(const std::vector<vec3>& positions, const std::vector<rgb>& colors);
 	void set_clipping_planes(const std::vector<vec4>& clipping_planes);
 };

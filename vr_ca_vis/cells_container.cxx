@@ -147,48 +147,63 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 }
 bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
 {
-	vec4 po4(modelview_matrix * vec4(point, 1.f));
+	vec4 po4(inv_modelview_matrix * vec4(point, 1.f));
 	vec3 po = po4 / po4.w();
 
 	float min_dist = std::numeric_limits<float>::max();
 	vec3 q, n;
-	for (size_t i = 0; i < positions.size(); ++i) {
-		vec3 p = po - positions[i];
+	//for (size_t i = 0; i < positions.size(); ++i) {
+	//	vec3 p = po - positions[i];
+	//	rotation.inverse_rotate(p);
+	//	for (int i = 0; i < 3; ++i)
+	//		p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
+	//	rotation.rotate(p);
+	//	prj_point = p + positions[i];
+	//}
+	//std::cout << "min_dist = " << positions[0] << " <-> " << point << " | " << radii[0] << " at " << min_dist << " for " << primitive_idx << std::endl;
+	int index = grid.GetFromPosition(po);
+	if (index > 0)
+	{
+		primitive_idx = index - 1;
+
+		vec3 p = po - positions[primitive_idx];
 		rotation.inverse_rotate(p);
 		for (int i = 0; i < 3; ++i)
 			p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
 		rotation.rotate(p);
-		prj_point = p + positions[i];
+		prj_point = p + positions[primitive_idx];
+
+		min_dist = 0;
 	}
-	//std::cout << "min_dist = " << positions[0] << " <-> " << point << " | " << radii[0] << " at " << min_dist << " for " << primitive_idx << std::endl;
 	return min_dist < std::numeric_limits<float>::max();
 }
 bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
-	vec4 ro4(modelview_matrix * vec4(ray_start, 1.f));
+	vec4 ro4(inv_modelview_matrix * vec4(ray_start, 1.f));
 	vec3 ro = ro4 / ro4.w();
 	vec3 rd = ray_direction;
 
 	hit_param = std::numeric_limits<float>::max();
-	for (size_t i = 0; i < positions.size(); ++i) {
-		vec3 n;
-		vec2 res;
-		if (cgv::math::ray_box_intersection(ro - positions[i], rd, 0.5f * extent, res, n) == 0)
-			continue;
-		float param;
-		if (res[0] < 0) {
-			if (res[1] < 0)
-				continue;
-			param = res[1];
-		}
-		else
-			param = res[0];
-		if (param < hit_param) {
-			primitive_idx = i;
-			hit_param = param;
-			hit_normal = n;
-		}
-	}
+	//for (size_t i = 0; i < positions.size(); ++i) {
+	//	vec3 n;
+	//	vec2 res;
+	//	if (cgv::math::ray_box_intersection(ro - positions[i], rd, 0.5f * extent, res, n) == 0)
+	//		continue;
+	//	float param;
+	//	if (res[0] < 0) {
+	//		if (res[1] < 0)
+	//			continue;
+	//		param = res[1];
+	//	}
+	//	else
+	//		param = res[0];
+	//	if (param < hit_param) {
+	//		primitive_idx = i;
+	//		hit_param = param;
+	//		hit_normal = n;
+	//	}
+	//}
+	
 	return hit_param < std::numeric_limits<float>::max();
 }
 bool cells_container::init(cgv::render::context& ctx)
@@ -260,19 +275,16 @@ void cells_container::create_gui()
 		end_tree_node(srs);
 	}
 }
-void cells_container::set_modelview_matrix(const mat4& modelview_matrix)
+void cells_container::set_inv_modelview_matrix(const mat4& inv_modelview_matrix)
 {
-	this->modelview_matrix = modelview_matrix;
+	this->inv_modelview_matrix = inv_modelview_matrix;
 }
 void cells_container::set_cells(const std::vector<vec3>& positions, const std::vector<rgb>& colors)
 {
 	this->positions = positions;
 	this->colors = colors;
 
-	for (int i = 0; i < positions.size(); ++i)
-	{
-		positions[i];
-	}
+	BuildRegularGridFromVertices(positions, grid);
 }
 
 void cells_container::set_clipping_planes(const std::vector<vec4>& clipping_planes)
