@@ -4,6 +4,8 @@
 #include <cgv/math/proximity.h>
 #include <cgv/math/intersection.h>
 
+#include "GridTraverser.h"
+
 cells_container::rgb cells_container::get_modified_color(const rgb& color) const
 {
 	rgb mod_col(color);
@@ -113,11 +115,11 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 		if (pressed) {
 			state = state_enum::triggered;
 			on_set(&state);
-			//drag_begin(request, true, original_config);
+			drag_begin(request, true, original_config);
 			
 		}
 		else {
-			//drag_end(request, original_config);
+			drag_end(request, original_config);
 			state = state_enum::pointed;
 			on_set(&state);
 		}
@@ -151,7 +153,7 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 	vec3 po = po4 / po4.w();
 
 	float min_dist = std::numeric_limits<float>::max();
-	vec3 q, n;
+	//vec3 q, n;
 	//for (size_t i = 0; i < positions.size(); ++i) {
 	//	vec3 p = po - positions[i];
 	//	rotation.inverse_rotate(p);
@@ -161,19 +163,24 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 	//	prj_point = p + positions[i];
 	//}
 	//std::cout << "min_dist = " << positions[0] << " <-> " << point << " | " << radii[0] << " at " << min_dist << " for " << primitive_idx << std::endl;
-	int index = grid.GetFromPosition(po);
-	if (index > 0)
+	
+	std::vector<int> indices;
+	grid.ClosestIndices(po, indices);
+
+	for (int index : indices)
 	{
-		primitive_idx = index - 1;
+		float dist = (po - positions[index]).sqr_length();
+		if (dist < min_dist)
+		{
+			primitive_idx = index;
 
-		vec3 p = po - positions[primitive_idx];
-		rotation.inverse_rotate(p);
-		for (int i = 0; i < 3; ++i)
-			p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
-		rotation.rotate(p);
-		prj_point = p + positions[primitive_idx];
-
-		min_dist = 0;
+			vec3 p = po - positions[primitive_idx];
+			rotation.inverse_rotate(p);
+			for (int i = 0; i < 3; ++i)
+				p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
+			rotation.rotate(p);
+			prj_point = p + positions[primitive_idx];
+		}
 	}
 	return min_dist < std::numeric_limits<float>::max();
 }
@@ -203,7 +210,48 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 	//		hit_normal = n;
 	//	}
 	//}
-	
+
+	GridTraverser trav(ro, rd, grid.CellExtents());
+	for (int i = 0; ; ++i, trav++)
+	{
+		int index = grid.CellIndexToPosition(*trav);
+
+		if (index < 0)
+			break;
+
+		if (index >= 10 * 10 * 10)
+			break;
+
+		std::vector<int> indices;
+		grid.ClosestIndices(index, indices);
+
+		if (indices.empty())
+			continue;
+
+		for (int pi : indices)
+		{
+			vec3 n;
+			vec2 res;
+			if (cgv::math::ray_box_intersection(ro - positions[pi], rd, 0.5f * extent, res, n) == 0)
+				continue;
+			float param;
+			if (res[0] < 0) {
+				if (res[1] < 0)
+					continue;
+				param = res[1];
+			}
+			else
+				param = res[0];
+			if (param < hit_param) {
+				primitive_idx = pi;
+				hit_param = param;
+				hit_normal = n;
+			}
+		}
+
+		break;
+	}
+
 	return hit_param < std::numeric_limits<float>::max();
 }
 bool cells_container::init(cgv::render::context& ctx)

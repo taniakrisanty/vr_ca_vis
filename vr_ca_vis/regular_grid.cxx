@@ -3,7 +3,7 @@
 
 void BuildRegularGridFromVertices(const std::vector<vec3>& points, regular_grid& grid)
 {
-	std::cout << "Building hash grid from vertices .." << std::endl;
+	std::cout << "Building regular grid from vertices .." << std::endl;
 	//grid = regular_grid();
 	grid.clear();
 	int i = 0;

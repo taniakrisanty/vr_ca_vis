@@ -9,6 +9,8 @@
 #include <map>
 #include <vector>
 
+#include "GridUtils.h"
+
 #include <cgv/render/render_types.h>
 
 typedef cgv::math::fvec<float, 3> vec3;
@@ -16,40 +18,58 @@ typedef cgv::math::fvec<float, 3> vec3;
 class regular_grid
 {
 private:
-	static const int dimension = 100;
+	std::vector<int>* grid = NULL;
 
-	int grid[dimension * dimension * dimension];
+	vec3 cellExtents;
 
 public:
-	regular_grid()
+	regular_grid(const float cellExtent = 10)
 	{
+		cellExtents[0] = cellExtents[1] = cellExtents[2] = cellExtent;
 	}
+
+	//~regular_grid()
+	//{
+	//	delete[] grid;
+	//}
 
 	void clear()
 	{
-		memset(grid, 0, dimension * dimension * dimension);
+		//memset(grid, 0, dimension * dimension * dimension);
+		if (grid) delete[] grid;
+
+		// TODO divide the space by the cellExtent
+		grid = new std::vector<int>[10 * 10 * 10];
+	}
+
+	int CellIndexToPosition(const ivec3& ci) const
+	{
+		return ci.x() + ci.y() * 10 + ci.z() * 10 * 10;
 	}
 
 	//converts a position to a grid index
 	int PositionToIndex(const vec3& pos) const
 	{
-		return pos.x() + pos.y() * dimension + pos.z() * dimension * dimension;
+		vec3 ci = PositionToCellIndex(pos, cellExtents);
+
+		return CellIndexToPosition(ci);
 	}
 
-	int GetFromPosition(const vec3& pos) const
+	void ClosestIndices(int index, std::vector<int>& indices) const
+	{
+		if (grid == NULL)
+			return;
+
+		indices.assign(grid[index].begin(), grid[index].end());
+	}
+
+	void ClosestIndices(const vec3& pos, std::vector<int>& indices) const
 	{
 		int index = PositionToIndex(pos);
 
-		if (index < dimension * dimension * dimension)
-		{
-			return grid[index];
-		}
-		else
-		{
-			return 0;
-		}
+		ClosestIndices(index, indices);
 	}
-	
+
 	////return the center position of a cell specified by its cell key
 	//Eigen::Vector3f CellCenter(const ivec3& idx) const
 	//{
@@ -111,11 +131,11 @@ public:
 	//	return Box(CellMinPosition(idx), CellMaxPosition(idx));
 	//}
 
-	////returns the extents of a grid cell
-	//Eigen::Vector3f CellExtents() const
-	//{
-	//	return cellExtents;
-	//}
+	//returns the extents of a grid cell
+	vec3 CellExtents() const
+	{
+		return cellExtents;
+	}
 
 	////returns volume of a grid cell
 	//float CellVolume() const
@@ -140,7 +160,7 @@ public:
 	{
 		int index = PositionToIndex(p);
 		
-		grid[index] = p_index + 1;
+		grid[index].push_back(p_index);
 	}
 
 	////remove all cells from hash grid
