@@ -635,6 +635,23 @@ public:
 			glDisable(GL_BLEND);
 			ctx.pop_modelview_matrix();
 		}
+		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+		{
+			mat4 model_transform(pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE)));
+
+			model_transform *= cgv::math::scale4<double>(dvec3(scale));
+			model_transform *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+
+			ctx.push_modelview_matrix();
+			ctx.mul_modelview_matrix(model_transform);
+			
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			draw_clipping_plane(ctx);
+			glDisable(GL_BLEND);
+
+			ctx.pop_modelview_matrix();
+		}
 	}
 	void draw(cgv::render::context& ctx)
 	{
@@ -649,7 +666,6 @@ public:
 			ctx.mul_modelview_matrix(model_transform);
 
 			draw_box(ctx);
-			draw_clipping_plane(ctx);
 
 			ctx.mul_modelview_matrix(cgv::math::scale4<double>(dvec3(0.01)));
 			if (blend) {
