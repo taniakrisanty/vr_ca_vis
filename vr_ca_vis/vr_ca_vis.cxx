@@ -585,13 +585,13 @@ public:
 		sr.set_normal(ctx, normal);
 		sr.render(ctx, 0, 1);
 	}
-	void draw_clipping_plane(cgv::render::context& ctx)
+	bool draw_clipping_plane(cgv::render::context& ctx)
 	{
 		std::vector<vec3> polygon;
 		construct_clipping_plane(polygon);
 
 		if (polygon.size() < 3)
-			return;
+			return false;
 
 		ctx.ref_default_shader_program().enable(ctx);
 		ctx.set_color(rgb(0.0f, 1.0f, 1.0f), 0.1f);
@@ -622,9 +622,34 @@ public:
 		ctx.draw_faces(V.data(), N.data(), 0, F.data(), FN.data(), F.data(), 1, polygon.size());
 
 		ctx.ref_default_shader_program().disable(ctx);
+
+		return true;
 	}
 	void finish_frame(cgv::render::context& ctx)
 	{
+		bool clipping_plane_drawn = false;
+
+		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+		{
+			mat4 model_transform(pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE)));
+
+			model_transform *= cgv::math::scale4<double>(dvec3(scale));
+			model_transform *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+
+			ctx.push_modelview_matrix();
+			ctx.mul_modelview_matrix(model_transform);
+
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			clipping_plane_drawn = draw_clipping_plane(ctx);
+			glDisable(GL_BLEND);
+
+			ctx.pop_modelview_matrix();
+		}
+
+		if (clipping_plane_drawn)
+			return;
+
 		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
 		{
 			ctx.push_modelview_matrix();
@@ -649,7 +674,7 @@ public:
 			ctx.mul_modelview_matrix(model_transform);
 
 			draw_box(ctx);
-			draw_clipping_plane(ctx);
+			//draw_clipping_plane(ctx);
 
 			ctx.mul_modelview_matrix(cgv::math::scale4<double>(dvec3(0.01)));
 			if (blend) {
