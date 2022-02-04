@@ -23,6 +23,7 @@
 #include "endian.h"
 #include "cae_file_format.h"
 #include "cells_container.h"
+#include "clipping_plane.h"
 #include "logger_parser.h"
 #include "model_parser.h"
 #include "gzip_inflater.h"
@@ -77,6 +78,7 @@ protected:
 	state_enum state = state_enum::idle;
 
 	cells_container_ptr container;
+	std::vector<clipping_plane_ptr> clipping_plane_objects;
 
 	// state of current interaction with boxes for all controllers
 	//InteractionState state[4];
@@ -100,6 +102,7 @@ protected:
 	// clipping plane
 	int temp_clipping_plane_idx = -1;
 	std::vector<vec4> clipping_planes;
+	std::vector<std::pair<vec3, vec3>> clip_planes;
 
 	// visible data
 	std::vector<vec3> visible_points;
@@ -517,6 +520,20 @@ public:
 		compute_clipping_planes();
 
 		container->set_clipping_planes(clipping_planes);
+
+		if (clipping_plane_objects.empty())
+		{
+			if (!clip_planes.empty())
+			{
+				clipping_plane_objects.push_back(new clipping_plane("clipping_plane", clip_planes[0].first, clip_planes[0].second));
+				append_child(clipping_plane_objects.back());
+			}
+		}
+		else
+		{
+			clipping_plane_objects.back()->set_modelview_matrix(inv(mat));
+			clipping_plane_objects.back()->set_origin_and_direction(clip_planes[0].first, clip_planes[0].second);
+		}
 	}
 	void clear(cgv::render::context& ctx)
 	{
@@ -865,6 +882,12 @@ public:
 			align("\b");
 			end_tree_node(container);
 		}
+		if (begin_tree_node("clipping_plane", clipping_plane_objects)) {
+			align("\a");
+			inline_object_gui(clipping_plane_objects.front());
+			align("\b");
+			end_tree_node(clipping_plane_objects);
+		}
 	}
 	///
 	float signed_distance_from_cutting_plane(const vec3& p)
@@ -1107,6 +1130,13 @@ public:
 				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
 			mat *= cgv::math::scale4<double>(dvec3(scale));
 			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+			//mat *= cgv::math::scale4<double>(dvec3(0.01));
+
+			vec4 o4(inv(mat) * vec4(control_origin, 1.f));
+			vec3 o(o4 / o4.w());
+
+			clip_planes = { std::make_pair(o, control_direction) };
+
 			mat *= cgv::math::scale4<double>(dvec3(0.01));
 
 			vec4 origin4(inv(mat) * vec4(control_origin, 1.f));

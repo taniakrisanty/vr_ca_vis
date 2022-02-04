@@ -57,7 +57,7 @@ public:
 
 	void ClosestIndices(int index, std::vector<int>& indices) const
 	{
-		if (grid == NULL || index >= 10 * 10 * 10)
+		if (grid == NULL || index < 0 || index >= 10 * 10 * 10)
 			return;
 
 		indices.assign(grid[index].begin(), grid[index].end());
