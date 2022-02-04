@@ -4,7 +4,7 @@
 #include <cgv/math/proximity.h>
 #include <cgv/math/intersection.h>
 
-#include "GridTraverser.h"
+#include "grid_traverser.h"
 
 cells_container::rgb cells_container::get_modified_color(const rgb& color) const
 {
@@ -28,6 +28,7 @@ cells_container::cells_container(const std::string& _name, const vec3& _extent, 
 {
 	debug_point = vec3(0, 0.5f, 0);
 	srs.radius = 0.01f;
+	brs.culling_mode = cgv::render::CullingMode::CM_BACKFACE;
 }
 std::string cells_container::get_type_name() const
 {
@@ -211,7 +212,7 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 	//	}
 	//}
 
-	GridTraverser trav(ro, rd, grid.CellExtents());
+	grid_traverser trav(ro, rd, grid.CellExtents());
 	for (int i = 0; ; ++i, trav++)
 	{
 		int index = grid.CellIndexToPosition(*trav);
@@ -316,11 +317,17 @@ void cells_container::draw(cgv::render::context& ctx)
 void cells_container::create_gui()
 {
 	add_decorator(get_name(), "heading", "level=2");
-	if (begin_tree_node("style", srs)) {
+	if (begin_tree_node("Cell Sphere Rendering", srs, false)) {
 		align("\a");
-		add_gui("srs", srs);
+		add_gui("sphere_style", srs);
 		align("\b");
 		end_tree_node(srs);
+	}
+	if (begin_tree_node("Cell Box Rendering", brs, false)) {
+		align("\a");
+		add_gui("box_style", brs);
+		align("\b");
+		end_tree_node(brs);
 	}
 }
 void cells_container::set_inv_modelview_matrix(const mat4& inv_modelview_matrix)
