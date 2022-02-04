@@ -11,10 +11,10 @@
 typedef cgv::math::fvec<float, 3> vec3;
 typedef cgv::math::fvec<int, 3> ivec3;
 
-class GridTraverser
+class grid_traverser
 {
 	//ray origin and direction
-	vec3 orig,dir;
+	vec3 orig, dir;
 	//grid cell extents
 	vec3 cellExtents;
 	//current cell index
@@ -27,10 +27,10 @@ class GridTraverser
 
 public:
 	//default constructor
-	GridTraverser();
+	grid_traverser();
 
 	//constructs a grid traverser for a given ray with origin o, and ray direction d for a grid with cell extents ce
-	GridTraverser(const vec3& o, const vec3&d, const vec3& ce);
+	grid_traverser(const vec3& o, const vec3&d, const vec3& ce);
 
 	//accessor of ray origin
 	vec3& Origin();

@@ -9,7 +9,7 @@
 #include <map>
 #include <vector>
 
-#include "GridUtils.h"
+#include "grid_utils.h"
 
 #include <cgv/render/render_types.h>
 
@@ -57,7 +57,7 @@ public:
 
 	void ClosestIndices(int index, std::vector<int>& indices) const
 	{
-		if (grid == NULL)
+		if (grid == NULL || index >= 10 * 10 * 10)
 			return;
 
 		indices.assign(grid[index].begin(), grid[index].end());

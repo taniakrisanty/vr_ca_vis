@@ -2,46 +2,46 @@
 // chair of the TU Dresden. Do not distribute! 
 // Copyright (C) CGV TU Dresden - All Rights Reserved
 
-#include "GridTraverser.h"
-#include "GridUtils.h"
+#include "grid_traverser.h"
+#include "grid_utils.h"
 #include <cfloat>
 
-GridTraverser::GridTraverser()
+grid_traverser::grid_traverser()
 { }
 
-GridTraverser::GridTraverser(const vec3& o, const vec3&d, const vec3& cell_extents)
+grid_traverser::grid_traverser(const vec3& o, const vec3&d, const vec3& cell_extents)
 	: orig(o), dir(d), cellExtents(cell_extents)
 {
 	dir.normalize();
 	Init();
 }
 
-vec3& GridTraverser::Origin()
+vec3& grid_traverser::Origin()
 {
 	return orig;
 }
-const vec3& GridTraverser::Origin() const
+const vec3& grid_traverser::Origin() const
 {
 	return orig;
 }
 
-vec3& GridTraverser::Direction()
+vec3& grid_traverser::Direction()
 {
 	return dir;
 }
 
-const vec3& GridTraverser::Direction() const
+const vec3& grid_traverser::Direction() const
 {
 	return dir;
 }
 
-void GridTraverser::SetCellExtents(const vec3& cellExtent)
+void grid_traverser::SetCellExtents(const vec3& cellExtent)
 {
 	this->cellExtents = cellExtent;
 	Init();
 }
 
-void GridTraverser::Init()
+void grid_traverser::Init()
 {
 	current = PositionToCellIndex(orig, cellExtents);
 	
@@ -70,7 +70,7 @@ void GridTraverser::Init()
   	tDeltaZ = (dir[2] != 0) ? cellExtents[2] / dir[2] * stepZ : DBL_MAX;
 }
 
-void GridTraverser::operator++(int)
+void grid_traverser::operator++(int)
 {
 	/* Task 4.2.2 */
 
@@ -104,7 +104,7 @@ void GridTraverser::operator++(int)
       	}
     }
 }
-ivec3 GridTraverser::operator*()
+ivec3 grid_traverser::operator*()
 {
 	return current;
 }
