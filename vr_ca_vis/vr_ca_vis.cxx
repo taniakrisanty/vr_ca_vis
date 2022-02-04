@@ -674,7 +674,6 @@ public:
 			ctx.mul_modelview_matrix(model_transform);
 
 			draw_box(ctx);
-			//draw_clipping_plane(ctx);
 
 			ctx.mul_modelview_matrix(cgv::math::scale4<double>(dvec3(0.01)));
 			if (blend) {
