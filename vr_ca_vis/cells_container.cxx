@@ -164,25 +164,30 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 	//	prj_point = p + positions[i];
 	//}
 	//std::cout << "min_dist = " << positions[0] << " <-> " << point << " | " << radii[0] << " at " << min_dist << " for " << primitive_idx << std::endl;
-	
-	std::vector<int> indices;
-	grid.ClosestIndices(po, indices);
 
-	for (int index : indices)
+	regular_grid::ResultEntry res = grid.ClosestPoint(po);
+
+	if (min_dist > res.sqrDistance)
 	{
-		float dist = (po - positions[index]).sqr_length();
-		if (dist < min_dist)
-		{
-			primitive_idx = index;
+		min_dist = sqrt(res.sqrDistance);
 
-			vec3 p = po - positions[primitive_idx];
-			rotation.inverse_rotate(p);
-			for (int i = 0; i < 3; ++i)
-				p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
-			rotation.rotate(p);
-			prj_point = p + positions[primitive_idx];
-		}
+		primitive_idx = res.prim;
+
+		//vec3 p = po - positions[primitive_idx];
+		vec4 pos4(modelview_matrix * vec4(positions[primitive_idx], 1.f));
+		vec3 pos = pos4 / pos4.w();
+
+		vec3 p = point - pos;
+		rotation.inverse_rotate(p);
+		for (int i = 0; i < 3; ++i)
+			p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
+		rotation.rotate(p);
+		//prj_point = p + positions[primitive_idx];
+		prj_point = p + pos;
+
+		std::cout << "Closest point from query point " << po << " = " << positions[primitive_idx] << std::endl;
 	}
+
 	return min_dist < std::numeric_limits<float>::max();
 }
 bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
@@ -215,12 +220,9 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 	grid_traverser trav(ro, rd, grid.CellExtents());
 	for (int i = 0; ; ++i, trav++)
 	{
-		int index = grid.CellIndexToPosition(*trav);
+		int index = grid.CellIndexToGridIndex(*trav);
 
-		if (index < 0)
-			break;
-
-		if (index >= 10 * 10 * 10)
+		if (index < 0 || index >= 10 * 10 * 10)
 			break;
 
 		std::vector<int> indices;
@@ -231,9 +233,14 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 
 		for (int pi : indices)
 		{
+			vec4 pos4(modelview_matrix * vec4(positions[pi], 1.f));
+			vec3 pos = pos4 / pos4.w();
+
 			vec3 n;
 			vec2 res;
-			if (cgv::math::ray_box_intersection(ro - positions[pi], rd, 0.5f * extent, res, n) == 0)
+
+			//if (cgv::math::ray_box_intersection(ro - positions[pi], rd, 0.5f * extent, res, n) == 0)
+			if (cgv::math::ray_box_intersection(ray_start - pos, rd, 0.5f * extent, res, n) == 0)
 				continue;
 			float param;
 			if (res[0] < 0) {
@@ -248,6 +255,8 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 				hit_param = param;
 				hit_normal = n;
 			}
+
+			std::cout << "Intersection from query ray " << ro << " = " << positions[primitive_idx] << std::endl;
 		}
 
 		break;
@@ -330,9 +339,10 @@ void cells_container::create_gui()
 		end_tree_node(brs);
 	}
 }
-void cells_container::set_inv_modelview_matrix(const mat4& inv_modelview_matrix)
+void cells_container::set_modelview_matrix(const mat4& modelview_matrix)
 {
-	this->inv_modelview_matrix = inv_modelview_matrix;
+	this->modelview_matrix = modelview_matrix;
+	this->inv_modelview_matrix = inv(modelview_matrix);
 }
 void cells_container::set_cells(const std::vector<vec3>& positions, const std::vector<rgb>& colors)
 {
@@ -340,6 +350,8 @@ void cells_container::set_cells(const std::vector<vec3>& positions, const std::v
 	this->colors = colors;
 
 	BuildRegularGridFromVertices(positions, grid);
+
+	grid.Debug();
 }
 
 void cells_container::set_clipping_planes(const std::vector<vec4>& clipping_planes)

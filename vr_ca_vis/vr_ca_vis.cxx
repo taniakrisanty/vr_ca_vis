@@ -515,7 +515,7 @@ public:
 		mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
 		mat *= cgv::math::scale4<double>(dvec3(0.01));
 
-		container->set_inv_modelview_matrix(inv(mat));
+		container->set_modelview_matrix(mat);
 
 		compute_clipping_planes();
 
