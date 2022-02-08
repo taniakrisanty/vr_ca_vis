@@ -8,18 +8,21 @@
 class model_parser
 {
 public:
-	typedef cgv::render::drawable::vec2 vec2;
 	typedef cgv::render::drawable::vec3 vec3;
+	typedef cgv::render::drawable::ivec3 ivec3;
 public:
 	model_parser() = delete;
 	model_parser(const model_parser&) = delete;
 
-	model_parser(const std::string& file_name, std::vector<unsigned int>& ids, std::vector<unsigned int>& group_ids, std::vector<vec3>& points, std::unordered_set<std::string>& types)
+	model_parser(const std::string& file_name, ivec3& extent, std::vector<unsigned int>& ids, std::vector<unsigned int>& group_ids, std::vector<vec3>& points, std::unordered_set<std::string>& types)
 	{
+		// Set lattice extent to default
+		extent.set(100, 100, 100);
+
 		// Read the xml file into a vector
 		std::ifstream file(file_name.c_str());
 		std::vector<char> buffer((std::istreambuf_iterator<char>(file)), std:: istreambuf_iterator<char>());
-		buffer.push_back('\0');
+		buffer.emplace_back('\0');
 
 		// Parse the buffer using the xml file parsing library into doc 
 		rapidxml::xml_document<>* doc = new rapidxml::xml_document<>();
@@ -29,6 +32,34 @@ public:
 		rapidxml::xml_node<>* root_node = doc->first_node("MorpheusModel");		
 		if (root_node != NULL)
 		{
+			// Check space symbol
+			rapidxml::xml_node<>* s_node = root_node->first_node("Space");
+			if (s_node != NULL &&
+			   (s_node = s_node->first_node("Lattice")) != NULL &&
+			   (s_node = s_node->first_node("Size")) != NULL)
+			{
+				std::vector<std::string> values_vector;
+
+				char* token = strtok(s_node->first_attribute("value")->value(), " ");
+
+				// Keep printing tokens while one of the
+				// delimiters present in str[].
+				while (token != NULL)
+				{
+					values_vector.push_back(token);
+					token = strtok(NULL, " ");
+				}
+
+				if (values_vector.size() == 3)
+				{
+					int x, y, z;
+					if (cgv::utils::is_integer(values_vector[0], x) && cgv::utils::is_integer(values_vector[1], y) && !cgv::utils::is_integer(values_vector[2], z))
+					{
+						extent.set(x, y, z);
+					}
+				}
+			}
+
 			// Iterate over cell populations
 			rapidxml::xml_node<>* cp_node = root_node->first_node("CellPopulations");
 			if (cp_node != NULL)
@@ -94,7 +125,7 @@ public:
 
 								group_ids.push_back(type_index);
 
-								points.push_back(vec3(float(x), float(y), float(z)));
+								points.emplace_back(float(x), float(y), float(z));
 							}
 						}
 					}

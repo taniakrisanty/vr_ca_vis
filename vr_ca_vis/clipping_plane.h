@@ -73,7 +73,7 @@ public:
 private:
 	bool draw_clipping_plane(cgv::render::context& ctx);
 	void construct_clipping_plane(std::vector<vec3>& polygon);
-	float signed_distance_from_cutting_plane(const vec3& p);
+	float signed_distance_from_clipping_plane(const vec3& p);
 };
 
 typedef cgv::data::ref_ptr<clipping_plane> clipping_plane_ptr;

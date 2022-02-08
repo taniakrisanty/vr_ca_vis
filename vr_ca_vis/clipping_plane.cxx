@@ -194,15 +194,15 @@ void clipping_plane::draw(cgv::render::context& ctx)
 	// show clipping plane
 	bool clipping_plane_drawn = false;
 
-	//ctx.push_modelview_matrix();
-	//ctx.mul_modelview_matrix(modelview_matrix);
+	ctx.push_modelview_matrix();
+	ctx.mul_modelview_matrix(modelview_matrix);
 
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	//clipping_plane_drawn = draw_clipping_plane(ctx);
-	//glDisable(GL_BLEND);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	clipping_plane_drawn = draw_clipping_plane(ctx);
+	glDisable(GL_BLEND);
 
-	//ctx.pop_modelview_matrix();
+	ctx.pop_modelview_matrix();
 
 	// show points
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
@@ -269,7 +269,7 @@ void clipping_plane::construct_clipping_plane(std::vector<vec3>& polygon)
 	 Classify the volume box corners (vertices) as inside or outside vertices.
 				   Use a unit cube for the volume box since the vertex coordinates of the unit cube
 				   correspond to the texture coordinates for the volume.
-				   You can use the signed_distance_from_cutting_plane()-method to get the
+				   You can use the signed_distance_from_clipping_plane()-method to get the
 				   distance between each box corner and the slice. Assume that outside vertices
 				   have a positive distance.*/
 
@@ -279,7 +279,7 @@ void clipping_plane::construct_clipping_plane(std::vector<vec3>& polygon)
 
 	for (int i = 0; i < 8; ++i)
 	{
-		float value = signed_distance_from_cutting_plane(corners[i]);
+		float value = signed_distance_from_clipping_plane(corners[i]);
 
 		values[i] = value;
 		corner_classifications[i] = value >= 0;
@@ -358,11 +358,11 @@ void clipping_plane::construct_clipping_plane(std::vector<vec3>& polygon)
 
 	polygon.push_back(p[0]);
 }
-float clipping_plane::signed_distance_from_cutting_plane(const vec3& p)
+float clipping_plane::signed_distance_from_clipping_plane(const vec3& p)
 {
 	/************************************************************************************
 	 The signed distance between the given point p and the slice which
-				   is defined through cutting_plane_normal and cutting_plane_distance. */
+				   is defined through clipping_plane_normal and clipping_plane_distance. */
 
 	return dot(direction, p - origin);
 }

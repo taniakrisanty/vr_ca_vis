@@ -278,12 +278,12 @@ public:
 
 					std::cout << "Grid[" << i << ", " << j << ", " << k << "]" << std::endl;
 
-					for (const vec3& p : grid[gi])
+					for (int index : grid[gi])
 					{
-						std::cout << p << std::endl;
+						std::cout << points[index] << std::endl;
 					}
 
-					std::cout << "==========" << std::endl;
+					std::cout << "===============" << std::endl;
 				}
 			}
 		}
