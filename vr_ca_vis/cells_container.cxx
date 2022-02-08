@@ -196,6 +196,8 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 	vec3 ro = ro4 / ro4.w();
 	vec3 rd = ray_direction;
 
+	primitive_idx = SIZE_MAX;
+
 	hit_param = std::numeric_limits<float>::max();
 	//for (size_t i = 0; i < positions.size(); ++i) {
 	//	vec3 n;
@@ -233,14 +235,9 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 
 		for (int pi : indices)
 		{
-			vec4 pos4(modelview_matrix * vec4(positions[pi], 1.f));
-			vec3 pos = pos4 / pos4.w();
-
 			vec3 n;
 			vec2 res;
-
-			//if (cgv::math::ray_box_intersection(ro - positions[pi], rd, 0.5f * extent, res, n) == 0)
-			if (cgv::math::ray_box_intersection(ray_start - pos, rd, 0.5f * extent, res, n) == 0)
+			if (cgv::math::ray_box_intersection(ro - positions[pi], rd, 0.5f * extent, res, n) == 0)
 				continue;
 			float param;
 			if (res[0] < 0) {
@@ -255,11 +252,30 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 				hit_param = param;
 				hit_normal = n;
 			}
-
-			std::cout << "Intersection from query ray " << ro << " = " << positions[primitive_idx] << std::endl;
 		}
 
 		break;
+	}
+
+	if (primitive_idx < SIZE_MAX)
+	{
+		vec4 pos4(modelview_matrix * vec4(positions[primitive_idx], 1.f));
+		vec3 pos = pos4 / pos4.w();
+
+		vec3 n;
+		vec2 res;
+		cgv::math::ray_box_intersection(ray_start - pos, rd, 0.5f * extent, res, n);
+		float param;
+		if (res[0] < 0)
+			param = res[1];
+		else
+			param = res[0];
+
+		hit_param = param;
+		hit_normal = n;
+
+		std::cout << "Intersection from query ray " << ray_start << " = " << pos << std::endl;
+		std::cout << "Hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
 	}
 
 	return hit_param < std::numeric_limits<float>::max();
@@ -351,7 +367,7 @@ void cells_container::set_cells(const std::vector<vec3>& positions, const std::v
 
 	BuildRegularGridFromVertices(positions, grid);
 
-	grid.Debug();
+	//grid.Debug();
 }
 
 void cells_container::set_clipping_planes(const std::vector<vec4>& clipping_planes)
