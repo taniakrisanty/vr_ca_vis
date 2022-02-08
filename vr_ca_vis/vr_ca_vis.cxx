@@ -101,8 +101,13 @@ protected:
 
 	// clipping plane
 	int temp_clipping_plane_idx = -1;
+	// clipping planes that are sent to clipped_box geometry shader, with its origin in the range of [0, 100)
 	std::vector<vec4> clipping_planes;
 	std::vector<std::pair<vec3, vec3>> clip_planes;
+
+	// extent
+	ivec3 extent;
+	dvec3 extent_scale;
 
 	// visible data
 	std::vector<vec3> visible_points;
@@ -131,6 +136,7 @@ protected:
 
 	std::string dir_name;
 	std::string file_name;
+
 	// render parameters
 	bool use_boxes;
 	vec3 box_extent;
@@ -216,7 +222,8 @@ public:
 					times.push_back(float(time));
 				}
 
-				model_parser parser(file_name, ids, group_indices, points, types);
+				model_parser parser(file_name, extent, ids, group_indices, points, types);
+				extent_scale = dvec3(1.0 / extent.x(), 1.0 / extent.y(), 1.0 / extent.z());
 			}
 
 			visible_points.reserve(points.size());
@@ -513,7 +520,7 @@ public:
 			mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
 		mat *= cgv::math::scale4<double>(dvec3(scale));
 		mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
-		mat *= cgv::math::scale4<double>(dvec3(0.01));
+		mat *= cgv::math::scale4<double>(extent_scale);
 
 		container->set_modelview_matrix(mat);
 
@@ -531,7 +538,15 @@ public:
 		}
 		else
 		{
-			clipping_plane_objects.back()->set_modelview_matrix(inv(mat));
+			mat4 m;
+			m.identity();
+
+			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+				m *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
+			m *= cgv::math::scale4<double>(dvec3(scale));
+			m *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+
+			clipping_plane_objects.back()->set_modelview_matrix(inv(mat) * m);
 			clipping_plane_objects.back()->set_origin_and_direction(clip_planes[0].first, clip_planes[0].second);
 		}
 	}
@@ -644,7 +659,7 @@ public:
 	}
 	void finish_frame(cgv::render::context& ctx)
 	{
-		bool clipping_plane_drawn = false;
+		bool clipping_plane_drawn = true;
 
 		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
 		{
@@ -658,7 +673,7 @@ public:
 
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			clipping_plane_drawn = draw_clipping_plane(ctx);
+			//clipping_plane_drawn = draw_clipping_plane(ctx);
 			glDisable(GL_BLEND);
 
 			ctx.pop_modelview_matrix();
@@ -692,7 +707,8 @@ public:
 
 			draw_box(ctx);
 
-			ctx.mul_modelview_matrix(cgv::math::scale4<double>(dvec3(0.01)));
+			ctx.mul_modelview_matrix(cgv::math::scale4<double>(extent_scale));
+			
 			if (blend) {
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -890,11 +906,11 @@ public:
 		}
 	}
 	///
-	float signed_distance_from_cutting_plane(const vec3& p)
+	float signed_distance_from_clipping_plane(const vec3& p)
 	{
 		/************************************************************************************
 		 The signed distance between the given point p and the slice which
-					   is defined through cutting_plane_normal and cutting_plane_distance. */
+					   is defined through clipping_plane_normal and clipping_plane_distance. */
 
 		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
 		{
@@ -943,7 +959,7 @@ public:
 		 Classify the volume box corners (vertices) as inside or outside vertices.
 					   Use a unit cube for the volume box since the vertex coordinates of the unit cube
 					   correspond to the texture coordinates for the volume.
-					   You can use the signed_distance_from_cutting_plane()-method to get the
+					   You can use the signed_distance_from_clipping_plane()-method to get the
 					   distance between each box corner and the slice. Assume that outside vertices
 					   have a positive distance.*/
 
@@ -953,7 +969,7 @@ public:
 
 		for (int i = 0; i < 8; ++i)
 		{
-			float value = signed_distance_from_cutting_plane(corners[i]);
+			float value = signed_distance_from_clipping_plane(corners[i]);
 
 			values[i] = value;
 			corner_classifications[i] = value >= 0;
@@ -1059,7 +1075,7 @@ public:
 				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
 			mat *= cgv::math::scale4<double>(dvec3(scale));
 			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
-			mat *= cgv::math::scale4<double>(dvec3(0.01));
+			mat *= cgv::math::scale4<double>(extent_scale);
 
 			//mat = inv(mat);
 
@@ -1130,14 +1146,13 @@ public:
 				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
 			mat *= cgv::math::scale4<double>(dvec3(scale));
 			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
-			//mat *= cgv::math::scale4<double>(dvec3(0.01));
-
+			
 			vec4 o4(inv(mat) * vec4(control_origin, 1.f));
 			vec3 o(o4 / o4.w());
 
 			clip_planes = { std::make_pair(o, control_direction) };
 
-			mat *= cgv::math::scale4<double>(dvec3(0.01));
+			mat *= cgv::math::scale4<double>(extent_scale);
 
 			vec4 origin4(inv(mat) * vec4(control_origin, 1.f));
 			vec3 origin(origin4 / origin4.w());
