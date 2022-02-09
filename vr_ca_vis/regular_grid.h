@@ -105,14 +105,8 @@ public:
 		cellExtents[0] = cellExtents[1] = cellExtents[2] = cellExtent;
 	}
 
-	//~regular_grid()
-	//{
-	//	delete[] grid;
-	//}
-
 	void clear()
 	{
-		//memset(grid, 0, dimension * dimension * dimension);
 		if (grid) delete[] grid;
 		if (visited_statuses) delete[] visited_statuses;
 
@@ -123,6 +117,8 @@ public:
 
 	void setPoints(const std::vector<vec3>& points)
 	{
+		clear();
+
 		this->points = points;
 	}
 
@@ -203,7 +199,7 @@ public:
 				ivec3(ci.x(), ci.y(), ci.z() + 1)	// front
 			};
 
-			for (ivec3 cell_index : cis)
+			for (const ivec3& cell_index : cis)
 			{
 				gi = CellIndexToGridIndex(cell_index);
 
