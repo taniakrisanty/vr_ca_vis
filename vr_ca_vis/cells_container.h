@@ -76,9 +76,9 @@ public:
 
 	void create_gui();
 
-	void set_modelview_matrix(const mat4& modelview_matrix);
-	void set_cells(const std::vector<vec3>& positions, const std::vector<rgb>& colors);
-	void set_clipping_planes(const std::vector<vec4>& clipping_planes);
+	void set_modelview_matrix(const mat4& _modelview_matrix);
+	void set_cells(const std::vector<vec3>& _positions, const std::vector<rgb>& _colors);
+	void set_clipping_planes(const std::vector<vec4>& _clipping_planes);
 };
 
 typedef cgv::data::ref_ptr<cells_container> cells_container_ptr;

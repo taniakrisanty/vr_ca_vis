@@ -1,6 +1,7 @@
 // This source code is adapted from simple_primitive_container in vr_lab_test plugin
 
 #include "cells_container.h"
+#include <cgv/math/ftransform.h>
 #include <cgv/math/proximity.h>
 #include <cgv/math/intersection.h>
 
@@ -295,6 +296,9 @@ void cells_container::clear(cgv::render::context& ctx)
 }
 void cells_container::draw(cgv::render::context& ctx)
 {
+	ctx.push_modelview_matrix();
+	ctx.mul_modelview_matrix(cgv::math::scale4<double>(0.01f));
+
 	for (int i = 0; i < clipping_planes.size(); ++i)
 		glEnable(GL_CLIP_DISTANCE0 + i);
 
@@ -320,6 +324,8 @@ void cells_container::draw(cgv::render::context& ctx)
 
 	for (int i = 0; i < clipping_planes.size(); ++i)
 		glDisable(GL_CLIP_DISTANCE0 + i);
+
+	ctx.pop_modelview_matrix();
 
 	// show points
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
@@ -355,22 +361,22 @@ void cells_container::create_gui()
 		end_tree_node(brs);
 	}
 }
-void cells_container::set_modelview_matrix(const mat4& modelview_matrix)
+void cells_container::set_modelview_matrix(const mat4& _modelview_matrix)
 {
-	this->modelview_matrix = modelview_matrix;
-	this->inv_modelview_matrix = inv(modelview_matrix);
+	modelview_matrix = _modelview_matrix * cgv::math::scale4<double>(0.01f);
+	inv_modelview_matrix = inv(modelview_matrix);
 }
-void cells_container::set_cells(const std::vector<vec3>& positions, const std::vector<rgb>& colors)
+void cells_container::set_cells(const std::vector<vec3>& _positions, const std::vector<rgb>& _colors)
 {
-	this->positions = positions;
-	this->colors = colors;
+	positions = _positions;
+	colors = _colors;
 
 	BuildRegularGridFromVertices(positions, grid);
 
 	//grid.Debug();
 }
 
-void cells_container::set_clipping_planes(const std::vector<vec4>& clipping_planes)
+void cells_container::set_clipping_planes(const std::vector<vec4>& _clipping_planes)
 {
-	this->clipping_planes = clipping_planes;
+	clipping_planes = _clipping_planes;
 }
