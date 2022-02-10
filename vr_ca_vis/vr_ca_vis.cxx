@@ -230,8 +230,12 @@ public:
 					times.push_back(float(time));
 				}
 
+				size_t previous_num_points = points.size();
+
 				model_parser parser(file_name, extent, ids, group_indices, points, types);
 				extent_scale = dvec3(1.0 / extent.x(), 1.0 / extent.y(), 1.0 / extent.z());
+
+				std::cout << "read " << file_name << " with " << points.size() - previous_num_points << " points" << std::endl;
 			}
 
 			visible_points.reserve(points.size());
@@ -889,7 +893,6 @@ public:
 			visible_types.clear();
 			visible_colors.clear();
 
-			/*
 			uint64_t start = time_step_start[time_step];
 			uint64_t end = (time_step + 1 == time_step_start.size() ? points.size() : time_step_start[time_step + 1]);
 
@@ -900,11 +903,6 @@ public:
 			{
 				visible_colors.push_back(group_colors[group_indices[i]]);
 			}
-			*/
-
-			visible_points.push_back(vec3(50));
-			visible_types.push_back(1);
-			visible_colors.push_back(rgb(0.f, 1.f, 1.f));
 		}
 	}
 	void compute_clipping_planes()
