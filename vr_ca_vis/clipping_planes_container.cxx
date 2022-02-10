@@ -1,4 +1,4 @@
-// This source code is adapted from simple_object in vr_lab_test plugin
+// This source code is adapted from simple_primitive_container in vr_lab_test plugin
 
 #include "clipping_planes_container.h"
 #include <cgv/math/proximity.h>
@@ -31,7 +31,7 @@ clipping_planes_container::clipping_planes_container(const std::string& name)
 }
 std::string clipping_planes_container::get_type_name() const
 {
-	return "clipping planes_container";
+	return "clipping_planes_container";
 }
 void clipping_planes_container::on_set(void* member_ptr)
 {
@@ -68,7 +68,7 @@ bool clipping_planes_container::focus_change(cgv::nui::focus_change_action actio
 }
 void clipping_planes_container::stream_help(std::ostream& os)
 {
-	os << "clipping_plane: grab and point at it" << std::endl;
+	os << "clipping_planes_container: grab and point at it" << std::endl;
 }
 bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request)
 {
@@ -199,8 +199,8 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 	size_t num_clipping_planes = origins.size();
 	if (num_clipping_planes > 0)
 	{
-		ctx.push_modelview_matrix();
-		ctx.mul_modelview_matrix(modelview_matrix);
+		//ctx.push_modelview_matrix();
+		//ctx.mul_modelview_matrix(modelview_matrix);
 
 		for (int i = 0; i < num_clipping_planes; ++i)
 		{
@@ -212,7 +212,7 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 			glDisable(GL_BLEND);
 		}
 
-		ctx.pop_modelview_matrix();
+		//ctx.pop_modelview_matrix();
 	}
 
 	// show points
@@ -398,10 +398,10 @@ void clipping_planes_container::create_gui()
 		end_tree_node(srs);
 	}
 }
-void clipping_planes_container::set_modelview_matrix(const mat4& modelview_matrix)
-{
-	this->modelview_matrix = modelview_matrix;
-}
+//void clipping_planes_container::set_modelview_matrix(const mat4& modelview_matrix)
+//{
+//	this->modelview_matrix = modelview_matrix;
+//}
 void clipping_planes_container::create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color)
 {
 	origins.emplace_back(origin);

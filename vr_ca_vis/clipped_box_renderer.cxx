@@ -23,7 +23,7 @@ void clipped_box_renderer::set_clipping_planes(const std::vector<vec4>& _clippin
 	num_clipping_planes = _clipping_planes.size() > MAX_CLIPPING_PLANES ? MAX_CLIPPING_PLANES : _clipping_planes.size();
 	std::copy(_clipping_planes.begin(), _clipping_planes.begin() + num_clipping_planes, clipping_planes);
 }
-/// build box program
+/// build clipped box program
 bool clipped_box_renderer::build_shader_program(cgv::render::context& ctx, cgv::render::shader_program& prog, const cgv::render::shader_define_map& defines)
 {
 	return prog.build_program(ctx, "clipped_box.glpr", true, defines);
