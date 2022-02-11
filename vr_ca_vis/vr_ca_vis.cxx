@@ -746,7 +746,7 @@ public:
 				switch (vrke.get_key()) {
 					// remove clipping plane
 				case vr::VR_MENU:
-					clipping_plane_grabbbed = false;
+					//clipping_plane_grabbbed = false;
 					return true;
 				}
 			}
@@ -962,7 +962,7 @@ public:
 			shader_clipping_planes.emplace_back(shader_clipping_planes[temp_clipping_plane_idx]);
 		}
 
-		clipping_plane_grabbbed = false;
+		//clipping_plane_grabbbed = false;
 	}
 	void reset_clipping_plane()
 	{
