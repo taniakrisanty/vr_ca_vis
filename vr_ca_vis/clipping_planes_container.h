@@ -36,7 +36,9 @@ public:
 	};
 
 protected:
-	//mat4 modelview_matrix;
+	mat4 modelview_matrix;
+	// inv_modelview_matrix is used to prevent expensive transformation of all clipping planes to lab coordinate
+	mat4 inv_modelview_matrix;
 
 	// geometry of clipping planes with color
 
@@ -70,7 +72,7 @@ public:
 
 	void create_gui();
 
-	//void set_modelview_matrix(const mat4& modelview_matrix);
+	void set_modelview_matrix(const mat4& _modelview_matrix);
 	void create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
 	void copy_clipping_plane(size_t index, const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
 	void delete_clipping_plane(size_t index, size_t count = 1);

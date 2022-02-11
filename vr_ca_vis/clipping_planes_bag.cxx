@@ -23,8 +23,8 @@ clipping_planes_bag::rgb clipping_planes_bag::get_modified_color(const rgb& colo
 	}
 	return mod_col;
 }
-clipping_planes_bag::clipping_planes_bag(const std::string& _name, const vec3& _position, const rgb& _color, const vec3& _extent, const quat& _rotation)
-	: cgv::base::node(_name), position(_position), color(_color), extent(_extent), rotation(_rotation)
+clipping_planes_bag::clipping_planes_bag(clipping_planes_bag_listener* _listener, const std::string& _name, const vec3& _position, const rgb& _color, const vec3& _extent, const quat& _rotation)
+	: cgv::base::node(_name), listener(_listener), position(_position), color(_color), extent(_extent), rotation(_rotation)
 {
 	debug_point = position + 0.5f * extent;
 	brs.rounding = true;
@@ -86,10 +86,11 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 		if (pressed) {
 			state = state_enum::grabbed;
 			on_set(&state);
-			drag_begin(request, false, original_config);
-		}
-		else {
-			drag_end(request, original_config);
+			grab_clipping_plane();
+		//	drag_begin(request, false, original_config);
+		//}
+		//else {
+		//	drag_end(request, original_config);
 			state = state_enum::close;
 			on_set(&state);
 		}
@@ -115,10 +116,11 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 		if (pressed) {
 			state = state_enum::triggered;
 			on_set(&state);
-			drag_begin(request, true, original_config);
-		}
-		else {
-			drag_end(request, original_config);
+			grab_clipping_plane();
+		//	drag_begin(request, true, original_config);
+		//}
+		//else {
+		//	drag_end(request, original_config);
 			state = state_enum::pointed;
 			on_set(&state);
 		}
@@ -147,6 +149,9 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 }
 bool clipping_planes_bag::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
 {
+	// point, prj_point, and prj_normal are in lab coordinate
+	// position is in body coordinate
+
 	vec4 position_in_lab4(modelview_matrix * vec4(position, 1.f));
 	vec3 position_in_lab(position_in_lab4 / position_in_lab4.w());
 
@@ -160,6 +165,9 @@ bool clipping_planes_bag::compute_closest_point(const vec3& point, vec3& prj_poi
 }
 bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
+	// point, prj_point, and prj_normal are in lab coordinate
+	// position is in body coordinate
+
 	vec4 position_in_lab4(modelview_matrix * vec4(position, 1.f));
 	vec3 position_in_lab(position_in_lab4 / position_in_lab4.w());
 
@@ -219,6 +227,7 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
+	rgb color(0.5f, 0.5f, 0.5f);
 	sr.set_color_array(ctx, &color, 1);
 	sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
@@ -247,7 +256,12 @@ void clipping_planes_bag::create_gui()
 		end_tree_node(brs);
 	}
 }
-void clipping_planes_bag::set_modelview_matrix(const mat4& modelview_matrix)
+void clipping_planes_bag::set_modelview_matrix(const mat4& _modelview_matrix)
 {
-	this->modelview_matrix = modelview_matrix;
+	modelview_matrix = _modelview_matrix;
+}
+void clipping_planes_bag::grab_clipping_plane()
+{
+	if (listener)
+		listener->on_clipping_plane_grabbed();
 }

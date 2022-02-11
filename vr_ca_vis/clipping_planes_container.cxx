@@ -147,41 +147,83 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 }
 bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
 {
+	// point, prj_point, and prj_normal are in lab coordinate
+	// origins are in box coordinate
+
+	vec4 point_in_box4(inv_modelview_matrix * vec4(point, 1.f));
+	vec3 point_in_box(point_in_box4 / point_in_box4.w());
+
 	float min_dist = std::numeric_limits<float>::max();
-	vec3 q, n;
+
+	vec3 q;
 	for (size_t i = 0; i < origins.size(); ++i) {
-		cgv::math::closest_point_on_sphere_to_point(origins[i], 0.1f, point, q, n);
-		float dist = (point - q).length();
+		cgv::math::closest_point_on_circle_to_point(origins[i], directions[i], 1.f, point_in_box, q);
+		// sqr_length is sufficient for the first pass (in box)
+		float dist = (point_in_box - q).sqr_length();
 		if (dist < min_dist) {
 			primitive_idx = i;
-			prj_point = q;
-			prj_normal = n;
 			min_dist = dist;
 		}
 	}
+
+	if (min_dist < std::numeric_limits<float>::max()) {
+		vec4 origin_in_lab4(modelview_matrix * vec4(origins[primitive_idx], 1.f));
+		vec3 origin_in_lab(origin_in_lab4 / origin_in_lab4.w());
+
+		cgv::math::closest_point_on_circle_to_point(origin_in_lab, directions[primitive_idx], 0.1f, point, q);
+		// length is required for the second pass (in lab)
+		float dist = (point - q).length();
+		prj_point = q;
+		prj_normal = directions[primitive_idx];
+		min_dist = dist;
+	}
+
 	return min_dist < std::numeric_limits<float>::max();
 }
 bool clipping_planes_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
-	//vec3 ro = ray_start - origin;
-	//vec3 rd = ray_direction;
-	//rotation.inverse_rotate(ro);
-	//rotation.inverse_rotate(rd);
-	//vec3 n;
-	//vec2 res;
-	//if (cgv::math::ray_box_intersection(ro, rd, 0.5f * vec3(1.0), res, n) == 0)
-	//	return false;
-	//if (res[0] < 0) {
-	//	if (res[1] < 0)
-	//		return false;
-	//	hit_param = res[1];
-	//}
-	//else {
-	//	hit_param = res[0];
-	//}
-	//hit_normal = n;
-	//rotation.rotate(n);
+	// ray_start and ray_direction are in lab coordinate
+	// origins are in box coordinate
+
+	vec4 ray_start_in_box4(inv_modelview_matrix * vec4(ray_start, 1.f));
+	vec3 ray_start_in_box(ray_start_in_box4 / ray_start_in_box4.w());
+
 	hit_param = std::numeric_limits<float>::max();
+
+	vec3 n;
+	vec2 res;
+	for (size_t i = 0; i < origins.size(); ++i) {
+		if (cgv::math::ray_box_intersection(ray_start_in_box - origins[i], ray_direction, 0.5f * vec3(1.f), res, n) == 0)
+			continue;
+		float param;
+		if (res[0] < 0) {
+			if (res[1] < 0)
+				continue;
+			param = res[1];
+		}
+		else
+			param = res[0];
+		if (param < hit_param) {
+			primitive_idx = i;
+			hit_param = param;
+		}
+	}
+
+	if (hit_param < std::numeric_limits<float>::max()) {
+		vec4 origin_in_lab4(modelview_matrix * vec4(origins[primitive_idx], 1.f));
+		vec3 origin_in_lab(origin_in_lab4 / origin_in_lab4.w());
+
+		cgv::math::ray_box_intersection(ray_start - origin_in_lab, ray_direction, 0.5f * vec3(1.f), res, n);
+		float param;
+		if (res[0] < 0)
+			param = res[1];
+		else
+			param = res[0];
+		
+		hit_param = param;
+		hit_normal = n;
+	}
+
 	return hit_param < std::numeric_limits<float>::max();
 }
 bool clipping_planes_container::init(cgv::render::context& ctx)
@@ -196,13 +238,17 @@ void clipping_planes_container::clear(cgv::render::context& ctx)
 void clipping_planes_container::draw(cgv::render::context& ctx)
 {
 	// show clipping planes
-	size_t num_clipping_planes = origins.size();
-	if (num_clipping_planes > 0)
+	if (!origins.empty())
 	{
-		//ctx.push_modelview_matrix();
-		//ctx.mul_modelview_matrix(modelview_matrix);
+		// save previous blend configuration
+		GLboolean blend;
+		glGetBooleanv(GL_BLEND, &blend);
 
-		for (int i = 0; i < num_clipping_planes; ++i)
+		GLint blend_src, blend_dst;
+		glGetIntegerv(GL_BLEND_SRC_ALPHA, &blend_src);
+		glGetIntegerv(GL_BLEND_DST_ALPHA, &blend_dst);
+
+		for (int i = 0; i < origins.size(); ++i)
 		{
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -212,7 +258,13 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 			glDisable(GL_BLEND);
 		}
 
-		//ctx.pop_modelview_matrix();
+		// restore previous blend configuration
+		if (blend)
+			glEnable(GL_BLEND);
+		else
+			glDisable(GL_BLEND);
+
+		glBlendFunc(blend_src, blend_dst);
 	}
 
 	// show points
@@ -398,10 +450,11 @@ void clipping_planes_container::create_gui()
 		end_tree_node(srs);
 	}
 }
-//void clipping_planes_container::set_modelview_matrix(const mat4& modelview_matrix)
-//{
-//	this->modelview_matrix = modelview_matrix;
-//}
+void clipping_planes_container::set_modelview_matrix(const mat4& _modelview_matrix)
+{
+	modelview_matrix = _modelview_matrix;
+	inv_modelview_matrix = inv(modelview_matrix);
+}
 void clipping_planes_container::create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color)
 {
 	origins.emplace_back(origin);

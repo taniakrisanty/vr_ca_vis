@@ -49,7 +49,8 @@ class vr_ca_vis :
 	public cgv::gui::event_handler,
 	public cgv::gui::provider,
 	public vr::vr_tool,
-	public cae::binary_file
+	public cae::binary_file,
+	public clipping_planes_bag_listener
 {
 public:
 	typedef cgv::render::drawable::vec2 vec2;
@@ -99,6 +100,8 @@ protected:
 	std::vector<rgba8> colors;
 
 	// clipping plane
+	bool clipping_plane_grabbbed;
+	// index of temporary clipping plane in clipping planes container
 	int temp_clipping_plane_idx = -1;
 	// clipping planes that are sent to cells container, to be used by clipped_box geometry shader, in the form of ax + by + cz + d = 0
 	std::vector<vec4> shader_clipping_planes;
@@ -419,8 +422,11 @@ public:
 		clipping_planes_ctr = new clipping_planes_container("Clipping Planes");
 		append_child(clipping_planes_ctr);
 
-		clipping_planes_b = new clipping_planes_bag("Clipping Planes Bag", vec3(0.5f, -0.5f, -0.1f));
+		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.5f, -0.5f, -0.1f));
 		append_child(clipping_planes_b);
+
+		// clipping plane
+		clipping_plane_grabbbed = true;
 
 		// GUI
 		li_stats = -1;
@@ -527,50 +533,43 @@ public:
 			cells_ctr->set_cells(visible_points, visible_colors);
 		}
 
-		mat4 mat;
-		mat.identity();
+		if (clipping_plane_grabbbed)
+			compute_clipping_planes();
+
+		mat4 mv;
+		mv.identity();
 
 		if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-			mat *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_TABLE));
-		mat *= cgv::math::scale4<double>(dvec3(scale));
-		mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+			mv *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_TABLE));
+		mv *= cgv::math::scale4<double>(dvec3(scale));
+		mv *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
 
-		compute_clipping_planes();
+		// mv is required for calculating the actual mv matrix used by the cells, that is mv multiplied by cells scaling factor
+		// inverse of the actual mv used by the cells is required to transform the point and ray to cells coordinate
+		cells_ctr->set_modelview_matrix(mv);
+		cells_ctr->set_clipping_planes(shader_clipping_planes);
 
-		{
-			cells_ctr->set_modelview_matrix(mat);
-			cells_ctr->set_clipping_planes(shader_clipping_planes);
-		}
+		mat4 inv_mv = inv(mv);
 
-		mat4 inv_mat = inv(mat);
+		//clipping_planes_ctr->set_modelview_matrix(inv_mat * m);
 
-		// draw clipping planes inside the wireframe box
-		{
-			//mat4 m;
-			//m.identity();
+		clipping_planes_ctr->set_modelview_matrix(mv);
 
-			//if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-			//	m *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_TABLE));
-			//m *= cgv::math::scale4<double>(dvec3(scale));
-			//m *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+		mat4 t;
+		t.identity();
 
-			//clipping_planes_ctr->set_modelview_matrix(inv_mat * m);
-		}
+		if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_HEAD))
+			t *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_HEAD));
 
-		// draw clipping planes bag on the right side of user's body
-		{
-			mat4 m;
-			m.identity();
+		t.set_col(0, vec4(1, 0, 0, 0));
+		t.set_col(1, vec4(0, 1, 0, 0));
+		t.set_col(2, vec4(0, 0, 1, 0));
 
-			if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_HEAD))
-				m *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_HEAD));
-
-			m.set_col(0, vec4(1, 0, 0, 0));
-			m.set_col(1, vec4(0, 1, 0, 0));
-			m.set_col(2, vec4(0, 0, 1, 0));
-
-			clipping_planes_b->set_modelview_matrix(inv_mat * m);
-		}
+		// inv_mv is required for undoing the transformation done by vr_ca_vis
+		// which is done under the assumption that all "children" of vr_ca_vis is inside the box above the table
+		// whereas the clipping planes bag is located on the right side of the user's body
+		// hence the model view matrix for the bag will be inv_mv multiplied by user's translation
+		clipping_planes_b->set_modelview_matrix(inv_mv * t);
 	}
 	void clear(cgv::render::context& ctx)
 	{
@@ -646,7 +645,7 @@ public:
 			return;
 
 		// TODO: draw infinite clipping plane (as a disc) only when outside of wireframe box
-		if (temp_clipping_plane_idx == -1 && scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
+		if (clipping_plane_grabbbed && temp_clipping_plane_idx == -1 && scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
 		{
 			ctx.push_modelview_matrix();
 			ctx.mul_modelview_matrix(pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_RIGHT_CONTROLLER)));
@@ -659,7 +658,7 @@ public:
 
 		// draw information about clipping planes
 		if (li_stats == -1) {
-			li_stats = scene_ptr->add_label("Clipping Planes: 8/" + std::to_string(clipped_box_renderer::MAX_CLIPPING_PLANES), stats_bgclr);
+			li_stats = scene_ptr->add_label("Clipping Planes: " + std::to_string(clipped_box_renderer::MAX_CLIPPING_PLANES - clipping_planes.size()) + "/" + std::to_string(clipped_box_renderer::MAX_CLIPPING_PLANES), stats_bgclr);
 			scene_ptr->fix_label_size(li_stats);
 			scene_ptr->place_label(li_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), vr::vr_scene::CS_LEFT_CONTROLLER, vr::vr_scene::LA_TOP);
 		}
@@ -698,8 +697,6 @@ public:
 	}
 	void finish_draw(cgv::render::context& ctx)
 	{
-		// TODO: need to check CS_TABLE coordinate?
-
 		if (blend)
 			glDisable(GL_BLEND);
 
@@ -721,11 +718,11 @@ public:
 			if (vrke.get_controller_index() == 0) { // only left controller
 				if (vrke.get_action() != cgv::gui::KA_RELEASE) {
 					switch (vrke.get_key()) {
-					// put current clipping plane permanently
+						// put current clipping plane permanently
 					case vr::VR_DPAD_LEFT:
 						set_clipping_plane();
 						return true;
-					// forward
+						// forward
 					case vr::VR_DPAD_RIGHT:
 						if (time_step + 1 < times.size())
 							time_step += 1;
@@ -738,7 +735,7 @@ public:
 				}
 				else {
 					switch (vrke.get_key()) {
-					// toggle help
+						// toggle help
 					case vr::VR_MENU:
 						li_visible = !li_visible;
 						return true;
@@ -746,13 +743,17 @@ public:
 				}
 			}
 			else if (vrke.get_controller_index() == 1) { // only right controller
-
+				switch (vrke.get_key()) {
+					// remove clipping plane
+				case vr::VR_MENU:
+					clipping_plane_grabbbed = false;
+					return true;
+				}
 			}
 			break;
 		}
-
-		return false;
 		}
+		return false;
 	}
 	bool handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request)
 	{
@@ -960,6 +961,8 @@ public:
 
 			shader_clipping_planes.emplace_back(shader_clipping_planes[temp_clipping_plane_idx]);
 		}
+
+		clipping_plane_grabbbed = false;
 	}
 	void reset_clipping_plane()
 	{
@@ -978,6 +981,14 @@ public:
 
 			temp_clipping_plane_idx = 0;
 		}
+	}
+	// listener for clipping plane grab event
+	void on_clipping_plane_grabbed()
+	{
+		if (clipping_plane_grabbbed || clipping_planes.size() == clipped_box_renderer::MAX_CLIPPING_PLANES)
+			return;
+
+		clipping_plane_grabbbed = true;
 	}
 };
 

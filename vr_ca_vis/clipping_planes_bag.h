@@ -11,6 +11,12 @@
 #include <cgv_gl/box_renderer.h>
 #include <cgv_gl/sphere_renderer.h>
 
+class clipping_planes_bag_listener
+{
+public:
+	virtual void on_clipping_plane_grabbed() = 0;
+};
+
 class clipping_planes_bag :
 	public cgv::base::node,
 	public cgv::render::drawable,
@@ -37,6 +43,8 @@ public:
 	};
 
 protected:
+	clipping_planes_bag_listener* listener;
+
 	mat4 modelview_matrix;
 
 	// geometry of box with color
@@ -53,7 +61,7 @@ protected:
 	/// return color modified based on state
 	rgb get_modified_color(const rgb& color) const;
 public:
-	clipping_planes_bag(const std::string& _name, const vec3& _position, const rgb& _color = rgb(0.5f, 0.5f, 0.5f), const vec3& _extent = vec3(0.3f, 0.2f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
+	clipping_planes_bag(clipping_planes_bag_listener *_listener, const std::string& _name, const vec3& _position, const rgb& _color = rgb(1.f, 1.f, 0.f), const vec3& _extent = vec3(0.5f, 0.5f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
 	std::string get_type_name() const;
 	void on_set(void* member_ptr);
 
@@ -70,7 +78,9 @@ public:
 
 	void create_gui();
 
-	void set_modelview_matrix(const mat4& modelview_matrix);
+	void set_modelview_matrix(const mat4& _modelview_matrix);
+private:
+	void grab_clipping_plane();
 };
 
 typedef cgv::data::ref_ptr<clipping_planes_bag> clipping_planes_bag_ptr;

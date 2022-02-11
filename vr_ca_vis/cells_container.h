@@ -44,6 +44,7 @@ protected:
 	quat rotation;
 
 	mat4 modelview_matrix;
+	// inv_modelview_matrix is used to prevent expensive transformation of all cells to lab coordinate
 	mat4 inv_modelview_matrix;
 
 	std::vector<vec3> positions;
