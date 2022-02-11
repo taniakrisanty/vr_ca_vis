@@ -395,10 +395,12 @@ float clipping_planes_container::signed_distance_from_clipping_plane(size_t inde
 }
 void clipping_planes_container::create_gui()
 {
-	add_decorator(get_name(), "heading", "level=2");
+	if (origins.empty())
+		return;
+
 	for (int i = 0; i < origins.size(); ++i)
 	{
-		if (begin_tree_node("Clipping plane " + i, origins[i])) {
+		if (begin_tree_node("Clipping plane " + std::to_string(i), origins[i])) {
 			add_member_control(this, "color", colors[i]);
 			//add_member_control(this, "origin_x", origin[0], "value_slider", "ticks=true;min=0;max=1;log=true");
 			//add_member_control(this, "origin_y", origin[1], "value_slider", "ticks=true;min=0;max=1;log=true");
@@ -407,13 +409,13 @@ void clipping_planes_container::create_gui()
 		}
 	}
 
-	add_gui("rotation", rotation, "direction", "options='min=-1;max=1;ticks=true'");
-	if (begin_tree_node("style", srs)) {
-		align("\a");
-		add_gui("srs", srs);
-		align("\b");
-		end_tree_node(srs);
-	}
+	//add_gui("rotation", rotation, "direction", "options='min=-1;max=1;ticks=true'");
+	//if (begin_tree_node("style", srs)) {
+	//	align("\a");
+	//	add_gui("srs", srs);
+	//	align("\b");
+	//	end_tree_node(srs);
+	//}
 }
 void clipping_planes_container::create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color)
 {

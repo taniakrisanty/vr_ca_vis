@@ -847,12 +847,12 @@ public:
 		//	align("\b");
 		//	end_tree_node(cells_ctr);
 		//}
-		//if (begin_tree_node("Clipping Planes", clipping_planes_ctr)) {
-		//	align("\a");
-		//	inline_object_gui(clipping_planes_ctr);
-		//	align("\b");
-		//	end_tree_node(clipping_planes_ctr);
-		//}
+		if (begin_tree_node("Clipping Planes", clipping_planes_ctr)) {
+			align("\a");
+			inline_object_gui(clipping_planes_ctr);
+			align("\b");
+			end_tree_node(clipping_planes_ctr);
+		}
 	}
 	/// compute visible points, i.e. points that are past the cutting plane in the direction of the controller
 	void compute_visible_points()
@@ -974,6 +974,7 @@ public:
 				return;
 
 			clipping_planes_ctr->create_clipping_plane(o, control_direction);
+			post_recreate_gui();
 
 			mat *= cgv::math::scale4<double>(extent_scale);
 
@@ -983,6 +984,8 @@ public:
 			temp_clipping_plane_idx = shader_clipping_planes.size();
 			shader_clipping_planes.emplace_back(control_direction, -dot(origin, control_direction));
 		}
+
+		post_recreate_gui();
 	}
 	void set_clipping_plane()
 	{
