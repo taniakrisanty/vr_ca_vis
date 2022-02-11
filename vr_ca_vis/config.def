@@ -118,3 +118,7 @@ type(vr_view_interactor):view_dir_z=-0.8666
 type(vr_view_interactor):up_dir_x=0.0
 type(vr_view_interactor):up_dir_y=1.0
 type(vr_view_interactor):up_dir_z=0.0
+
+/********** vr_interactor **********/
+
+type(vr_screen):enabled=false
