@@ -12,6 +12,12 @@
 #include "regular_grid.h"
 #include "clipped_box_renderer.h"
 
+class cells_container_listener
+{
+public:
+	virtual void on_cell_grabbed(size_t index) = 0;
+};
+
 class cells_container :
 	public cgv::base::node,
 	public cgv::render::drawable,
@@ -36,6 +42,8 @@ public:
 		triggered
 	};
 protected:
+	cells_container_listener* listener;
+
 	// acceleration data structure
 	regular_grid grid;
 
@@ -43,9 +51,9 @@ protected:
 	vec3 extent;
 	quat rotation;
 
-	mat4 modelview_matrix;
-	// inv_modelview_matrix is used to prevent expensive transformation of all cells to lab coordinate
-	mat4 inv_modelview_matrix;
+	mat4 scale_matrix;
+	// inv_scale_matrix is used to prevent expensive scaling of all cells
+	mat4 inv_scale_matrix;
 
 	std::vector<vec3> positions;
 	//std::vector<float> radii;
@@ -60,7 +68,7 @@ protected:
 	/// return color modified based on state
 	rgb get_modified_color(const rgb& color) const;
 public:
-	cells_container(const std::string& _name, const vec3& _extent = vec3(1.f, 1.f, 1.f), const quat& _rotation = quat(1, 0, 0, 0));
+	cells_container(cells_container_listener* _listener, const std::string& _name, const vec3& _extent = vec3(1.f, 1.f, 1.f), const quat& _rotation = quat(1, 0, 0, 0));
 	std::string get_type_name() const;
 	void on_set(void* member_ptr);
 
@@ -77,9 +85,11 @@ public:
 
 	void create_gui();
 
-	void set_modelview_matrix(const mat4& _modelview_matrix);
+	void set_scale_matrix(const mat4& _scale_matrix);
 	void set_cells(const std::vector<vec3>& _positions, const std::vector<rgb>& _colors);
 	void set_clipping_planes(const std::vector<vec4>& _clipping_planes);
+private:
+	void grab_cell(size_t index);
 };
 
 typedef cgv::data::ref_ptr<cells_container> cells_container_ptr;

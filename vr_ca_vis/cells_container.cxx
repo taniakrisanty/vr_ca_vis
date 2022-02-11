@@ -24,12 +24,14 @@ cells_container::rgb cells_container::get_modified_color(const rgb& color) const
 	}
 	return mod_col;
 }
-cells_container::cells_container(const std::string& _name, const vec3& _extent, const quat& _rotation)
-	: cgv::base::node(_name), extent(_extent)/*, rotation(_rotation)*/
+cells_container::cells_container(cells_container_listener* _listener, const std::string& _name, const vec3& _extent, const quat& _rotation)
+	: cgv::base::node(_name), listener(_listener), extent(_extent)/*, rotation(_rotation)*/
 {
 	debug_point = vec3(0, 0.5f, 0);
 	srs.radius = 0.01f;
 	brs.culling_mode = cgv::render::CullingMode::CM_BACKFACE;
+
+	scale_matrix.identity();
 }
 std::string cells_container::get_type_name() const
 {
@@ -87,10 +89,11 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 		if (pressed) {
 			state = state_enum::grabbed;
 			on_set(&state);
-			drag_begin(request, false, original_config);
+			//drag_begin(request, false, original_config);
+			grab_cell(prim_idx);
 		}
 		else {
-			drag_end(request, original_config);
+			//drag_end(request, original_config);
 			state = state_enum::close;
 			on_set(&state);
 		}
@@ -107,7 +110,7 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 		}
 		else if (state == state_enum::grabbed) {
 			debug_point = prox_info.hit_point;
-			positions[prim_idx] = position_at_grab + prox_info.query_point - query_point_at_grab;
+			//positions[prim_idx] = position_at_grab + prox_info.query_point - query_point_at_grab;
 		}
 		post_redraw();
 		return true;
@@ -117,11 +120,11 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 		if (pressed) {
 			state = state_enum::triggered;
 			on_set(&state);
-			drag_begin(request, true, original_config);
-			
+			//drag_begin(request, true, original_config);
+			grab_cell(prim_idx);
 		}
 		else {
-			drag_end(request, original_config);
+			//drag_end(request, original_config);
 			state = state_enum::pointed;
 			on_set(&state);
 		}
@@ -141,8 +144,8 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			if (inter_info.ray_param != std::numeric_limits<float>::max())
 				debug_point = inter_info.hit_point;
 			// to be save even without new intersection, find closest point on ray to hit point at trigger
-			vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
-			positions[prim_idx] = position_at_trigger + q - hit_point_at_trigger;
+			//vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
+			//positions[prim_idx] = position_at_trigger + q - hit_point_at_trigger;
 		}
 		post_redraw();
 		return true;
@@ -151,8 +154,8 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 }
 bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
 {
-	vec4 po4(inv_modelview_matrix * vec4(point, 1.f));
-	vec3 po = po4 / po4.w();
+	vec4 point_upscaled4(inv_scale_matrix * vec4(point, 1.f));
+	vec3 point_upscaled = point_upscaled4 / point_upscaled4.w();
 
 	float min_dist = std::numeric_limits<float>::max();
 	//vec3 q, n;
@@ -166,7 +169,7 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 	//}
 	//std::cout << "min_dist = " << positions[0] << " <-> " << point << " | " << radii[0] << " at " << min_dist << " for " << primitive_idx << std::endl;
 
-	regular_grid::ResultEntry res = grid.ClosestPoint(po);
+	regular_grid::ResultEntry res = grid.ClosestPoint(point_upscaled);
 
 	if (min_dist > res.sqrDistance)
 	{
@@ -174,30 +177,28 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 
 		primitive_idx = res.prim;
 
-		//vec3 p = po - positions[primitive_idx];
-		vec4 pos4(modelview_matrix * vec4(positions[primitive_idx], 1.f));
-		vec3 pos = pos4 / pos4.w();
+		vec4 position_downscaled4(scale_matrix * vec4(positions[primitive_idx], 1.f));
+		vec3 position_downscaled = position_downscaled4 / position_downscaled4.w();
 
-		vec3 p = point - pos;
+		vec4 extent_downscaled4(scale_matrix * vec4(extent, 1.f));
+		vec3 extent_downscaled = extent_downscaled4 / extent_downscaled4.w();
+
+		vec3 p = point - position_downscaled;
 		rotation.inverse_rotate(p);
 		for (int i = 0; i < 3; ++i)
-			p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
+			p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent_downscaled[i], p[i]));
 		rotation.rotate(p);
-		//prj_point = p + positions[primitive_idx];
-		prj_point = p + pos;
+		prj_point = p + position_downscaled;
 
-		std::cout << "Closest point from query point " << po << " = " << positions[primitive_idx] << std::endl;
+		std::cout << "Closest point from query point " << point << " = " << position_downscaled << std::endl;
 	}
 
 	return min_dist < std::numeric_limits<float>::max();
 }
 bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
-	vec4 ro4(inv_modelview_matrix * vec4(ray_start, 1.f));
-	vec3 ro = ro4 / ro4.w();
-	vec3 rd = ray_direction;
-
-	primitive_idx = SIZE_MAX;
+	vec4 ray_origin_upscaled4(inv_scale_matrix * vec4(ray_start, 1.f));
+	vec3 ray_origin_upscaled = ray_origin_upscaled4 / ray_origin_upscaled4.w();
 
 	hit_param = std::numeric_limits<float>::max();
 	//for (size_t i = 0; i < positions.size(); ++i) {
@@ -220,7 +221,7 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 	//	}
 	//}
 
-	grid_traverser trav(ro, rd, grid.CellExtents());
+	grid_traverser trav(ray_origin_upscaled, ray_direction, grid.CellExtents());
 	for (int i = 0; ; ++i, trav++)
 	{
 		int index = grid.CellIndexToGridIndex(*trav);
@@ -238,7 +239,7 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		{
 			vec3 n;
 			vec2 res;
-			if (cgv::math::ray_box_intersection(ro - positions[pi], rd, 0.5f * extent, res, n) == 0)
+			if (cgv::math::ray_box_intersection(ray_origin_upscaled - positions[pi], ray_direction, 0.5f * extent, res, n) == 0)
 				continue;
 			float param;
 			if (res[0] < 0) {
@@ -258,14 +259,17 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		break;
 	}
 
-	if (primitive_idx < SIZE_MAX)
+	if (hit_param < std::numeric_limits<float>::max())
 	{
-		vec4 pos4(modelview_matrix * vec4(positions[primitive_idx], 1.f));
-		vec3 pos = pos4 / pos4.w();
+		vec4 position_downscaled4(scale_matrix * vec4(positions[primitive_idx], 1.f));
+		vec3 position_downscaled = position_downscaled4 / position_downscaled4.w();
+
+		vec4 extent_downscaled4(scale_matrix* vec4(extent, 1.f));
+		vec3 extent_downscaled = extent_downscaled4 / extent_downscaled4.w();
 
 		vec3 n;
 		vec2 res;
-		cgv::math::ray_box_intersection(ray_start - pos, rd, 0.5f * extent, res, n);
+		cgv::math::ray_box_intersection(ray_start - position_downscaled, ray_direction, 0.5f * extent_downscaled, res, n);
 		float param;
 		if (res[0] < 0)
 			param = res[1];
@@ -275,7 +279,7 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		hit_param = param;
 		hit_normal = n;
 
-		std::cout << "Intersection from query ray " << ray_start << " = " << pos << std::endl;
+		std::cout << "Intersection from query ray " << ray_start << " = " << position_downscaled << std::endl;
 		std::cout << "Hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
 	}
 
@@ -297,7 +301,7 @@ void cells_container::clear(cgv::render::context& ctx)
 void cells_container::draw(cgv::render::context& ctx)
 {
 	ctx.push_modelview_matrix();
-	ctx.mul_modelview_matrix(cgv::math::scale4<double>(0.01f));
+	ctx.mul_modelview_matrix(scale_matrix);
 
 	for (int i = 0; i < clipping_planes.size(); ++i)
 		glEnable(GL_CLIP_DISTANCE0 + i);
@@ -331,17 +335,17 @@ void cells_container::draw(cgv::render::context& ctx)
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
-	rgb color(0.5f, 0.5f, 0.5f);
+	rgb color(0.75f, 0.f, 0.f);
 	sr.set_color_array(ctx, &color, 1);
 	sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
-		sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
+		sr.set_color(ctx, rgb(1.f, 0.f, 0.f));
 		sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
-		sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
+		sr.set_color(ctx, rgb(0.85f, 0.f, 0.f));
 		sr.render(ctx, 0, 1);
 	}
 }
@@ -361,10 +365,10 @@ void cells_container::create_gui()
 		end_tree_node(brs);
 	}
 }
-void cells_container::set_modelview_matrix(const mat4& _modelview_matrix)
+void cells_container::set_scale_matrix(const mat4& _scale_matrix)
 {
-	modelview_matrix = _modelview_matrix * cgv::math::scale4<double>(0.01f);
-	inv_modelview_matrix = inv(modelview_matrix);
+	scale_matrix = _scale_matrix;
+	inv_scale_matrix = inv(_scale_matrix);
 }
 void cells_container::set_cells(const std::vector<vec3>& _positions, const std::vector<rgb>& _colors)
 {
@@ -375,8 +379,12 @@ void cells_container::set_cells(const std::vector<vec3>& _positions, const std::
 
 	//grid.Debug();
 }
-
 void cells_container::set_clipping_planes(const std::vector<vec4>& _clipping_planes)
 {
 	clipping_planes = _clipping_planes;
+}
+void cells_container::grab_cell (size_t index)
+{
+	if (listener)
+		listener->on_cell_grabbed(index);
 }

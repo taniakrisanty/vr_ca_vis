@@ -14,7 +14,7 @@
 class clipping_planes_bag_listener
 {
 public:
-	virtual void on_clipping_plane_grabbed() = 0;
+	virtual void bag_on_clipping_plane_grabbed() = 0;
 };
 
 class clipping_planes_bag :
@@ -46,6 +46,10 @@ protected:
 	clipping_planes_bag_listener* listener;
 
 	mat4 modelview_matrix;
+	mat4 inv_modelview_matrix;
+
+	mat4 head_matrix;
+	mat4 inv_head_matrix;
 
 	// geometry of box with color
 	vec3 position;
@@ -79,6 +83,7 @@ public:
 	void create_gui();
 
 	void set_modelview_matrix(const mat4& _modelview_matrix);
+	void set_head_matrix(const mat4& _head_matrix);
 private:
 	void grab_clipping_plane();
 };

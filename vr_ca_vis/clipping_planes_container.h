@@ -11,6 +11,12 @@
 #include <cgv_gl/box_renderer.h>
 #include <cgv_gl/sphere_renderer.h>
 
+class clipping_planes_container_listener
+{
+public:
+	virtual void container_on_clipping_plane_grabbed(size_t index) = 0;
+};
+
 class clipping_planes_container :
 	public cgv::base::node,
 	public cgv::render::drawable,
@@ -36,6 +42,8 @@ public:
 	};
 
 protected:
+	clipping_planes_container_listener* listener;
+
 	mat4 modelview_matrix;
 	// inv_modelview_matrix is used to prevent expensive transformation of all clipping planes to lab coordinate
 	mat4 inv_modelview_matrix;
@@ -55,7 +63,7 @@ protected:
 	/// return color modified based on state
 	rgb get_modified_color(const rgb& color) const;
 public:
-	clipping_planes_container(const std::string& name);
+	clipping_planes_container(clipping_planes_container_listener* _listener, const std::string& name);
 	std::string get_type_name() const;
 	void on_set(void* member_ptr);
 
@@ -71,16 +79,19 @@ public:
 	void draw(cgv::render::context& ctx);
 
 	void create_gui();
-
-	void set_modelview_matrix(const mat4& _modelview_matrix);
+	
 	void create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
 	void copy_clipping_plane(size_t index, const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
 	void delete_clipping_plane(size_t index, size_t count = 1);
 	void clear_clipping_planes();
+
+	size_t get_num_clipping_planes();
 private:
 	void draw_clipping_plane(size_t index, cgv::render::context& ctx);
 	void construct_clipping_plane(size_t index, std::vector<vec3>& polygon);
 	float signed_distance_from_clipping_plane(size_t index, const vec3& p);
+
+	void grab_clipping_plane(size_t index);
 };
 
 typedef cgv::data::ref_ptr<clipping_planes_container> clipping_planes_container_ptr;
