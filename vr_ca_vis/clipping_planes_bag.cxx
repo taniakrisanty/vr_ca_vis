@@ -274,6 +274,6 @@ void clipping_planes_bag::set_head_matrix(const mat4& _head_matrix)
 }
 void clipping_planes_bag::grab_clipping_plane()
 {
-	//if (listener)
-	//	listener->bag_on_clipping_plane_grabbed();
+	if (listener)
+		listener->bag_on_clipping_plane_grabbed();
 }
