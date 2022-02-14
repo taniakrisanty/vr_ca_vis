@@ -9,8 +9,10 @@
 #include <cg_nui/grabable.h>
 #include <cgv/gui/provider.h>
 #include <cgv_gl/sphere_renderer.h>
-#include "regular_grid.h"
+
+#include "cell_data.h"
 #include "clipped_box_renderer.h"
+#include "regular_grid.h"
 
 class cells_container_listener
 {
@@ -55,9 +57,9 @@ protected:
 	// inv_scale_matrix is used to prevent expensive scaling of all cells
 	mat4 inv_scale_matrix;
 
-	std::vector<vec3> positions;
-	//std::vector<float> radii;
-	std::vector<rgb> colors;
+	int offset;
+	std::vector<cell> cells;
+
 	std::vector<vec4> clipping_planes;
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
@@ -86,7 +88,8 @@ public:
 	void create_gui();
 
 	void set_scale_matrix(const mat4& _scale_matrix);
-	void set_cells(const std::vector<vec3>& _positions, const std::vector<rgb>& _colors);
+	// offset is time_step_start
+	void set_cells(int _offset, std::vector<cell>::const_iterator cells_begin, std::vector<cell>::const_iterator cells_end);
 	void set_clipping_planes(const std::vector<vec4>& _clipping_planes);
 private:
 	void grab_cell(size_t index);

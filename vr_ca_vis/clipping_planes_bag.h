@@ -65,7 +65,7 @@ protected:
 	/// return color modified based on state
 	rgb get_modified_color(const rgb& color) const;
 public:
-	clipping_planes_bag(clipping_planes_bag_listener *_listener, const std::string& _name, const vec3& _position, const rgb& _color = rgb(1.f, 1.f, 0.f), const vec3& _extent = vec3(0.5f, 0.5f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
+	clipping_planes_bag(clipping_planes_bag_listener *_listener, const std::string& _name, const vec3& _position, const rgb& _color = rgb(1.f, 1.f, 0.f), const vec3& _extent = vec3(0.75f, 0.75f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
 	std::string get_type_name() const;
 	void on_set(void* member_ptr);
 

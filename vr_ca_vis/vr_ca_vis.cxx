@@ -86,15 +86,12 @@ protected:
 	clipping_planes_container_ptr clipping_planes_ctr;
 	clipping_planes_bag_ptr clipping_planes_b;
 
-	// state of current interaction with boxes for all controllers
-	//InteractionState state[4];
-
 	// keep reference to vr_view_interactor
 	vr_view_interactor* vr_view_ptr;
 
-	//simulation_data data;
+	// cell data
+	std::vector<cell> cells;
 
-	// stored data
 	std::unordered_set<std::string> types;
 	std::vector<uint32_t> ids;
 	std::vector<vec3> points;
@@ -108,7 +105,7 @@ protected:
 	int temp_clipping_plane_idx = -1;
 	// clipping planes that are sent to cells container, to be used by clipped_box geometry shader, in the form of ax + by + cz + d = 0
 	std::vector<vec4> shader_clipping_planes;
-	// clipping planes that are sent to clipping planes container, in the form of origin and direction
+	// clipping planes that are sent to clipping planes container, in the form of origin and direction (stored by the container)
 
 	// extent
 	ivec3 extent;
@@ -231,20 +228,23 @@ public:
 
 				if (times.empty() || times.back() != float(time)) {
 					//std::cout << "t = " << t << " max = " << max_time_step << std::endl;
-					time_step_start.push_back(points.size());
+					//time_step_start.push_back(points.size());
+					time_step_start.push_back(cells.size());
 					times.push_back(float(time));
 				}
 
-				size_t previous_num_points = points.size();
+				//size_t previous_num_points = points.size();
+				size_t previous_num_points = cells.size();
 
-				model_parser parser(file_name, extent, ids, group_indices, points, types);
+				model_parser parser(file_name, extent, types, cells /* , ids, group_indices, points */);
 				extent_scale = dvec3(1.0 / extent.x(), 1.0 / extent.y(), 1.0 / extent.z());
 
-				std::cout << "read " << file_name << " with " << points.size() - previous_num_points << " points" << std::endl;
+				//std::cout << "read " << file_name << " with " << points.size() - previous_num_points << " cells" << std::endl;
+				std::cout << "read " << file_name << " with " << cells.size() - previous_num_points << " cells" << std::endl;
 			}
 
-			visible_points.reserve(points.size());
-			visible_types.reserve(points.size());
+			visible_points.reserve(cells.size());
+			visible_types.reserve(cells.size());
 		}
 
 		return file_names.size() > 0;
@@ -394,7 +394,7 @@ public:
 		blend = false;
 		ooc_mode = false;
 		opacity = 1.0f;
-		scale = 1.0f;
+		scale = 1.5f;
 		trigger[0] = trigger[1] = 0.0f;
 		time_delta = 0.0;
 		clr_scale = cgv::media::ColorScale::CS_TEMPERATURE;
@@ -425,7 +425,7 @@ public:
 		append_child(clipping_planes_ctr);
 
 		// when put behind the head (z+) the grabbing does not work
-		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, -1.5f, -1.f));
+		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 0.5f));
 		append_child(clipping_planes_b);
 
 		// clipping plane
@@ -533,7 +533,7 @@ public:
 
 			compute_visible_points();
 
-			cells_ctr->set_cells(visible_points, visible_colors);
+			//cells_ctr->set_cells(visible_points, visible_colors);
 		}
 
 		if (clipping_plane_grabbed)
@@ -542,25 +542,21 @@ public:
 		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
 		cells_ctr->set_clipping_planes(shader_clipping_planes);
 
-		mat4 mv;
-		mv.identity();
+		//mat4 mv;
+		//mv.identity();
 
-		if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-			mv *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_TABLE));
-		mv *= cgv::math::scale4<double>(dvec3(scale));
-		mv *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+		//if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+		//	mv *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_TABLE));
+		//mv *= cgv::math::scale4<double>(dvec3(scale));
+		//mv *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
 
-		clipping_planes_b->set_modelview_matrix(mv);
+		clipping_planes_b->set_modelview_matrix(get_model_transform());
 
 		mat4 h;
 		h.identity();
 
 		if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_HEAD))
 			h *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_HEAD));
-
-		//h.set_col(0, vec4(1, 0, 0, 0));
-		//h.set_col(1, vec4(0, 1, 0, 0));
-		//h.set_col(2, vec4(0, 0, 1, 0));
 
 		clipping_planes_b->set_head_matrix(h);
 	}
@@ -847,82 +843,44 @@ public:
 		//	align("\b");
 		//	end_tree_node(cells_ctr);
 		//}
-		if (begin_tree_node("Clipping Planes", clipping_planes_ctr)) {
-			align("\a");
-			inline_object_gui(clipping_planes_ctr);
-			align("\b");
-			end_tree_node(clipping_planes_ctr);
+		if (clipping_planes_ctr->get_num_clipping_planes() > 0) {
+			if (begin_tree_node("Clipping Planes", clipping_planes_ctr, false, "options='w=142';align=' '")) {
+				add_member_control(this, "Show", clipping_planes_ctr, "toggle", "w=42;shortcut='w'");
+				for (unsigned i = 0; i < clipping_planes_ctr->get_num_clipping_planes(); ++i) {
+					align("\a");
+					inline_object_gui(clipping_planes_ctr);
+					align("\b");
+				}
+				end_tree_node(clipping_planes_ctr->get_num_clipping_planes() > 0);
+			}
 		}
+
+		//if (begin_tree_node("Clipping Planes", clipping_planes_ctr->get_num_clipping_planes(), false)) {
+		//	align("\a");
+		//	inline_object_gui(clipping_planes_ctr);
+		//	align("\b");
+		//	end_tree_node(clipping_planes_ctr);
+		//}
 	}
-	/// compute visible points, i.e. points that are past the cutting plane in the direction of the controller
 	void compute_visible_points()
 	{
-		if (false)
-		{
-			vr_view_interactor* vr_view_ptr = get_view_ptr();
-			if (!vr_view_ptr)
-				return;
+		//visible_points.clear();
+		//visible_types.clear();
+		//visible_colors.clear();
 
-			const vr::vr_kit_state* state_ptr = vr_view_ptr->get_current_vr_state();
-			if (!state_ptr)
-				return;
+		int start = time_step_start[time_step];
+		int end = (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
 
-			visible_points.clear();
-			visible_types.clear();
-			visible_colors.clear();
+		//visible_points.insert(visible_points.end(), points.begin() + start, points.begin() + end);
+		//visible_types.insert(visible_types.end(), group_indices.begin() + start, group_indices.begin() + end);
 
-			vec3 control_direction = -reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[6]);
-			vec3 control_origin = reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[9]);
+		//for (size_t i = 0; i < visible_types.size(); ++i)
+		//{
+		//	visible_colors.push_back(group_colors[group_indices[i]]);
+		//}
 
-			mat4 mat;
-			mat.identity();
-
-			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
-			mat *= cgv::math::scale4<double>(dvec3(scale));
-			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
-			mat *= cgv::math::scale4<double>(extent_scale);
-
-			//mat = inv(mat);
-
-			//vec4 origin4(mat * vec4(origin, 1.f)), direction4(mat * vec4(direction, 1.f));
-			//vec3 o(origin4 / origin4.w()), d(direction4 / direction4.w());
-			//d.normalize();
-
-			for (uint64_t i = time_step_start[time_step], j = (time_step + 1 == time_step_start.size() ? points.size() : time_step_start[time_step + 1]); i < j; ++i)
-			{
-				vec4 point4(mat * vec4(points[i], 1.f));
-				vec3 point(point4 / point4.w());
-
-				float sign = dot(control_direction, point - control_origin);
-
-				//float sign = dot(d, points[i] - o);
-
-				if (sign >= 0)
-				{
-					visible_points.push_back(points[i]);
-					visible_types.push_back(group_indices[i]);
-					visible_colors.push_back(group_colors[group_indices[i]]);
-				}
-			}
-		}
-		else
-		{
-			visible_points.clear();
-			visible_types.clear();
-			visible_colors.clear();
-
-			uint64_t start = time_step_start[time_step];
-			uint64_t end = (time_step + 1 == time_step_start.size() ? points.size() : time_step_start[time_step + 1]);
-
-			visible_points.insert(visible_points.end(), points.begin() + start, points.begin() + end);
-			visible_types.insert(visible_types.end(), group_indices.begin() + start, group_indices.begin() + end);
-
-			for (size_t i = 0; i < visible_types.size(); ++i)
-			{
-				visible_colors.push_back(group_colors[group_indices[i]]);
-			}
-		}
+		//cells_ctr->set_cells(visible_points, visible_colors);
+		cells_ctr->set_cells(start, cells.begin() + start, cells.begin() + end);
 	}
 	std::string get_clipping_planes_stats()
 	{
@@ -1029,6 +987,7 @@ public:
 	// listener for cell grab event inside box
 	void on_cell_grabbed(size_t index)
 	{
+		// TODO add offset
 		if (li_cell_stats != -1) {
 			vr::vr_scene* scene_ptr = get_scene_ptr();
 			if (scene_ptr) {

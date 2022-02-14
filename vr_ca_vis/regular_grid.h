@@ -113,13 +113,8 @@ public:
 		// TODO divide the space by the cellExtent
 		grid = new std::vector<int>[10 * 10 * 10];
 		visited_statuses = new bool[10 * 10 * 10];
-	}
 
-	void setPoints(const std::vector<vec3>& points)
-	{
-		clear();
-
-		this->points = points;
+		points.clear();
 	}
 
 	int CellIndexToGridIndex(const ivec3& ci) const
@@ -178,6 +173,8 @@ public:
 		int index = PositionToGridIndex(p);
 
 		grid[index].push_back(p_index);
+
+		points.push_back(p);
 	}
 
 	void considerPath(const ivec3& ci, const vec3& q, std::priority_queue<SearchEntry>& qmin, KnnResult& res) const
@@ -286,5 +283,14 @@ public:
 	}
 };
 
-//helper function to construct a regular grid data structure from the vertices of the halfedge mesh m
-void BuildRegularGridFromVertices(const std::vector<vec3>& points, regular_grid& grid);
+//helper function to construct a regular grid data structure from the centers of the cells
+template <typename T>
+void BuildRegularGridFromVertices(const std::vector<T>& cells, regular_grid& grid)
+{
+	grid.clear();
+
+	int i = 0;
+	auto vend = cells.end();
+	for (auto vit = cells.begin(); vit != vend; ++vit)
+		grid.Insert(i++, vit->node);
+}
