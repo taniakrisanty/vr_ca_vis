@@ -335,16 +335,16 @@ void cells_container::draw(cgv::render::context& ctx)
 	sr.set_position(ctx, debug_point);
 	rgb color(0.75f, 0.f, 0.f);
 	sr.set_color_array(ctx, &color, 1);
-	sr.render(ctx, 0, 1);
+	//sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
 		sr.set_color(ctx, rgb(1.f, 0.f, 0.f));
-		sr.render(ctx, 0, 1);
+		//sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
 		sr.set_color(ctx, rgb(0.85f, 0.f, 0.f));
-		sr.render(ctx, 0, 1);
+		//sr.render(ctx, 0, 1);
 	}
 }
 void cells_container::create_gui()

@@ -235,7 +235,7 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 	sr.set_position(ctx, debug_point);
 	rgb color(0.f, 0.f, 0.75f);
 	sr.set_color_array(ctx, &color, 1);
-	//sr.render(ctx, 0, 1);
+	sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
 		sr.set_color(ctx, rgb(0.f, 0.f, 1.f));

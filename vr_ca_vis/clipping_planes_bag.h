@@ -51,7 +51,7 @@ protected:
 	mat4 head_matrix;
 	mat4 inv_head_matrix;
 
-	// geometry of box with color
+	// geometry of bag with color
 	vec3 position;
 	vec3 extent;
 	quat rotation;

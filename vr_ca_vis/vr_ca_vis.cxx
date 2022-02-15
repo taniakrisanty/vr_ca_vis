@@ -23,8 +23,8 @@
 #include "endian.h"
 #include "cae_file_format.h"
 #include "cells_container.h"
-#include "clipping_planes_container.h"
 #include "clipping_planes_bag.h"
+#include "clipping_planes_container.h"
 #include "logger_parser.h"
 #include "model_parser.h"
 #include "gzip_inflater.h"
@@ -52,11 +52,10 @@ class vr_ca_vis :
 	public vr::vr_tool,
 	public cae::binary_file,
 	public cells_container_listener,
-	public clipping_planes_container_listener,
-	public clipping_planes_bag_listener
+	public clipping_planes_bag_listener,
+	public clipping_planes_container_listener
 {
 public:
-	typedef cgv::render::drawable::vec2 vec2;
 	typedef cgv::render::drawable::vec3 vec3;
 	typedef cgv::render::drawable::vec4 vec4;
 
@@ -83,8 +82,8 @@ protected:
 	state_enum state = state_enum::idle;
 
 	cells_container_ptr cells_ctr;
-	clipping_planes_container_ptr clipping_planes_ctr;
 	clipping_planes_bag_ptr clipping_planes_b;
+	clipping_planes_container_ptr clipping_planes_ctr;
 
 	// keep reference to vr_view_interactor
 	vr_view_interactor* vr_view_ptr;
@@ -238,7 +237,6 @@ public:
 				model_parser parser(file_name, extent, types, cells /* , ids, group_indices, points */);
 				extent_scale = dvec3(1.0 / extent.x(), 1.0 / extent.y(), 1.0 / extent.z());
 
-				//std::cout << "read " << file_name << " with " << points.size() - previous_num_points << " cells" << std::endl;
 				std::cout << "read " << file_name << " with " << cells.size() - previous_num_points << " cells" << std::endl;
 			}
 		}
@@ -332,8 +330,7 @@ public:
 	void timer_event(double, double dt)
 	{
 		if (trigger[1] > 0.1f) {
-			//double d = 60.0 * (double)trigger[1] * dt;
-			double d = 120.0 * (double)trigger[1] * dt;
+			double d = 60.0 * (double)trigger[1] * dt;
 			time_delta += (float)d;
 			if (time_delta >= 1.0f) {
 				time_step += (int)time_delta;
@@ -357,7 +354,7 @@ public:
 		blend = false;
 		ooc_mode = false;
 		opacity = 1.0f;
-		scale = 1.5f;
+		scale = 1.0f;
 		trigger[0] = trigger[1] = 0.0f;
 		time_delta = 0.0;
 		clr_scale = cgv::media::ColorScale::CS_TEMPERATURE;
@@ -384,12 +381,12 @@ public:
 		cells_ctr = new cells_container(this, "Cells");
 		append_child(cells_ctr);
 
-		clipping_planes_ctr = new clipping_planes_container(this, "Clipping Planes");
-		append_child(clipping_planes_ctr);
-
 		// when put behind the head (z+) the grabbing does not work
 		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 0.5f));
 		append_child(clipping_planes_b);
+
+		clipping_planes_ctr = new clipping_planes_container(this, "Clipping Planes");
+		append_child(clipping_planes_ctr);
 
 		// clipping plane
 		clipping_plane_grabbed = false;
@@ -497,29 +494,21 @@ public:
 			compute_visible_points();
 		}
 
-		if (clipping_plane_grabbed)
-			compute_clipping_planes();
+		//if (clipping_plane_grabbed)
+		//	compute_clipping_planes();
 
-		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
-		cells_ctr->set_clipping_planes(shader_clipping_planes);
+		//cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
+		//cells_ctr->set_clipping_planes(shader_clipping_planes);
 
-		//mat4 mv;
-		//mv.identity();
+		//clipping_planes_b->set_modelview_matrix(get_model_transform());
 
-		//if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-		//	mv *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_TABLE));
-		//mv *= cgv::math::scale4<double>(dvec3(scale));
-		//mv *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
+		//mat4 h;
+		//h.identity();
 
-		clipping_planes_b->set_modelview_matrix(get_model_transform());
+		//if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_HEAD))
+		//	h *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_HEAD));
 
-		mat4 h;
-		h.identity();
-
-		if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_HEAD))
-			h *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_HEAD));
-
-		clipping_planes_b->set_head_matrix(h);
+		//clipping_planes_b->set_head_matrix(h);
 	}
 	void clear(cgv::render::context& ctx)
 	{
@@ -654,6 +643,22 @@ public:
 
 		//ctx.mul_modelview_matrix(cgv::math::scale4<double>(extent_scale));
 
+		if (clipping_plane_grabbed)
+			compute_clipping_planes();
+
+		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
+		cells_ctr->set_clipping_planes(shader_clipping_planes);
+
+		clipping_planes_b->set_modelview_matrix(get_model_transform());
+
+		mat4 h;
+		h.identity();
+
+		if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_HEAD))
+			h *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_HEAD));
+
+		clipping_planes_b->set_head_matrix(h);
+
 		if (blend) {
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -679,15 +684,44 @@ public:
 		case cgv::gui::EID_KEY:
 		{
 			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
-			if (vrke.get_controller_index() == 0) { // only left controller
+			if (vrke.get_key() == vr::VR_MENU) {
+				if (vrke.get_action() != cgv::gui::KA_RELEASE)
+					animate = !animate;
+	
+				return true;
+			}
+
+			// stop animation when
+			animate = false;
+
+			if (vrke.get_controller_index() == 1) { // only right controller
 				if (vrke.get_action() != cgv::gui::KA_RELEASE) {
 					switch (vrke.get_key()) {
-					// put current clipping plane permanently
-					case vr::VR_DPAD_LEFT:
+					case vr::VR_DPAD_LEFT: // put current clipping plane permanently, temporary use this when using only one controller
 						set_clipping_plane();
 						return true;
-					// forward
-					case vr::VR_DPAD_RIGHT:
+					case vr::VR_DPAD_RIGHT: // remove clipping plane
+						if (temp_clipping_plane_idx > -1)
+						{
+							clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
+
+							shader_clipping_planes.erase(shader_clipping_planes.begin() + temp_clipping_plane_idx);
+						}
+
+						temp_clipping_plane_idx = -1;
+
+						clipping_plane_grabbed = false;
+						return true;
+					}
+				}
+			}
+			else if (vrke.get_controller_index() == 0) { // only left controller
+				if (vrke.get_action() != cgv::gui::KA_RELEASE) {
+					switch (vrke.get_key()) {
+					case vr::VR_DPAD_LEFT: // put current clipping plane permanently
+						set_clipping_plane();
+						return true;
+					case vr::VR_DPAD_RIGHT: // forward
 						if (time_step + 1 < times.size())
 							time_step += 1;
 						else
@@ -699,33 +733,8 @@ public:
 				}
 				else {
 					switch (vrke.get_key()) {
-					// toggle help
-					case vr::VR_MENU:
+					case vr::VR_MENU: // toggle help
 						li_clipping_plane_visible = !li_clipping_plane_visible;
-						return true;
-					}
-				}
-			}
-			else if (vrke.get_controller_index() == 1) { // only right controller
-				if (vrke.get_action() != cgv::gui::KA_RELEASE) {
-					switch (vrke.get_key()) {
-					// remove clipping plane
-					//case vr::VR_DPAD_LEFT:
-					//	if (temp_clipping_plane_idx > -1)
-					//	{
-					//		clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
-
-					//		shader_clipping_planes.erase(shader_clipping_planes.begin() + temp_clipping_plane_idx);
-					//	}
-
-					//	temp_clipping_plane_idx = -1;
-
-					//	clipping_plane_grabbed = false;
-					//	return true;
-					//}
-					// put current clipping plane permanently
-					case vr::VR_DPAD_LEFT:
-						set_clipping_plane();
 						return true;
 					}
 				}
@@ -810,7 +819,7 @@ public:
 		//	end_tree_node(cells_ctr);
 		//}
 		if (clipping_planes_ctr->get_num_clipping_planes() > 0) {
-			if (begin_tree_node("Clipping Planes", clipping_planes_ctr, false, "options='w=142';align=' '")) {
+			if (begin_tree_node("Clipping Planes", clipping_planes_ctr, false)) {
 				add_member_control(this, "Show", clipping_planes_ctr, "toggle", "w=42;shortcut='w'");
 				for (unsigned i = 0; i < clipping_planes_ctr->get_num_clipping_planes(); ++i) {
 					align("\a");
@@ -885,7 +894,6 @@ public:
 				return;
 
 			clipping_planes_ctr->create_clipping_plane(o, control_direction);
-			post_recreate_gui();
 
 			mat4 mat = get_model_transform() * cgv::math::scale4<double>(extent_scale);
 
@@ -956,14 +964,6 @@ public:
 	}
 #pragma endregion cells_container_listener
 
-#pragma region clipping_planes_container_listener
-	// listener for existing clipping plane grab event inside box
-	void container_on_clipping_plane_grabbed(size_t index)
-	{
-
-	}
-#pragma endregion clipping_planes_container_listener
-
 #pragma region clipping_planes_bag_listener
 	// listener for clipping plane grab event inside bag
 	void bag_on_clipping_plane_grabbed()
@@ -976,6 +976,14 @@ public:
 		clipping_plane_grabbed = true;
 	}
 #pragma endregion clipping_planes_bag_listener
+
+#pragma region clipping_planes_container_listener
+	// listener for existing clipping plane grab event inside box
+	void container_on_clipping_plane_grabbed(size_t index)
+	{
+
+	}
+#pragma endregion clipping_planes_container_listener
 };
 
 cgv::base::object_registration<vr_ca_vis> or_vr_ca_vis("vr_ca_vis");
