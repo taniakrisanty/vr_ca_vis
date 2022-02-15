@@ -93,8 +93,8 @@ protected:
 	std::vector<cell> cells;
 
 	std::unordered_set<std::string> types;
-	std::vector<uint32_t> ids;
-	std::vector<vec3> points;
+	//std::vector<uint32_t> ids;
+	//std::vector<vec3> points;
 	std::vector<uint32_t> group_indices;
 	std::vector<float> attr_values;
 	std::vector<rgba8> colors;
@@ -112,9 +112,9 @@ protected:
 	dvec3 extent_scale;
 
 	// visible data
-	std::vector<vec3> visible_points;
-	std::vector<uint32_t> visible_types;
-	std::vector<rgb> visible_colors;
+	//std::vector<vec3> visible_points;
+	//std::vector<uint32_t> visible_types;
+	//std::vector<rgb> visible_colors;
 
 	// attributes
 	uint32_t selected_attr;
@@ -180,8 +180,8 @@ protected:
 	// update colors from attribute values
 	void update_colors()
 	{
-		if (colors.size() != points.size())
-			colors.resize(points.size());
+		if (colors.size() != cells.size())
+			colors.resize(cells.size());
 
 		float offset = 0.0;
 		float scale = 1.0f;
@@ -199,18 +199,19 @@ protected:
 public:
 	bool read_file(const std::string& file_name)
 	{
-		if (!read(file_name, points, group_indices, attr_values))
-			return false;
+		//if (!read(file_name, points, group_indices, attr_values))
+		//	return false;
 
-		construct_group_information(nr_groups);
-		update_colors();
-		return true;
+		//construct_group_information(nr_groups);
+		//update_colors();
+		//return true;
+		return false;
 	}
 	bool write_file(const std::string& file_name) const
 	{
-		return write(file_name, points, group_indices, attr_values);
+		//return write(file_name, points, group_indices, attr_values);
+		return false;
 	}
-
 	bool read_xml_dir(const std::string& dir_name)
 	{
 		std::vector<std::string> file_names;
@@ -228,12 +229,10 @@ public:
 
 				if (times.empty() || times.back() != float(time)) {
 					//std::cout << "t = " << t << " max = " << max_time_step << std::endl;
-					//time_step_start.push_back(points.size());
 					time_step_start.push_back(cells.size());
 					times.push_back(float(time));
 				}
 
-				//size_t previous_num_points = points.size();
 				size_t previous_num_points = cells.size();
 
 				model_parser parser(file_name, extent, types, cells /* , ids, group_indices, points */);
@@ -242,9 +241,6 @@ public:
 				//std::cout << "read " << file_name << " with " << points.size() - previous_num_points << " cells" << std::endl;
 				std::cout << "read " << file_name << " with " << cells.size() - previous_num_points << " cells" << std::endl;
 			}
-
-			visible_points.reserve(cells.size());
-			visible_types.reserve(cells.size());
 		}
 
 		return file_names.size() > 0;
@@ -276,7 +272,6 @@ public:
 				rgba col(0.f, 0.f, 0.f, 0.5f);
 				colors.push_back(col);
 				// cells of the same type should have the same color
-				//while (id >= int(group_colors.size())) {
 				while (id >= int(group_colors.size())) {
 					group_colors.push_back(rgba(1, 1, 1, 0.5f));
 					group_translations.push_back(vec3(0, 0, 0));
@@ -289,11 +284,11 @@ public:
 				float hue = float(i) / group_colors.size();
 				group_colors[i] = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f);
 			}
-			nr_points = points.size(); //data.cells.size();
+			nr_points = cells.size();
 			nr_groups = uint32_t(group_colors.size());
 			nr_time_steps = uint32_t(times.size());
 			std::cout << "read " << file_name << " with "
-				<< points.size() << " points, " << times.size() << " time steps, and " << group_colors.size() << " ids and "
+				<< cells.size() << " points, " << times.size() << " time steps, " << group_colors.size() << " ids, and "
 				<< nr_attributes << " attributes" << std::endl;
 			//// concatenate
 			//write_file(fn);
@@ -319,39 +314,6 @@ public:
 		update_colors();
 		return true;
 	}
-	static bool read_log_file_header(const std::string& file_name, std::vector<std::string>& attr_names, uint32_t& nr_attributes, FILE** fpp = 0)
-	{
-		FILE* fp = fopen(file_name.c_str(), "ra");
-		if (!fp)
-			return false;
-		char buffer[1024];
-		if (fgets(buffer, 1024, fp)) {
-			cgv::utils::token l(buffer, buffer + strlen(buffer));
-			// split line into tokens
-			std::vector<cgv::utils::token> toks;
-			cgv::utils::split_to_tokens(l.begin, l.end, toks, "", true, "\"", "\"");
-
-			// in case of first line, extract nr_attributs and attribute names
-			nr_attributes = uint32_t(toks.size() - 5);
-			for (unsigned ai = 0; ai < int(nr_attributes); ++ai) {
-				auto tok = toks[ai + 5];
-				// prune away quotes if necessary
-				if (tok.begin[0] == '"') {
-					++tok.begin;
-					if (tok.end > tok.begin && tok.end[-1] == '"')
-						--tok.end;
-				}
-				attr_names.push_back(to_string(tok));
-			}
-			if (fpp)
-				*fpp = fp;
-			else
-				fclose(fp);
-			return true;
-		}
-		fclose(fp);
-		return false;
-	}
 	void step()
 	{
 		++time_step;
@@ -370,7 +332,8 @@ public:
 	void timer_event(double, double dt)
 	{
 		if (trigger[1] > 0.1f) {
-			double d = 60.0 * (double)trigger[1] * dt;
+			//double d = 60.0 * (double)trigger[1] * dt;
+			double d = 120.0 * (double)trigger[1] * dt;
 			time_delta += (float)d;
 			if (time_delta >= 1.0f) {
 				time_step += (int)time_delta;
@@ -444,7 +407,7 @@ public:
 	{
 		if (member_ptr == &time_step) {
 			cgv::type::uint64_type beg = (ooc_mode ? 0 : time_step_start[time_step]);
-			cgv::type::uint64_type end = (ooc_mode ? points.size() : ((time_step + 1 == time_step_start.size()) ? points.size() : time_step_start[time_step + 1]));
+			cgv::type::uint64_type end = (ooc_mode ? cells.size() : ((time_step + 1 == time_step_start.size()) ? cells.size() : time_step_start[time_step + 1]));
 
 			if (ooc_mode && !ooc_file_name.empty())
 				read_ooc_time_step(ooc_file_name, time_step);
@@ -532,8 +495,6 @@ public:
 			first_frame = false;
 
 			compute_visible_points();
-
-			//cells_ctr->set_cells(visible_points, visible_colors);
 		}
 
 		if (clipping_plane_grabbed)
@@ -566,22 +527,22 @@ public:
 		b_renderer.clear(ctx);
 		cgv::render::ref_surfel_renderer(ctx, -1);
 	}
-	void set_group_geometry(cgv::render::context& ctx, cgv::render::group_renderer& sr)
-	{
-		sr.set_group_colors(ctx, group_colors);
-		sr.set_group_translations(ctx, group_translations);
-		sr.set_group_rotations(ctx, group_rotations);
-	}
-	void set_geometry(cgv::render::context& ctx, cgv::render::group_renderer& sr)
-	{
-		if (!visible_points.empty())
-			sr.set_position_array(ctx, visible_points);
-		//if (!points.empty())
-		//	sr.set_position_array(ctx, points);
-		sr.set_color_array(ctx, colors);
-		//sr.set_group_index_array(ctx, group_indices);
-		sr.set_group_index_array(ctx, visible_types);
-	}
+	//void set_group_geometry(cgv::render::context& ctx, cgv::render::group_renderer& sr)
+	//{
+	//	sr.set_group_colors(ctx, group_colors);
+	//	sr.set_group_translations(ctx, group_translations);
+	//	sr.set_group_rotations(ctx, group_rotations);
+	//}
+	//void set_geometry(cgv::render::context& ctx, cgv::render::group_renderer& sr)
+	//{
+	//	if (!visible_points.empty())
+	//		sr.set_position_array(ctx, visible_points);
+	//	//if (!points.empty())
+	//	//	sr.set_position_array(ctx, points);
+	//	sr.set_color_array(ctx, colors);
+	//	//sr.set_group_index_array(ctx, group_indices);
+	//	sr.set_group_index_array(ctx, visible_types);
+	//}
 	//void draw_points(unsigned ti) // draw voxels
 	//{
 	//	cgv::type::uint64_type beg = (ooc_mode? 0 : time_step_start[ti]);
@@ -721,11 +682,11 @@ public:
 			if (vrke.get_controller_index() == 0) { // only left controller
 				if (vrke.get_action() != cgv::gui::KA_RELEASE) {
 					switch (vrke.get_key()) {
-						// put current clipping plane permanently
+					// put current clipping plane permanently
 					case vr::VR_DPAD_LEFT:
 						set_clipping_plane();
 						return true;
-						// forward
+					// forward
 					case vr::VR_DPAD_RIGHT:
 						if (time_step + 1 < times.size())
 							time_step += 1;
@@ -738,7 +699,7 @@ public:
 				}
 				else {
 					switch (vrke.get_key()) {
-						// toggle help
+					// toggle help
 					case vr::VR_MENU:
 						li_clipping_plane_visible = !li_clipping_plane_visible;
 						return true;
@@ -748,18 +709,23 @@ public:
 			else if (vrke.get_controller_index() == 1) { // only right controller
 				if (vrke.get_action() != cgv::gui::KA_RELEASE) {
 					switch (vrke.get_key()) {
-						// remove clipping plane
+					// remove clipping plane
+					//case vr::VR_DPAD_LEFT:
+					//	if (temp_clipping_plane_idx > -1)
+					//	{
+					//		clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
+
+					//		shader_clipping_planes.erase(shader_clipping_planes.begin() + temp_clipping_plane_idx);
+					//	}
+
+					//	temp_clipping_plane_idx = -1;
+
+					//	clipping_plane_grabbed = false;
+					//	return true;
+					//}
+					// put current clipping plane permanently
 					case vr::VR_DPAD_LEFT:
-						if (temp_clipping_plane_idx > -1)
-						{
-							clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
-
-							shader_clipping_planes.erase(shader_clipping_planes.begin() + temp_clipping_plane_idx);
-						}
-
-						temp_clipping_plane_idx = -1;
-
-						clipping_plane_grabbed = false;
+						set_clipping_plane();
 						return true;
 					}
 				}
@@ -864,12 +830,8 @@ public:
 	}
 	void compute_visible_points()
 	{
-		//visible_points.clear();
-		//visible_types.clear();
-		//visible_colors.clear();
-
-		int start = time_step_start[time_step];
-		int end = (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
+		size_t start = time_step_start[time_step];
+		size_t end = (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
 
 		//visible_points.insert(visible_points.end(), points.begin() + start, points.begin() + end);
 		//visible_types.insert(visible_types.end(), group_indices.begin() + start, group_indices.begin() + end);
@@ -879,7 +841,6 @@ public:
 		//	visible_colors.push_back(group_colors[group_indices[i]]);
 		//}
 
-		//cells_ctr->set_cells(visible_points, visible_colors);
 		cells_ctr->set_cells(start, cells.begin() + start, cells.begin() + end);
 	}
 	std::string get_clipping_planes_stats()
@@ -916,15 +877,7 @@ public:
 			// control_origin have to be transformed to local space of the cells
 			vec3 control_origin = reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[9]);
 
-			mat4 mat;
-			mat.identity();
-
-			if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
-				mat *= pose4(get_scene_ptr()->get_coordsystem(vr::vr_scene::CS_TABLE));
-			mat *= cgv::math::scale4<double>(dvec3(scale));
-			mat *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
-
-			vec4 o4(inv(mat) * vec4(control_origin, 1.f));
+			vec4 o4(get_inverse_model_transform() * vec4(control_origin, 1.f));
 			vec3 o(o4 / o4.w());
 
 			// TODO: check if plane actually intersects the box, otherwise draw the infinite cutting plane
@@ -934,7 +887,7 @@ public:
 			clipping_planes_ctr->create_clipping_plane(o, control_direction);
 			post_recreate_gui();
 
-			mat *= cgv::math::scale4<double>(extent_scale);
+			mat4 mat = get_model_transform() * cgv::math::scale4<double>(extent_scale);
 
 			vec4 origin4(inv(mat) * vec4(control_origin, 1.f));
 			vec3 origin(origin4 / origin4.w());
@@ -984,33 +937,45 @@ public:
 			temp_clipping_plane_idx = 0;
 		}
 	}
+
+#pragma region cells_container_listener
 	// listener for cell grab event inside box
-	void on_cell_grabbed(size_t index)
+	void on_cell_grabbed(size_t offset, size_t index)
 	{
-		// TODO add offset
 		if (li_cell_stats != -1) {
 			vr::vr_scene* scene_ptr = get_scene_ptr();
 			if (scene_ptr) {
-				scene_ptr->update_label_text(li_cell_stats, "Cell with id " + std::to_string(ids[index]) + " and type " + std::to_string(visible_types[index]));
+				const cell& c = cells[offset + index];
+
+				scene_ptr->update_label_text(li_cell_stats, "Cell with id " + std::to_string(c.id) + " and type " + std::to_string(c.type));
 				scene_ptr->fix_label_size(li_cell_stats);
 			}
 		}
 
 		li_cell_visible = true;
 	}
+#pragma endregion cells_container_listener
+
+#pragma region clipping_planes_container_listener
 	// listener for existing clipping plane grab event inside box
 	void container_on_clipping_plane_grabbed(size_t index)
 	{
 
 	}
+#pragma endregion clipping_planes_container_listener
+
+#pragma region clipping_planes_bag_listener
 	// listener for clipping plane grab event inside bag
 	void bag_on_clipping_plane_grabbed()
 	{
+		// ignore if user is already holding a clipping plane
+		// or no clipping plane left (the maximum is 8)
 		if (clipping_plane_grabbed || clipping_planes_ctr->get_num_clipping_planes() == clipped_box_renderer::MAX_CLIPPING_PLANES)
 			return;
 
 		clipping_plane_grabbed = true;
 	}
+#pragma endregion clipping_planes_bag_listener
 };
 
 cgv::base::object_registration<vr_ca_vis> or_vr_ca_vis("vr_ca_vis");

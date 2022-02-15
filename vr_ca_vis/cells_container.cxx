@@ -25,7 +25,7 @@ cells_container::rgb cells_container::get_modified_color(const rgb& color) const
 	return mod_col;
 }
 cells_container::cells_container(cells_container_listener* _listener, const std::string& _name, const vec3& _extent, const quat& _rotation)
-	: cgv::base::node(_name), listener(_listener), extent(_extent)/*, rotation(_rotation)*/
+	: cgv::base::node(_name), listener(_listener), extent(_extent), rotation(_rotation)
 {
 	debug_point = vec3(0, 0.5f, 0);
 	srs.radius = 0.01f;
@@ -169,11 +169,11 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 	//}
 	//std::cout << "min_dist = " << positions[0] << " <-> " << point << " | " << radii[0] << " at " << min_dist << " for " << primitive_idx << std::endl;
 
-	regular_grid::ResultEntry res = grid.ClosestPoint(point_upscaled);
+	regular_grid<cell>::result_entry res = grid.closest_point(point_upscaled);
 
-	if (min_dist > res.sqrDistance)
+	if (min_dist > res.sqr_distance)
 	{
-		min_dist = sqrt(res.sqrDistance);
+		min_dist = sqrt(res.sqr_distance);
 
 		primitive_idx = res.prim;
 
@@ -221,16 +221,16 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 	//	}
 	//}
 
-	grid_traverser trav(ray_origin_upscaled, ray_direction, grid.CellExtents());
+	grid_traverser trav(ray_origin_upscaled, ray_direction, grid.get_cell_extents());
 	for (int i = 0; ; ++i, trav++)
 	{
-		int index = grid.CellIndexToGridIndex(*trav);
+		int index = grid.get_cell_index_to_grid_index(*trav);
 
 		if (index < 0 || index >= 10 * 10 * 10)
 			break;
 
 		std::vector<int> indices;
-		grid.ClosestIndices(index, indices);
+		grid.get_closest_indices(index, indices);
 
 		if (indices.empty())
 			continue;
@@ -317,7 +317,7 @@ void cells_container::draw(cgv::render::context& ctx)
 		}
 		br.set_color_array(ctx, &cells.front().color, cells.size(), sizeof(cell));
 		br.set_extent(ctx, extent);
-		//br.set_rotation_array(ctx, &rotation, positions.size());
+		//br.set_rotation_array(ctx, &rotation, cells.size());
 		br.set_clipping_planes(clipping_planes);
 		br.render(ctx, 0, cells.size());
 		if (prim_idx >= 0 && prim_idx < cells.size())
@@ -368,15 +368,15 @@ void cells_container::set_scale_matrix(const mat4& _scale_matrix)
 	scale_matrix = _scale_matrix;
 	inv_scale_matrix = inv(_scale_matrix);
 }
-void cells_container::set_cells(int _offset, std::vector<cell>::const_iterator cells_begin, std::vector<cell>::const_iterator cells_end)
+void cells_container::set_cells(size_t _offset, std::vector<cell>::const_iterator cells_begin, std::vector<cell>::const_iterator cells_end)
 {
 	offset = _offset;
 
 	cells.assign(cells_begin, cells_end);
 
-	BuildRegularGridFromVertices(cells, grid);
+	grid.build_from_vertices(&cells);
 
-	//grid.Debug();
+	//grid.print();
 }
 void cells_container::set_clipping_planes(const std::vector<vec4>& _clipping_planes)
 {
@@ -385,5 +385,5 @@ void cells_container::set_clipping_planes(const std::vector<vec4>& _clipping_pla
 void cells_container::grab_cell (size_t index)
 {
 	if (listener)
-		listener->on_cell_grabbed(index);
+		listener->on_cell_grabbed(offset, index);
 }

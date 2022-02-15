@@ -17,7 +17,7 @@
 class cells_container_listener
 {
 public:
-	virtual void on_cell_grabbed(size_t index) = 0;
+	virtual void on_cell_grabbed(size_t offset, size_t index) = 0;
 };
 
 class cells_container :
@@ -47,7 +47,7 @@ protected:
 	cells_container_listener* listener;
 
 	// acceleration data structure
-	regular_grid grid;
+	regular_grid<cell> grid;
 
 	// geometry of cubes with color
 	vec3 extent;
@@ -57,10 +57,14 @@ protected:
 	// inv_scale_matrix is used to prevent expensive scaling of all cells
 	mat4 inv_scale_matrix;
 
-	int offset;
+	// offset set by time_step_start
+	size_t offset;
 	std::vector<cell> cells;
 
+	// clipping planes that are used by clipped_box geometry shader
+	// in the form of ax + by + cz + d = 0
 	std::vector<vec4> clipping_planes;
+
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
 	// index of focused primitive
@@ -88,8 +92,7 @@ public:
 	void create_gui();
 
 	void set_scale_matrix(const mat4& _scale_matrix);
-	// offset is time_step_start
-	void set_cells(int _offset, std::vector<cell>::const_iterator cells_begin, std::vector<cell>::const_iterator cells_end);
+	void set_cells(size_t _offset, std::vector<cell>::const_iterator cells_begin, std::vector<cell>::const_iterator cells_end);
 	void set_clipping_planes(const std::vector<vec4>& _clipping_planes);
 private:
 	void grab_cell(size_t index);

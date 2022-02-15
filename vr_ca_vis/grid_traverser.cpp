@@ -9,65 +9,65 @@
 grid_traverser::grid_traverser()
 { }
 
-grid_traverser::grid_traverser(const vec3& o, const vec3&d, const vec3& cell_extents)
-	: orig(o), dir(d), cellExtents(cell_extents)
+grid_traverser::grid_traverser(const vec3& _origin, const vec3& _direction, const vec3& _cell_extents)
+	: origin(_origin), direction(_direction), cell_extents(_cell_extents)
 {
-	dir.normalize();
-	Init();
+	direction.normalize();
+	init();
 }
 
-vec3& grid_traverser::Origin()
+vec3& grid_traverser::get_origin()
 {
-	return orig;
+	return origin;
 }
-const vec3& grid_traverser::Origin() const
+const vec3& grid_traverser::get_origin() const
 {
-	return orig;
-}
-
-vec3& grid_traverser::Direction()
-{
-	return dir;
+	return origin;
 }
 
-const vec3& grid_traverser::Direction() const
+vec3& grid_traverser::get_direction()
 {
-	return dir;
+	return direction;
 }
 
-void grid_traverser::SetCellExtents(const vec3& cellExtent)
+const vec3& grid_traverser::get_direction() const
 {
-	this->cellExtents = cellExtent;
-	Init();
+	return direction;
 }
 
-void grid_traverser::Init()
+void grid_traverser::set_cell_extents(const vec3& _cell_extents)
 {
-	current = PositionToCellIndex(orig, cellExtents);
+	cell_extents = _cell_extents;
+	init();
+}
+
+void grid_traverser::init()
+{
+	current = get_position_to_cell_index(origin, cell_extents);
 	
 	/* Task 4.2.2 */
 	
 	// stepX, stepY, and stepZ are initialized to either 1 or -1
 	// indicating whether current (X, Y, and Z) is incremented or decremented as the ray crosses voxel boundaries
-	stepX = dir[0] > 0 ? 1 : dir[0] < 0 ? -1 : 0;
-	stepY = dir[1] > 0 ? 1 : dir[1] < 0 ? -1 : 0;
-	stepZ = dir[2] > 0 ? 1 : dir[2] < 0 ? -1 : 0;
+	step_x = direction[0] > 0 ? 1 : direction[0] < 0 ? -1 : 0;
+	step_y = direction[1] > 0 ? 1 : direction[1] < 0 ? -1 : 0;
+	step_z = direction[2] > 0 ? 1 : direction[2] < 0 ? -1 : 0;
 
 	// nextX, nextY, and nextZ are set to next voxel
-	double nextX = (current[0] + stepX) * cellExtents[0];
-  	double nextY = (current[1] + stepY) * cellExtents[1];
-  	double nextZ = (current[2] + stepZ) * cellExtents[2];
+	double next_x = (current[0] + step_x) * cell_extents[0];
+  	double next_y = (current[1] + step_y) * cell_extents[1];
+  	double next_z = (current[2] + step_z) * cell_extents[2];
 
 	// tMaxX, tMaxY, and tMaxZ are set to the distance until next intersection with voxel border
-	tMaxX = (dir[0] != 0) ? (nextX - orig[0]) / dir[0] : DBL_MAX;
-  	tMaxY = (dir[1] != 0) ? (nextY - orig[1]) / dir[1] : DBL_MAX;
-  	tMaxZ = (dir[2] != 0) ? (nextZ - orig[2]) / dir[2] : DBL_MAX;
+	t_max_x = (direction[0] != 0) ? (next_x - origin[0]) / direction[0] : DBL_MAX;
+  	t_max_y = (direction[1] != 0) ? (next_y - origin[1]) / direction[1] : DBL_MAX;
+  	t_max_z = (direction[2] != 0) ? (next_z - origin[2]) / direction[2] : DBL_MAX;
 
 	// tDeltaX, tDeltaY, tDeltaZ are set to how far along the ray we must move (in units of t)
 	// in the direction of x-, y-, and z-axis to equal the width, height, and depth of a voxel, respectively.
-	tDeltaX = (dir[0] != 0) ? cellExtents[0] / dir[0] * stepX : DBL_MAX;
-  	tDeltaY = (dir[1] != 0) ? cellExtents[1] / dir[1] * stepY : DBL_MAX;
-  	tDeltaZ = (dir[2] != 0) ? cellExtents[2] / dir[2] * stepZ : DBL_MAX;
+	t_delta_x = (direction[0] != 0) ? cell_extents[0] / direction[0] * step_x : DBL_MAX;
+  	t_delta_y = (direction[1] != 0) ? cell_extents[1] / direction[1] * step_y : DBL_MAX;
+  	t_delta_z = (direction[2] != 0) ? cell_extents[2] / direction[2] * step_z : DBL_MAX;
 }
 
 void grid_traverser::operator++(int)
@@ -77,30 +77,30 @@ void grid_traverser::operator++(int)
 	//traverse one step along the ray
 	//update the cell index stored in attribute "current"
 
-    if (tMaxX < tMaxY)
+    if (t_max_x < t_max_y)
 	{
-		if (tMaxX < tMaxZ)
+		if (t_max_x < t_max_z)
 		{
-        	current[0] += stepX;
-        	tMaxX += tDeltaX;
+        	current[0] += step_x;
+        	t_max_x += t_delta_x;
       	}
 		else
 		{
-        	current[2] += stepZ;
-        	tMaxZ += tDeltaZ;
+        	current[2] += step_z;
+        	t_max_z += t_delta_z;
 		}
     }
 	else
 	{
-      	if (tMaxY < tMaxZ)
+      	if (t_max_y < t_max_z)
 		{
-        	current[1] += stepY;
-        	tMaxY += tDeltaY;
+        	current[1] += step_y;
+        	t_max_y += t_delta_y;
       	}
 		else
 		{
-        	current[2] += stepZ;
-        	tMaxZ += tDeltaZ;
+        	current[2] += step_z;
+        	t_max_z += t_delta_z;
       	}
     }
 }

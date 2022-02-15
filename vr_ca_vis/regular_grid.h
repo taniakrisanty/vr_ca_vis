@@ -12,97 +12,98 @@
 
 typedef cgv::math::fvec<float, 3> vec3;
 
+template <typename T>
 class regular_grid
 {
 public:
 	//result entry for nearest and k nearest primitive queries
-	struct ResultEntry
+	struct result_entry
 	{
 		//squared distance from query point to primitive
-		float sqrDistance;
+		float sqr_distance;
 		//primitive index
 		int prim;
 		//default constructor
-		ResultEntry()
-			: sqrDistance(std::numeric_limits<float>::infinity()), prim(-1)
+		result_entry()
+			: sqr_distance(std::numeric_limits<float>::infinity()), prim(-1)
 		{ }
 		//constructor
-		ResultEntry(float sqrDistance, int p)
-			: sqrDistance(sqrDistance), prim(p)
+		result_entry(float _sqr_distance, int _prim)
+			: sqr_distance(_sqr_distance), prim(_prim)
 		{ }
 		//result_entry are sorted by their sqr_distance using this less than operator 
-		bool operator<(const ResultEntry& e) const
+		bool operator<(const result_entry& e) const
 		{
-			return sqrDistance < e.sqrDistance;
+			return sqr_distance < e.sqr_distance;
 		}
 	};
 
 private:
-	std::vector<int>* grid = NULL;
+	std::vector<size_t>* grid = NULL;
 
 	bool* visited_statuses = NULL;
 
-	vec3 cellExtents;
+	vec3 cell_extents;
 
-	std::vector<vec3> points;
+	const std::vector<T>* cells;
 
 	//search entry used internally for nearest and k nearest primitive queries
-	struct SearchEntry
+	struct search_entry
 	{
 		//squared distance to node from query point
-		float sqrDistance;
+		float sqr_distance;
 		//node
-		int gridIndex;
+		int grid_index;
 
 		//constructor
-		SearchEntry(float sqrDistance, int gridIndex)
-			: sqrDistance(sqrDistance), gridIndex(gridIndex)
+		search_entry(float _sqr_distance, int _grid_index)
+			: sqr_distance(_sqr_distance), grid_index(_grid_index)
 		{ }
 
 		//search entry a < b means a.sqr_distance > b. sqr_distance 
-		bool operator<(const SearchEntry& e) const
+		bool operator<(const search_entry& e) const
 		{
-			return sqrDistance > e.sqrDistance;
+			return sqr_distance > e.sqr_distance;
 		}
 	};
 
-	struct KnnResult
+	struct knn_result
 	{
 		size_t k;
 
-		std::priority_queue<ResultEntry> queue;
+		std::priority_queue<result_entry> queue;
 
 		//default constructor
-		KnnResult()
+		knn_result()
 			: k(0)
 		{ }
 		//constructor
-		KnnResult(size_t k)
+		knn_result(size_t k)
 			: k(k)
 		{ }
 		// 
-		float maxDist() const
+		float max_dist() const
 		{
-			return k > 0 && queue.size() < k ? std::numeric_limits<float>::infinity() : queue.top().sqrDistance;
+			return k > 0 && queue.size() < k ? std::numeric_limits<float>::infinity() : queue.top().sqr_distance;
 		}
 		//
-		void consider(int prim, float sqrDistance)
+		void consider(int prim, float sqr_distance)
 		{
 			if (k > 0 && queue.size() == k)
 			{
-				if (sqrDistance >= queue.top().sqrDistance)
+				if (sqr_distance >= queue.top().sqr_distance)
 					return;
 
 				queue.pop();
 			}
-			queue.push(ResultEntry(sqrDistance, prim));
+			queue.push(result_entry(sqr_distance, prim));
 		}
 	};
 
 public:
 	regular_grid(const float cellExtent = 10)
 	{
-		cellExtents[0] = cellExtents[1] = cellExtents[2] = cellExtent;
+		cell_extents[0] = cell_extents[1] = cell_extents[2] = cellExtent;
 	}
 
 	void clear()
@@ -110,43 +111,41 @@ public:
 		if (grid) delete[] grid;
 		if (visited_statuses) delete[] visited_statuses;
 
-		// TODO divide the space by the cellExtent
-		grid = new std::vector<int>[10 * 10 * 10];
+		// TODO divide the space by the cell_extents
+		grid = new std::vector<size_t>[10 * 10 * 10];
 		visited_statuses = new bool[10 * 10 * 10];
-
-		points.clear();
 	}
 
-	int CellIndexToGridIndex(const ivec3& ci) const
+	int get_cell_index_to_grid_index(const ivec3& ci) const
 	{
 		return ci.x() + ci.y() * 10 + ci.z() * 10 * 10;
 	}
 
 	//converts a position to a grid index
-	int PositionToGridIndex(const vec3& pos) const
+	int get_position_to_grid_index(const vec3& pos) const
 	{
-		vec3 ci = PositionToCellIndex(pos, cellExtents);
+		vec3 ci = get_position_to_cell_index(pos, cell_extents);
 
-		return CellIndexToGridIndex(ci);
+		return get_cell_index_to_grid_index(ci);
 	}
 
 	//return the center position of a cell specified by its cell key
-	vec3 CellCenter(const ivec3& idx) const
+	vec3 get_cell_center(const ivec3& idx) const
 	{
 		vec3 p;
 		for (int d = 0; d < 3; ++d)
-			p[d] = (idx[d] + 0.5f) * cellExtents[d];
+			p[d] = (idx[d] + 0.5f) * cell_extents[d];
 
 		return p;
 	}
 
 	//return the center position of a cell containing give position pos
-	vec3 CellCenter(const vec3& pos) const
+	vec3 get_cell_center(const vec3& pos) const
 	{
-		return CellCenter(PositionToCellIndex(pos, cellExtents));
+		return get_cell_center(get_position_to_cell_index(pos, cell_extents));
 	}
 
-	void ClosestIndices(int index, std::vector<int>& indices) const
+	void get_closest_indices(int index, std::vector<int>& indices) const
 	{
 		if (grid == NULL || index < 0 || index >= 10 * 10 * 10)
 			return;
@@ -154,32 +153,30 @@ public:
 		indices.assign(grid[index].begin(), grid[index].end());
 	}
 
-	void ClosestIndices(const vec3& pos, std::vector<int>& indices) const
+	void get_closest_indices(const vec3& pos, std::vector<int>& indices) const
 	{
-		int index = PositionToGridIndex(pos);
+		int index = get_position_to_grid_index(pos);
 
-		ClosestIndices(index, indices);
+		get_closest_indices(index, indices);
 	}
 
 	//returns the extents of a grid cell
-	vec3 CellExtents() const
+	vec3 get_cell_extents() const
 	{
-		return cellExtents;
+		return cell_extents;
 	}
 
 	//inserts primitive p into all overlapping regular grid cells
-	void Insert(int p_index, const vec3& p)
+	void insert(int p_index, const vec3& p)
 	{
-		int index = PositionToGridIndex(p);
+		int index = get_position_to_grid_index(p);
 
 		grid[index].push_back(p_index);
-
-		points.push_back(p);
 	}
 
-	void considerPath(const ivec3& ci, const vec3& q, std::priority_queue<SearchEntry>& qmin, KnnResult& res) const
+	void consider_path(const ivec3& ci, const vec3& q, std::priority_queue<search_entry>& qmin, knn_result& res) const
 	{
-		int gi = CellIndexToGridIndex(ci);
+		int gi = get_cell_index_to_grid_index(ci);
 
 		// ignore if outside the grid
 		if (gi < 0 || gi >= 10 * 10 * 10)
@@ -198,7 +195,7 @@ public:
 
 			for (const ivec3& cell_index : cis)
 			{
-				gi = CellIndexToGridIndex(cell_index);
+				gi = get_cell_index_to_grid_index(cell_index);
 
 				// ignore if already inside the queue
 				if (visited_statuses[gi])
@@ -208,7 +205,7 @@ public:
 				if (gi < 0 || gi >= 10 * 10 * 10)
 					continue;
 
-				qmin.push(SearchEntry((CellCenter(cell_index) - q).sqr_length(), gi));
+				qmin.push(search_entry((get_cell_center(cell_index) - q).sqr_length(), gi));
 			}
 		}
 		else
@@ -221,45 +218,45 @@ public:
 
 			for (int p_index : grid[gi])
 			{
-				res.consider(p_index, (points[p_index] - q).sqr_length());
+				res.consider(p_index, (cells->at(p_index).node - q).sqr_length());
 			}
 		}
 	}
 
-	ResultEntry ClosestPoint(const vec3& q) const
+	result_entry closest_point(const vec3& q) const
 	{
 		if (grid != NULL && visited_statuses != NULL)
 		{
 			memset(visited_statuses, false, sizeof(bool) * 10 * 10 * 10);
 
-			ivec3 ci = PositionToCellIndex(q, cellExtents);
+			ivec3 ci = get_position_to_cell_index(q, cell_extents);
 
-			KnnResult k_best(1);
+			knn_result k_best(1);
 
-			std::priority_queue<SearchEntry> qmin;
-			considerPath(ci, q, qmin, k_best);
+			std::priority_queue<search_entry> qmin;
+			consider_path(ci, q, qmin, k_best);
 
 			while (!qmin.empty())
 			{
-				SearchEntry se = qmin.top();
-				int gi = se.gridIndex;
-				float dist = se.sqrDistance;
+				search_entry se = qmin.top();
+				int gi = se.grid_index;
+				float dist = se.sqr_distance;
 				qmin.pop();
 
-				if (dist > k_best.maxDist())
+				if (dist > k_best.max_dist())
 					break;
 
-				considerPath(gi, q, qmin, k_best);
+				consider_path(gi, q, qmin, k_best);
 			}
 
 			if (!k_best.queue.empty())
 				return k_best.queue.top();
 		}
 
-		return ResultEntry();
+		return result_entry();
 	}
 
-	void Debug() const
+	void print() const
 	{
 		for (int i = 0; i < 10; ++i)
 		{
@@ -267,13 +264,13 @@ public:
 			{
 				for (int k = 0; k < 10; ++k)
 				{
-					int gi = CellIndexToGridIndex(ivec3(i, j, k));
+					int gi = get_cell_index_to_grid_index(ivec3(i, j, k));
 
 					std::cout << "Grid[" << i << ", " << j << ", " << k << "]" << std::endl;
 
-					for (int index : grid[gi])
+					for (size_t index : grid[gi])
 					{
-						std::cout << points[index] << std::endl;
+						std::cout << cells->at(index).node << std::endl;
 					}
 
 					std::cout << "===============" << std::endl;
@@ -281,16 +278,18 @@ public:
 			}
 		}
 	}
+
+	void build_from_vertices(const std::vector<T>* _cells)
+	{
+		clear();
+		
+		cells = _cells;
+
+		if (cells == NULL)
+			return;
+
+		size_t index = 0;
+		for (std::vector<T>::const_iterator vit = cells->begin(), vend = cells->end(); vit != vend; ++vit)
+			insert(index++, vit->node);
+	}
 };
-
-//helper function to construct a regular grid data structure from the centers of the cells
-template <typename T>
-void BuildRegularGridFromVertices(const std::vector<T>& cells, regular_grid& grid)
-{
-	grid.clear();
-
-	int i = 0;
-	auto vend = cells.end();
-	for (auto vit = cells.begin(); vit != vend; ++vit)
-		grid.Insert(i++, vit->node);
-}
