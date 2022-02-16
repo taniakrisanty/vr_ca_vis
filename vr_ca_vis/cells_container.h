@@ -61,6 +61,8 @@ protected:
 	size_t offset;
 	std::vector<cell> cells;
 
+	vec3 lines[2];
+
 	// clipping planes that are used by clipped_box geometry shader
 	// in the form of ax + by + cz + d = 0
 	std::vector<vec4> clipping_planes;

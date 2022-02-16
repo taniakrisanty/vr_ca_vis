@@ -126,7 +126,8 @@ protected:
 	// scaling factor for dataset
 	double scale;
 
-	// current time step 
+	// current time step
+	uint32_t current_time_step;
 	uint32_t time_step;
 	// first frame in current time step
 	bool first_frame;
@@ -382,7 +383,7 @@ public:
 		append_child(cells_ctr);
 
 		// when put behind the head (z+) the grabbing does not work
-		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 0.5f));
+		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, -0.1f));
 		append_child(clipping_planes_b);
 
 		clipping_planes_ctr = new clipping_planes_container(this, "Clipping Planes");
@@ -483,13 +484,9 @@ public:
 	}
 	void init_frame(cgv::render::context& ctx)
 	{
-		vr::vr_scene* scene_ptr = get_scene_ptr();
-		if (!scene_ptr)
-			return;
-
-		if (first_frame)
+		if (current_time_step != time_step)
 		{
-			first_frame = false;
+			current_time_step = time_step;
 
 			compute_visible_points();
 		}
@@ -504,6 +501,10 @@ public:
 
 		//mat4 h;
 		//h.identity();
+
+		vr::vr_scene* scene_ptr = get_scene_ptr();
+		if (!scene_ptr)
+			return;
 
 		//if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_HEAD))
 		//	h *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_HEAD));
@@ -839,8 +840,8 @@ public:
 	}
 	void compute_visible_points()
 	{
-		size_t start = time_step_start[time_step];
-		size_t end = (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
+		size_t start = 0; //time_step_start[time_step];
+		size_t end = 5; //(time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
 
 		//visible_points.insert(visible_points.end(), points.begin() + start, points.begin() + end);
 		//visible_types.insert(visible_types.end(), group_indices.begin() + start, group_indices.begin() + end);

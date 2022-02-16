@@ -139,7 +139,7 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 			if (inter_info.ray_param != std::numeric_limits<float>::max())
 				debug_point = inter_info.hit_point;
 			// to be save even without new intersection, find closest point on ray to hit point at trigger
-			//vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
+			vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
 			//origins[prim_idx] = position_at_trigger + q - hit_point_at_trigger;
 		}
 		post_redraw();

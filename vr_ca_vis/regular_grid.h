@@ -101,9 +101,9 @@ private:
 	};
 
 public:
-	regular_grid(const float cellExtent = 10)
+	regular_grid(const float _cell_extents = 10)
 	{
-		cell_extents[0] = cell_extents[1] = cell_extents[2] = cellExtent;
+		cell_extents[0] = cell_extents[1] = cell_extents[2] = _cell_extents;
 	}
 
 	void clear()
@@ -118,13 +118,18 @@ public:
 
 	int get_cell_index_to_grid_index(const ivec3& ci) const
 	{
+		if (ci.x() < 0 || ci.x() >= 10 ||
+			ci.y() < 0 || ci.y() >= 10 ||
+			ci.z() < 0 || ci.z() >= 10)
+			return -1;
+
 		return ci.x() + ci.y() * 10 + ci.z() * 10 * 10;
 	}
 
 	//converts a position to a grid index
 	int get_position_to_grid_index(const vec3& pos) const
 	{
-		vec3 ci = get_position_to_cell_index(pos, cell_extents);
+		ivec3 ci = get_position_to_cell_index(pos, cell_extents);
 
 		return get_cell_index_to_grid_index(ci);
 	}
@@ -179,7 +184,8 @@ public:
 		int gi = get_cell_index_to_grid_index(ci);
 
 		// ignore if outside the grid
-		if (gi < 0 || gi >= 10 * 10 * 10)
+		//if (gi < 0 || gi >= 10 * 10 * 10)
+		if (gi < 0)
 			return;
 
 		if (grid[gi].empty())
@@ -197,12 +203,13 @@ public:
 			{
 				gi = get_cell_index_to_grid_index(cell_index);
 
-				// ignore if already inside the queue
-				if (visited_statuses[gi])
+				// ignore if outside the grid
+				//if (gi < 0 || gi >= 10 * 10 * 10)
+				if (gi < 0)
 					continue;
 
-				// ignore if outside the grid
-				if (gi < 0 || gi >= 10 * 10 * 10)
+				// ignore if already inside the queue
+				if (visited_statuses[gi])
 					continue;
 
 				qmin.push(search_entry((get_cell_center(cell_index) - q).sqr_length(), gi));
@@ -266,6 +273,9 @@ public:
 				{
 					int gi = get_cell_index_to_grid_index(ivec3(i, j, k));
 
+					if (grid[gi].empty())
+						continue;
+
 					std::cout << "Grid[" << i << ", " << j << ", " << k << "]" << std::endl;
 
 					for (size_t index : grid[gi])
@@ -273,7 +283,7 @@ public:
 						std::cout << cells->at(index).node << std::endl;
 					}
 
-					std::cout << "===============" << std::endl;
+					std::cout << "=============" << std::endl;
 				}
 			}
 		}

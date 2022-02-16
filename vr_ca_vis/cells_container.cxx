@@ -5,6 +5,8 @@
 #include <cgv/math/proximity.h>
 #include <cgv/math/intersection.h>
 
+#include <cgv_gl/line_renderer.h>
+
 #include "grid_traverser.h"
 
 cells_container::rgb cells_container::get_modified_color(const rgb& color) const
@@ -144,7 +146,7 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			if (inter_info.ray_param != std::numeric_limits<float>::max())
 				debug_point = inter_info.hit_point;
 			// to be save even without new intersection, find closest point on ray to hit point at trigger
-			//vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
+			vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
 			//positions[prim_idx] = position_at_trigger + q - hit_point_at_trigger;
 		}
 		post_redraw();
@@ -221,13 +223,17 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 	//	}
 	//}
 
+	lines[0] = ray_start;
+	lines[1] = ray_start;
+
 	grid_traverser trav(ray_origin_upscaled, ray_direction, grid.get_cell_extents());
 	for (int i = 0; ; ++i, trav++)
 	{
 		int index = grid.get_cell_index_to_grid_index(*trav);
 
-		if (index < 0 || index >= 10 * 10 * 10)
+		if (index < 0)
 			break;
+		//if (index < 0 || index >= 10 * 10 * 10)
 
 		std::vector<int> indices;
 		grid.get_closest_indices(index, indices);
@@ -289,12 +295,14 @@ bool cells_container::init(cgv::render::context& ctx)
 {
 	ref_clipped_box_renderer(ctx, 1);
 	cgv::render::ref_sphere_renderer(ctx, 1);
+	cgv::render::ref_line_renderer(ctx, 1);
 	return true;
 }
 void cells_container::clear(cgv::render::context& ctx)
 {
 	ref_clipped_box_renderer(ctx, -1);
 	cgv::render::ref_sphere_renderer(ctx, -1);
+	cgv::render::ref_line_renderer(ctx, -1);
 }
 void cells_container::draw(cgv::render::context& ctx)
 {
@@ -309,7 +317,7 @@ void cells_container::draw(cgv::render::context& ctx)
 	{
 		auto& br = ref_clipped_box_renderer(ctx);
 		br.set_render_style(brs);
-		br.set_position_array<vec3>(ctx, &cells.front().node, cells.size(), sizeof(cell));
+		br.set_position_array(ctx, &cells.front().node, cells.size(), sizeof(cell));
 		rgb tmp_color;
 		if (prim_idx >= 0 && prim_idx < cells.size()) {
 			tmp_color = cells[prim_idx].color;
@@ -333,19 +341,29 @@ void cells_container::draw(cgv::render::context& ctx)
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
-	rgb color(0.75f, 0.f, 0.f);
+	//rgb color(0.75f, 0.f, 0.f);
+	rgb color(1.f, 1.f, 1.f);
 	sr.set_color_array(ctx, &color, 1);
 	//sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
-		sr.set_color(ctx, rgb(1.f, 0.f, 0.f));
+		//sr.set_color(ctx, rgb(1.f, 0.f, 0.f));
+		sr.set_color(ctx, rgb(1.f, 1.f, 1.f));
 		//sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
-		sr.set_color(ctx, rgb(0.85f, 0.f, 0.f));
+		//sr.set_color(ctx, rgb(0.85f, 0.f, 0.f));
+		sr.set_color(ctx, rgb(1.f, 1.f, 1.f));
 		//sr.render(ctx, 0, 1);
 	}
+
+	lines[1] = debug_point;
+
+	auto& lr = cgv::render::ref_line_renderer(ctx);
+	lr.set_position_array(ctx, &lines[0], 2);
+	//lr.set_color(ctx, &color);
+	lr.render(ctx, 0, 1);
 }
 void cells_container::create_gui()
 {
@@ -376,7 +394,7 @@ void cells_container::set_cells(size_t _offset, std::vector<cell>::const_iterato
 
 	grid.build_from_vertices(&cells);
 
-	//grid.print();
+	grid.print();
 }
 void cells_container::set_clipping_planes(const std::vector<vec4>& _clipping_planes)
 {

@@ -139,7 +139,7 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 			if (inter_info.ray_param != std::numeric_limits<float>::max())
 				debug_point = inter_info.hit_point;
 			// to be save even without new intersection, find closest point on ray to hit point at trigger
-			//vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
+			vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
 			//position = position_at_trigger + q - hit_point_at_trigger;
 		}
 		post_redraw();
@@ -233,18 +233,21 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
-	rgb color(0.f, 0.f, 0.75f);
+	//rgb color(0.f, 0.f, 0.75f);
+	rgb color(0.f, 0.f, 1.f);
 	sr.set_color_array(ctx, &color, 1);
-	sr.render(ctx, 0, 1);
+	//sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
-		sr.set_color(ctx, rgb(0.f, 0.f, 1.f));
-		sr.render(ctx, 0, 1);
+		//sr.set_color(ctx, rgb(0.f, 0.f, 1.f));
+		sr.set_color(ctx, color);
+		//sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
-		sr.set_color(ctx, rgb(0.f, 0.f, 0.85f));
-		sr.render(ctx, 0, 1);
+		//sr.set_color(ctx, rgb(0.f, 0.f, 0.85f));
+		sr.set_color(ctx, color);
+		//sr.render(ctx, 0, 1);
 	}
 }
 void clipping_planes_bag::create_gui()
