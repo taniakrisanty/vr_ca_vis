@@ -383,7 +383,7 @@ public:
 		append_child(cells_ctr);
 
 		// when put behind the head (z+) the grabbing does not work
-		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, -0.1f));
+		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, -1.f));
 		append_child(clipping_planes_b);
 
 		clipping_planes_ctr = new clipping_planes_container(this, "Clipping Planes");

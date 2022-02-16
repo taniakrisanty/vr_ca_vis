@@ -51,10 +51,13 @@ protected:
 	mat4 head_matrix;
 	mat4 inv_head_matrix;
 
+	//mat4 head_translation_matrix;
+
 	// geometry of bag with color
 	vec3 position;
 	vec3 extent;
 	quat rotation;
+	vec3 translation;
 	rgb  color;
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;

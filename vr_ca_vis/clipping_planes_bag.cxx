@@ -152,18 +152,15 @@ bool clipping_planes_bag::compute_closest_point(const vec3& point, vec3& prj_poi
 	// point, prj_point, and prj_normal are in table coordinate
 	// position is in head coordinate
 
-	vec4 position_in_lab4(inv_modelview_matrix * head_matrix * vec4(position, 1.f));
-	vec3 position_in_lab(position_in_lab4 / position_in_lab4.w());
+	vec4 position_in_table4(inv_modelview_matrix * head_matrix * vec4(position, 1.f));
+	vec3 position_in_table(position_in_table4 / position_in_table4.w());
 
-	vec4 extent_in_lab4(inv_modelview_matrix * head_matrix * vec4(extent, 1.f));
-	vec3 extent_in_lab = extent_in_lab4 / extent_in_lab4.w();
-
-	vec3 p = point - position_in_lab;
+	vec3 p = point - position_in_table;
 	rotation.inverse_rotate(p);
 	for (int i = 0; i < 3; ++i)
-		p[i] = std::max(-0.5f * extent_in_lab[i], std::min(0.5f * extent_in_lab[i], p[i]));
+		p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
 	rotation.rotate(p);
-	prj_point = p + position_in_lab;
+	prj_point = p + position_in_table;
 	return true;
 }
 bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
@@ -171,19 +168,16 @@ bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3
 	// point, prj_point, and prj_normal are in table coordinate
 	// position is in head coordinate
 
-	vec4 position_in_lab4(inv_modelview_matrix * head_matrix * vec4(position, 1.f));
-	vec3 position_in_lab(position_in_lab4 / position_in_lab4.w());
+	vec4 position_in_table4(inv_modelview_matrix * head_matrix * vec4(position, 1.f));
+	vec3 position_in_table(position_in_table4 / position_in_table4.w());
 
-	vec4 extent_in_lab4(inv_modelview_matrix * head_matrix * vec4(extent, 1.f));
-	vec3 extent_in_lab = extent_in_lab4 / extent_in_lab4.w();
-
-	vec3 rs = ray_start - position_in_lab;
+	vec3 rs = ray_start - position_in_table;
 	vec3 rd = ray_direction;
 	rotation.inverse_rotate(rs);
 	rotation.inverse_rotate(rd);
 	vec3 n;
 	vec2 res;
-	if (cgv::math::ray_box_intersection(rs, rd, 0.5f * extent_in_lab, res, n) == 0)
+	if (cgv::math::ray_box_intersection(rs, rd, 0.5f * extent, res, n) == 0)
 		return false;
 	if (res[0] < 0) {
 		if (res[1] < 0)
@@ -224,7 +218,8 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 	br.set_color_array(ctx, &color, 1);
 	br.set_secondary_color(ctx, get_modified_color(color));
 	br.set_extent(ctx, extent);
-	br.set_rotation_array(ctx, &rotation, 1);
+	//br.set_translation_array(ctx, &translation, 1);
+	//br.set_rotation_array(ctx, &rotation, 1);
 	br.render(ctx, 0, 1);
 
 	ctx.pop_modelview_matrix();
@@ -233,21 +228,18 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
-	//rgb color(0.f, 0.f, 0.75f);
-	rgb color(0.f, 0.f, 1.f);
+	rgb color(1.f, 0.f, 0.f);
 	sr.set_color_array(ctx, &color, 1);
-	//sr.render(ctx, 0, 1);
+	sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
-		//sr.set_color(ctx, rgb(0.f, 0.f, 1.f));
-		sr.set_color(ctx, color);
-		//sr.render(ctx, 0, 1);
+		sr.set_color(ctx, rgb(0.f, 1.f, 0.f));
+		sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
-		//sr.set_color(ctx, rgb(0.f, 0.f, 0.85f));
-		sr.set_color(ctx, color);
-		//sr.render(ctx, 0, 1);
+		sr.set_color(ctx, rgb(0.f, 0.f, 1.f));
+		sr.render(ctx, 0, 1);
 	}
 }
 void clipping_planes_bag::create_gui()
@@ -274,6 +266,12 @@ void clipping_planes_bag::set_head_matrix(const mat4& _head_matrix)
 {
 	head_matrix = _head_matrix;
 	inv_head_matrix = inv(head_matrix);
+
+	//head_translation_matrix.identity();
+	//head_translation_matrix.set_col(3, _head_matrix.col(3));
+	
+	translation = _head_matrix.col(3);
+	rotation = quat(inv(mat3(3, 3, _head_matrix)));
 }
 void clipping_planes_bag::grab_clipping_plane()
 {
