@@ -650,7 +650,7 @@ public:
 		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
 		cells_ctr->set_clipping_planes(shader_clipping_planes);
 
-		clipping_planes_b->set_modelview_matrix(get_model_transform());
+		clipping_planes_b->set_model_transform(get_model_transform());
 
 		mat4 h;
 		h.identity();

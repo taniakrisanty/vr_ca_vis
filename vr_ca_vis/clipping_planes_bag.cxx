@@ -152,7 +152,7 @@ bool clipping_planes_bag::compute_closest_point(const vec3& point, vec3& prj_poi
 	// point, prj_point, and prj_normal are in table coordinate
 	// position is in head coordinate
 
-	vec4 position_in_table4(inv_modelview_matrix * head_matrix * vec4(position, 1.f));
+	vec4 position_in_table4(inv_model_transform * head_matrix * vec4(position, 1.f));
 	vec3 position_in_table(position_in_table4 / position_in_table4.w());
 
 	vec3 p = point - position_in_table;
@@ -168,7 +168,7 @@ bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3
 	// point, prj_point, and prj_normal are in table coordinate
 	// position is in head coordinate
 
-	vec4 position_in_table4(inv_modelview_matrix * head_matrix * vec4(position, 1.f));
+	vec4 position_in_table4(inv_model_transform * head_matrix * vec4(position, 1.f));
 	vec3 position_in_table(position_in_table4 / position_in_table4.w());
 
 	vec3 rs = ray_start - position_in_table;
@@ -208,7 +208,7 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 {
 	// show clipping planes bag
 	ctx.push_modelview_matrix();
-	ctx.mul_modelview_matrix(inv_modelview_matrix * head_matrix);
+	ctx.mul_modelview_matrix(inv_model_transform * head_matrix);
 
 	auto& br = cgv::render::ref_box_renderer(ctx);
 	br.set_render_style(brs);
@@ -257,10 +257,10 @@ void clipping_planes_bag::create_gui()
 		end_tree_node(brs);
 	}
 }
-void clipping_planes_bag::set_modelview_matrix(const mat4& _modelview_matrix)
+void clipping_planes_bag::set_model_transform(const mat4& _model_transform)
 {
-	modelview_matrix = _modelview_matrix;
-	inv_modelview_matrix = inv(modelview_matrix);
+	model_transform = _model_transform;
+	inv_model_transform = inv(model_transform);
 }
 void clipping_planes_bag::set_head_matrix(const mat4& _head_matrix)
 {

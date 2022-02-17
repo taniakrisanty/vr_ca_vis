@@ -45,8 +45,8 @@ public:
 protected:
 	clipping_planes_bag_listener* listener;
 
-	mat4 modelview_matrix;
-	mat4 inv_modelview_matrix;
+	mat4 model_transform;
+	mat4 inv_model_transform;
 
 	mat4 head_matrix;
 	mat4 inv_head_matrix;
@@ -85,7 +85,7 @@ public:
 
 	void create_gui();
 
-	void set_modelview_matrix(const mat4& _modelview_matrix);
+	void set_model_transform(const mat4& _model_transform);
 	void set_head_matrix(const mat4& _head_matrix);
 private:
 	void grab_clipping_plane();
