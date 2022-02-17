@@ -45,19 +45,14 @@ public:
 protected:
 	clipping_planes_bag_listener* listener;
 
-	mat4 model_transform;
+	// invert model transform applied by bag's parent
 	mat4 inv_model_transform;
-
-	mat4 head_matrix;
-	mat4 inv_head_matrix;
-
-	//mat4 head_translation_matrix;
+	mat4 head_transform;
 
 	// geometry of bag with color
 	vec3 position;
 	vec3 extent;
 	quat rotation;
-	vec3 translation;
 	rgb  color;
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
@@ -68,7 +63,7 @@ protected:
 	/// return color modified based on state
 	rgb get_modified_color(const rgb& color) const;
 public:
-	clipping_planes_bag(clipping_planes_bag_listener *_listener, const std::string& _name, const vec3& _position, const rgb& _color = rgb(1.f, 1.f, 0.f), const vec3& _extent = vec3(0.75f, 0.75f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
+	clipping_planes_bag(clipping_planes_bag_listener *_listener, const std::string& _name, const vec3& _position, const rgb& _color = rgb(1.f, 1.f, 0.f), const vec3& _extent = vec3(1.f, 1.f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
 	std::string get_type_name() const;
 	void on_set(void* member_ptr);
 
@@ -86,7 +81,7 @@ public:
 	void create_gui();
 
 	void set_model_transform(const mat4& _model_transform);
-	void set_head_matrix(const mat4& _head_matrix);
+	void set_head_transform(const mat4& _head_transform);
 private:
 	void grab_clipping_plane();
 };

@@ -74,7 +74,7 @@ protected:
 	/// return color modified based on state
 	rgb get_modified_color(const rgb& color) const;
 public:
-	cells_container(cells_container_listener* _listener, const std::string& _name, const vec3& _extent = vec3(1.f, 1.f, 1.f), const quat& _rotation = quat(1, 0, 0, 0));
+	cells_container(cells_container_listener* _listener, const std::string& _name, const vec3& _extent = vec3(1.f), const quat& _rotation = quat(1, 0, 0, 0));
 	std::string get_type_name() const;
 	void on_set(void* member_ptr);
 

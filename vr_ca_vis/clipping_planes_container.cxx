@@ -236,18 +236,18 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
-	rgb color(0.f, 0.75f, 0.f);
+	rgb color(0.5f, 0.5f, 0.5f);
 	sr.set_color_array(ctx, &color, 1);
-	//sr.render(ctx, 0, 1);
+	sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
-		sr.set_color(ctx, rgb(0.f, 1.f, 0.f));
-		//sr.render(ctx, 0, 1);
+		sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
+		sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
-		sr.set_color(ctx, rgb(0.f, 0.85f, 0.f));
-		//sr.render(ctx, 0, 1);
+		sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
+		sr.render(ctx, 0, 1);
 	}
 }
 void clipping_planes_container::draw_clipping_plane(size_t index, cgv::render::context & ctx)

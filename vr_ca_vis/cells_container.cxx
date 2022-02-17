@@ -156,7 +156,7 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 }
 bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
 {
-	vec4 point_upscaled4(inv_scale_matrix * vec4(point, 1.f));
+	vec4 point_upscaled4(inv_scale_matrix * point.lift());
 	vec3 point_upscaled = point_upscaled4 / point_upscaled4.w();
 
 	float min_dist = std::numeric_limits<float>::max();
@@ -179,10 +179,10 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 
 		primitive_idx = res.prim;
 
-		vec4 position_downscaled4(scale_matrix * vec4(cells[primitive_idx].node, 1.f));
+		vec4 position_downscaled4(scale_matrix * cells[primitive_idx].node.lift());
 		vec3 position_downscaled = position_downscaled4 / position_downscaled4.w();
 
-		vec4 extent_downscaled4(scale_matrix * vec4(extent, 1.f));
+		vec4 extent_downscaled4(scale_matrix * extent.lift());
 		vec3 extent_downscaled = extent_downscaled4 / extent_downscaled4.w();
 
 		vec3 p = point - position_downscaled;
@@ -192,14 +192,14 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 		rotation.rotate(p);
 		prj_point = p + position_downscaled;
 
-		std::cout << "Closest point from query point " << point << " = " << position_downscaled << std::endl;
+		//std::cout << "Closest point from query point " << point << " = " << position_downscaled << std::endl;
 	}
 
 	return min_dist < std::numeric_limits<float>::max();
 }
 bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
-	vec4 ray_origin_upscaled4(inv_scale_matrix * vec4(ray_start, 1.f));
+	vec4 ray_origin_upscaled4(inv_scale_matrix * ray_start.lift());
 	vec3 ray_origin_upscaled = ray_origin_upscaled4 / ray_origin_upscaled4.w();
 
 	hit_param = std::numeric_limits<float>::max();
@@ -264,10 +264,10 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 
 	if (hit_param < std::numeric_limits<float>::max())
 	{
-		vec4 position_downscaled4(scale_matrix * vec4(cells[primitive_idx].node, 1.f));
+		vec4 position_downscaled4(scale_matrix * cells[primitive_idx].node.lift());
 		vec3 position_downscaled = position_downscaled4 / position_downscaled4.w();
 
-		vec4 extent_downscaled4(scale_matrix * vec4(extent, 1.f));
+		vec4 extent_downscaled4(scale_matrix * extent.lift());
 		vec3 extent_downscaled = extent_downscaled4 / extent_downscaled4.w();
 
 		vec3 n;
@@ -282,8 +282,8 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		hit_param = param;
 		hit_normal = n;
 
-		std::cout << "Intersection from query ray " << ray_start << " = " << position_downscaled << std::endl;
-		std::cout << "Hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
+		//std::cout << "Intersection from query ray " << ray_start << " = " << position_downscaled << std::endl;
+		//std::cout << "Hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
 	}
 
 	return hit_param < std::numeric_limits<float>::max();
@@ -338,17 +338,17 @@ void cells_container::draw(cgv::render::context& ctx)
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
-	rgb color(1.f, 0.f, 0.f);
+	rgb color(0.5f, 0.5f, 0.5f);
 	sr.set_color_array(ctx, &color, 1);
 	sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
-		sr.set_color(ctx, rgb(0.f, 1.f, 0.f));
+		sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
 		sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
-		sr.set_color(ctx, rgb(0.f, 0.f, 1.f));
+		sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
 		sr.render(ctx, 0, 1);
 	}
 }

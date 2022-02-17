@@ -236,7 +236,7 @@ public:
 				size_t previous_num_points = cells.size();
 
 				model_parser parser(file_name, extent, types, cells /* , ids, group_indices, points */);
-				extent_scale = dvec3(1.0 / extent.x(), 1.0 / extent.y(), 1.0 / extent.z());
+				extent_scale = dvec3(1.0) / extent;
 
 				std::cout << "read " << file_name << " with " << cells.size() - previous_num_points << " cells" << std::endl;
 			}
@@ -383,7 +383,7 @@ public:
 		append_child(cells_ctr);
 
 		// when put behind the head (z+) the grabbing does not work
-		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, -1.f));
+		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 0.5f));
 		append_child(clipping_planes_b);
 
 		clipping_planes_ctr = new clipping_planes_container(this, "Clipping Planes");
@@ -658,7 +658,7 @@ public:
 		if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_HEAD))
 			h *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_HEAD));
 
-		clipping_planes_b->set_head_matrix(h);
+		clipping_planes_b->set_head_transform(h);
 
 		if (blend) {
 			glEnable(GL_BLEND);
@@ -887,7 +887,7 @@ public:
 			// control_origin have to be transformed to local space of the cells
 			vec3 control_origin = reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[9]);
 
-			vec4 o4(get_inverse_model_transform() * vec4(control_origin, 1.f));
+			vec4 o4(get_inverse_model_transform() * control_origin.lift());
 			vec3 o(o4 / o4.w());
 
 			// TODO: check if plane actually intersects the box, otherwise draw the infinite cutting plane
@@ -898,7 +898,7 @@ public:
 
 			mat4 mat = get_model_transform() * cgv::math::scale4<double>(extent_scale);
 
-			vec4 origin4(inv(mat) * vec4(control_origin, 1.f));
+			vec4 origin4(inv(mat) * control_origin.lift());
 			vec3 origin(origin4 / origin4.w());
 
 			temp_clipping_plane_idx = shader_clipping_planes.size();

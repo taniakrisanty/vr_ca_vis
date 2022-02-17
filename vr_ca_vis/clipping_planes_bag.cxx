@@ -152,7 +152,7 @@ bool clipping_planes_bag::compute_closest_point(const vec3& point, vec3& prj_poi
 	// point, prj_point, and prj_normal are in table coordinate
 	// position is in head coordinate
 
-	vec4 position_in_table4(inv_model_transform * head_matrix * vec4(position, 1.f));
+	vec4 position_in_table4(inv_model_transform * head_transform * position.lift());
 	vec3 position_in_table(position_in_table4 / position_in_table4.w());
 
 	vec3 p = point - position_in_table;
@@ -161,6 +161,9 @@ bool clipping_planes_bag::compute_closest_point(const vec3& point, vec3& prj_poi
 		p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
 	rotation.rotate(p);
 	prj_point = p + position_in_table;
+
+	//std::cout << "Closest point from query point " << point << " = " << position_in_table << std::endl;
+	
 	return true;
 }
 bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
@@ -168,7 +171,7 @@ bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3
 	// point, prj_point, and prj_normal are in table coordinate
 	// position is in head coordinate
 
-	vec4 position_in_table4(inv_model_transform * head_matrix * vec4(position, 1.f));
+	vec4 position_in_table4(inv_model_transform * head_transform * position.lift());
 	vec3 position_in_table(position_in_table4 / position_in_table4.w());
 
 	vec3 rs = ray_start - position_in_table;
@@ -189,6 +192,10 @@ bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3
 	}
 	hit_normal = n;
 	rotation.rotate(n);
+
+	//std::cout << "Intersection from query ray " << ray_start << " = " << position_in_table << std::endl;
+	//std::cout << "Hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
+
 	return true;
 }
 bool clipping_planes_bag::init(cgv::render::context& ctx)
@@ -208,7 +215,7 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 {
 	// show clipping planes bag
 	ctx.push_modelview_matrix();
-	ctx.mul_modelview_matrix(inv_model_transform * head_matrix);
+	ctx.mul_modelview_matrix(inv_model_transform * head_transform);
 
 	auto& br = cgv::render::ref_box_renderer(ctx);
 	br.set_render_style(brs);
@@ -218,7 +225,6 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 	br.set_color_array(ctx, &color, 1);
 	br.set_secondary_color(ctx, get_modified_color(color));
 	br.set_extent(ctx, extent);
-	//br.set_translation_array(ctx, &translation, 1);
 	//br.set_rotation_array(ctx, &rotation, 1);
 	br.render(ctx, 0, 1);
 
@@ -228,17 +234,16 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
-	rgb color(1.f, 0.f, 0.f);
 	sr.set_color_array(ctx, &color, 1);
 	sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
-		sr.set_color(ctx, rgb(0.f, 1.f, 0.f));
+		sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
 		sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
-		sr.set_color(ctx, rgb(0.f, 0.f, 1.f));
+		sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
 		sr.render(ctx, 0, 1);
 	}
 }
@@ -259,19 +264,19 @@ void clipping_planes_bag::create_gui()
 }
 void clipping_planes_bag::set_model_transform(const mat4& _model_transform)
 {
-	model_transform = _model_transform;
-	inv_model_transform = inv(model_transform);
+	inv_model_transform = inv(_model_transform);
 }
-void clipping_planes_bag::set_head_matrix(const mat4& _head_matrix)
+void clipping_planes_bag::set_head_transform(const mat4& _head_transform)
 {
-	head_matrix = _head_matrix;
-	inv_head_matrix = inv(head_matrix);
-
-	//head_translation_matrix.identity();
-	//head_translation_matrix.set_col(3, _head_matrix.col(3));
+	head_transform = _head_transform;
 	
-	translation = _head_matrix.col(3);
-	rotation = quat(inv(mat3(3, 3, _head_matrix)));
+	mat3 rotation_matrix;
+
+	rotation_matrix.set_col(0, head_transform.col(0) / head_transform.col(0).length());
+	rotation_matrix.set_col(1, head_transform.col(1) / head_transform.col(1).length());
+	rotation_matrix.set_col(2, head_transform.col(2) / head_transform.col(2).length());
+
+	rotation = quat(rotation_matrix);
 }
 void clipping_planes_bag::grab_clipping_plane()
 {
