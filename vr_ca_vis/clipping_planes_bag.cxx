@@ -27,9 +27,21 @@ clipping_planes_bag::clipping_planes_bag(clipping_planes_bag_listener* _listener
 	: cgv::base::node(_name), listener(_listener), position(_position), color(_color), extent(_extent), rotation(_rotation)
 {
 	debug_point = position + 0.5f * extent;
+	
 	brs.rounding = true;
 	brs.default_radius = 0.02f;
+
 	srs.radius = 0.01f;
+
+	surf_rs.illumination_mode = cgv::render::IlluminationMode::IM_OFF;
+	surf_rs.culling_mode = cgv::render::CullingMode::CM_OFF;
+	surf_rs.measure_point_size_in_pixel = false;
+	surf_rs.blend_points = true;
+	surf_rs.point_size = 1.8f;
+	surf_rs.percentual_halo_width = 5.0f;
+	surf_rs.surface_color = rgba(0, 0.8f, 1.0f);
+	surf_rs.material.set_transparency(0.75f);
+	surf_rs.halo_color = rgba(0, 0.8f, 1.0f, 0.8f);
 }
 std::string clipping_planes_bag::get_type_name() const
 {
@@ -201,6 +213,10 @@ bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3
 bool clipping_planes_bag::init(cgv::render::context& ctx)
 {
 	cgv::render::ref_sphere_renderer(ctx, 1);
+
+	cgv::render::ref_surfel_renderer(ctx, 1);
+	ctx.set_bg_clr_idx(4);
+
 	auto& br = cgv::render::ref_box_renderer(ctx, 1);
 	if (prog.is_linked())
 		return true;
@@ -210,6 +226,7 @@ void clipping_planes_bag::clear(cgv::render::context& ctx)
 {
 	cgv::render::ref_box_renderer(ctx, -1);
 	cgv::render::ref_sphere_renderer(ctx, -1);
+	cgv::render::ref_surfel_renderer(ctx, -1);
 }
 void clipping_planes_bag::draw(cgv::render::context& ctx)
 {
@@ -227,6 +244,13 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 	br.set_extent(ctx, extent);
 	//br.set_rotation_array(ctx, &rotation, 1);
 	br.render(ctx, 0, 1);
+
+	//auto& sr = cgv::render::ref_surfel_renderer(ctx);
+	//sr.set_reference_point_size(1.0f);
+	//sr.set_render_style(surf_rs);
+	//sr.set_position(ctx, position);
+	//sr.set_normal(ctx, vec3(0, 0, 1));
+	//sr.render(ctx, 0, 1);
 
 	ctx.pop_modelview_matrix();
 
