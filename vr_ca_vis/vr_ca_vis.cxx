@@ -291,6 +291,9 @@ public:
 				<< nr_attributes << " attributes" << std::endl;
 			//// concatenate
 			//write_file(fn);
+
+			cells_ctr->set_cell_types(types);
+
 			return true;
 		}
 		else
@@ -382,7 +385,6 @@ public:
 		cells_ctr = new cells_container(this, "Cells");
 		append_child(cells_ctr);
 
-		// when put behind the head (z+) the grabbing does not work
 		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 0.5f));
 		append_child(clipping_planes_b);
 
@@ -484,8 +486,7 @@ public:
 	}
 	void init_frame(cgv::render::context& ctx)
 	{
-		if (current_time_step != time_step)
-		{
+		if (current_time_step != time_step) {
 			current_time_step = time_step;
 
 			compute_visible_points();
@@ -607,7 +608,7 @@ public:
 		if (li_cell_stats == -1) {
 			li_cell_stats = scene_ptr->add_label("Cell with id none and type none", stats_bgclr);
 			scene_ptr->fix_label_size(li_cell_stats);
-			scene_ptr->place_label(li_cell_stats, vec3(0.05f, 0.f, 0.f), quat(vec3(1, 0, 0), -1.5f), vr::vr_scene::CS_LEFT_CONTROLLER, vr::vr_scene::LA_RIGHT);
+			scene_ptr->place_label(li_cell_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), vr::vr_scene::CS_RIGHT_CONTROLLER, vr::vr_scene::LA_TOP);
 		}
 
 		if (li_clipping_plane_visible)
@@ -770,7 +771,7 @@ public:
 		add_member_control(this, "color_scale", clr_scale, "dropdown", "enums='Temperature,Hue,Hue+Luminance'");
 		//rgba color;
 		//add_member_control(this, "color", color);
-		add_member_control(this, "use_boxes", use_boxes, "toggle", "shortcut='M'");
+		//add_member_control(this, "use_boxes", use_boxes, "toggle", "shortcut='M'");
 		add_gui("box_extent", box_extent, "", "gui_type='value_slider';options='min=0;max=1'");
 
 		if (begin_tree_node("geometry and groups", time_step, true)) {
@@ -813,30 +814,18 @@ public:
 			align("\b");
 			end_tree_node(box_style);
 		}
-		//if (begin_tree_node("Cells", cells_ctr)) {
-		//	align("\a");
-		//	inline_object_gui(cells_ctr);
-		//	align("\b");
-		//	end_tree_node(cells_ctr);
-		//}
-		if (clipping_planes_ctr->get_num_clipping_planes() > 0) {
-			if (begin_tree_node("Clipping Planes", clipping_planes_ctr, false)) {
-				add_member_control(this, "Show", clipping_planes_ctr, "toggle", "w=42;shortcut='w'");
-				for (unsigned i = 0; i < clipping_planes_ctr->get_num_clipping_planes(); ++i) {
-					align("\a");
-					inline_object_gui(clipping_planes_ctr);
-					align("\b");
-				}
-				end_tree_node(clipping_planes_ctr->get_num_clipping_planes() > 0);
-			}
+		if (begin_tree_node("Cells", cells_ctr, false)) {
+			align("\a");
+			inline_object_gui(cells_ctr);
+			align("\b");
+			end_tree_node(cells_ctr);
 		}
-
-		//if (begin_tree_node("Clipping Planes", clipping_planes_ctr->get_num_clipping_planes(), false)) {
-		//	align("\a");
-		//	inline_object_gui(clipping_planes_ctr);
-		//	align("\b");
-		//	end_tree_node(clipping_planes_ctr);
-		//}
+		if (begin_tree_node("Clipping Planes", clipping_planes_ctr, false)) {
+			align("\a");
+			inline_object_gui(clipping_planes_ctr);
+			align("\b");
+			end_tree_node(clipping_planes_ctr);
+		}
 	}
 	void compute_visible_points()
 	{
@@ -850,6 +839,8 @@ public:
 		//{
 		//	visible_colors.push_back(group_colors[group_indices[i]]);
 		//}
+
+		//start = 0; end = 10;
 
 		cells_ctr->set_cells(start, cells.begin() + start, cells.begin() + end);
 	}
@@ -956,7 +947,7 @@ public:
 			if (scene_ptr) {
 				const cell& c = cells[offset + index];
 
-				scene_ptr->update_label_text(li_cell_stats, "Cell with id " + std::to_string(c.id) + " and type " + std::to_string(c.type));
+				scene_ptr->update_label_text(li_cell_stats, "Cell with id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
 				scene_ptr->fix_label_size(li_cell_stats);
 			}
 		}

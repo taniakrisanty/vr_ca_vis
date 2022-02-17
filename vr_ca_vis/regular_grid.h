@@ -10,7 +10,8 @@
 
 #include <cgv/render/render_types.h>
 
-typedef cgv::math::fvec<float, 3> vec3;
+typedef cgv::render::render_types::vec3 vec3;
+typedef cgv::render::render_types::vec4 vec4;
 
 template <typename T>
 class regular_grid
@@ -46,6 +47,7 @@ private:
 	vec3 cell_extents;
 
 	const std::vector<T>* cells;
+	const std::vector<vec4>* clipping_planes;
 
 	//search entry used internally for nearest and k nearest primitive queries
 	struct search_entry
@@ -225,6 +227,18 @@ public:
 
 			for (int p_index : grid[gi])
 			{
+				vec4 node = cells->at(p_index).node.lift();
+
+				// ignore if cell is invisible (clipped by the clipping plane)
+				for (int i = 0; i < clipping_planes->size(); ++i)
+				{
+					const vec4& cp = clipping_planes->at(i);
+
+					//if (cgv::math::dot(node, clipping_planes[i]) < 0)
+					if (node.x() * cp.x() + node.y() * cp.y() + node.z() * cp.z() + node.w() * cp.w() < 0)
+						continue;
+				}
+
 				res.consider(p_index, (cells->at(p_index).node - q).sqr_length());
 			}
 		}
@@ -292,7 +306,7 @@ public:
 	void build_from_vertices(const std::vector<T>* _cells)
 	{
 		clear();
-		
+
 		cells = _cells;
 
 		if (cells == NULL)
@@ -301,5 +315,10 @@ public:
 		size_t index = 0;
 		for (std::vector<T>::const_iterator vit = cells->begin(), vend = cells->end(); vit != vend; ++vit)
 			insert(index++, vit->node);
+	}
+
+	void set_clipping_planes(const std::vector<vec4>* _clipping_planes)
+	{
+		clipping_planes = _clipping_planes;
 	}
 };

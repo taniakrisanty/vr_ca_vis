@@ -65,14 +65,12 @@ public:
 			node = root_node->first_node("CellPopulations");
 			if (node != NULL)
 			{
-				uint8_t type_index = 0;
-
 				for (rapidxml::xml_node<>* population_node = node->first_node("Population"); population_node != NULL; population_node = population_node->next_sibling())
 				{
 					std::string type(population_node->first_attribute("type")->value());
 
 					//type_start.push_back(points.size());
-					types.insert(type);
+					std::pair<std::unordered_set<std::string>::iterator, bool> p = types.insert(type);
 
 					for (rapidxml::xml_node<>* cell_node = population_node->first_node("Cell"); cell_node; cell_node = cell_node->next_sibling())
 					{
@@ -181,12 +179,10 @@ public:
 
 								//points.emplace_back(float(x), float(y), float(z));
 
-								cells.emplace_back(id, type_index, center, vec3(float(x), float(y), float(z)), b, b2);
+								cells.emplace_back(id, std::distance(types.begin(), p.first), center, vec3(float(x), float(y), float(z)), b, b2);
 							}
 						}
 					}
-
-					++type_index;
 				}
 			}
 		}

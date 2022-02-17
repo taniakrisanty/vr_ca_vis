@@ -33,11 +33,17 @@ cells_container::cells_container(cells_container_listener* _listener, const std:
 	srs.radius = 0.01f;
 	brs.culling_mode = cgv::render::CullingMode::CM_BACKFACE;
 
+	show_gui = true;
+
 	scale_matrix.identity();
 }
 std::string cells_container::get_type_name() const
 {
 	return "cells_container";
+}
+bool cells_container::self_reflect(cgv::reflect::reflection_handler& rh)
+{
+	return rh.reflect_member("cell_type_visibilities", cell_type_visibilities);
 }
 void cells_container::on_set(void* member_ptr)
 {
@@ -160,16 +166,6 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 	vec3 point_upscaled = point_upscaled4 / point_upscaled4.w();
 
 	float min_dist = std::numeric_limits<float>::max();
-	//vec3 q, n;
-	//for (size_t i = 0; i < positions.size(); ++i) {
-	//	vec3 p = po - positions[i];
-	//	rotation.inverse_rotate(p);
-	//	for (int i = 0; i < 3; ++i)
-	//		p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
-	//	rotation.rotate(p);
-	//	prj_point = p + positions[i];
-	//}
-	//std::cout << "min_dist = " << positions[0] << " <-> " << point << " | " << radii[0] << " at " << min_dist << " for " << primitive_idx << std::endl;
 
 	regular_grid<cell>::result_entry res = grid.closest_point(point_upscaled);
 
@@ -203,25 +199,6 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 	vec3 ray_origin_upscaled = ray_origin_upscaled4 / ray_origin_upscaled4.w();
 
 	hit_param = std::numeric_limits<float>::max();
-	//for (size_t i = 0; i < positions.size(); ++i) {
-	//	vec3 n;
-	//	vec2 res;
-	//	if (cgv::math::ray_box_intersection(ro - positions[i], rd, 0.5f * extent, res, n) == 0)
-	//		continue;
-	//	float param;
-	//	if (res[0] < 0) {
-	//		if (res[1] < 0)
-	//			continue;
-	//		param = res[1];
-	//	}
-	//	else
-	//		param = res[0];
-	//	if (param < hit_param) {
-	//		primitive_idx = i;
-	//		hit_param = param;
-	//		hit_normal = n;
-	//	}
-	//}
 
 	grid_traverser trav(ray_origin_upscaled, ray_direction, grid.get_cell_extents());
 	for (int i = 0; ; ++i, trav++)
@@ -230,7 +207,6 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 
 		if (index < 0)
 			break;
-		//if (index < 0 || index >= 10 * 10 * 10)
 
 		std::vector<int> indices;
 		grid.get_closest_indices(index, indices);
@@ -303,15 +279,15 @@ void cells_container::clear(cgv::render::context& ctx)
 }
 void cells_container::draw(cgv::render::context& ctx)
 {
-	ctx.push_modelview_matrix();
-	ctx.mul_modelview_matrix(scale_matrix);
-
-	for (int i = 0; i < clipping_planes.size(); ++i)
-		glEnable(GL_CLIP_DISTANCE0 + i);
-
 	// show box
 	if (!cells.empty())
 	{
+		ctx.push_modelview_matrix();
+		ctx.mul_modelview_matrix(scale_matrix);
+
+		for (int i = 0; i < clipping_planes.size(); ++i)
+			glEnable(GL_CLIP_DISTANCE0 + i);
+
 		auto& br = ref_clipped_box_renderer(ctx);
 		br.set_render_style(brs);
 		br.set_position_array(ctx, &cells.front().node, cells.size(), sizeof(cell));
@@ -327,12 +303,12 @@ void cells_container::draw(cgv::render::context& ctx)
 		br.render(ctx, 0, cells.size());
 		if (prim_idx >= 0 && prim_idx < cells.size())
 			cells[prim_idx].color = tmp_color;
+
+		for (int i = 0; i < clipping_planes.size(); ++i)
+			glDisable(GL_CLIP_DISTANCE0 + i);
+
+		ctx.pop_modelview_matrix();
 	}
-
-	for (int i = 0; i < clipping_planes.size(); ++i)
-		glDisable(GL_CLIP_DISTANCE0 + i);
-
-	ctx.pop_modelview_matrix();
 
 	// show points
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
@@ -354,24 +330,39 @@ void cells_container::draw(cgv::render::context& ctx)
 }
 void cells_container::create_gui()
 {
-	add_decorator(get_name(), "heading", "level=2");
-	if (begin_tree_node("Cell Sphere Rendering", srs, false)) {
-		align("\a");
-		add_gui("sphere_style", srs);
-		align("\b");
-		end_tree_node(srs);
-	}
-	if (begin_tree_node("Cell Box Rendering", brs, false)) {
-		align("\a");
-		add_gui("box_style", brs);
-		align("\b");
-		end_tree_node(brs);
+	//if (begin_tree_node("Cell Sphere Rendering", srs, false)) {
+	//	align("\a");
+	//	add_gui("sphere_style", srs);
+	//	align("\b");
+	//	end_tree_node(srs);
+	//}
+	//if (begin_tree_node("Cell Box Rendering", brs, false)) {
+	//	align("\a");
+	//	add_gui("box_style", brs);
+	//	align("\b");
+	//	end_tree_node(brs);
+	//}
+
+	size_t i = 0;
+	for (std::unordered_set<std::string>::const_iterator it = cell_types.begin(); it != cell_types.end(); ++it) {
+		if (begin_tree_node(*it, cell_type_visibilities[i])) {
+			align("\a");
+			add_member_control(this, "show_cells", cell_type_visibilities[i], "check");
+			align("\b");
+			end_tree_node(cell_type_visibilities[i]);
+		}
+		++i;
 	}
 }
 void cells_container::set_scale_matrix(const mat4& _scale_matrix)
 {
 	scale_matrix = _scale_matrix;
 	inv_scale_matrix = inv(_scale_matrix);
+}
+void cells_container::set_cell_types(const std::unordered_set<std::string>& _cell_types)
+{
+	cell_types = _cell_types;
+	cell_type_visibilities.assign(cell_types.size(), 1);
 }
 void cells_container::set_cells(size_t _offset, std::vector<cell>::const_iterator cells_begin, std::vector<cell>::const_iterator cells_end)
 {
@@ -386,6 +377,8 @@ void cells_container::set_cells(size_t _offset, std::vector<cell>::const_iterato
 void cells_container::set_clipping_planes(const std::vector<vec4>& _clipping_planes)
 {
 	clipping_planes = _clipping_planes;
+
+	grid.set_clipping_planes(&clipping_planes);
 }
 void cells_container::grab_cell (size_t index)
 {

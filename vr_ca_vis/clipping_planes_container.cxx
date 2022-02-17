@@ -238,16 +238,16 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 	sr.set_position(ctx, debug_point);
 	rgb color(0.5f, 0.5f, 0.5f);
 	sr.set_color_array(ctx, &color, 1);
-	sr.render(ctx, 0, 1);
+	//sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
 		sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
-		sr.render(ctx, 0, 1);
+		//sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
 		sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
-		sr.render(ctx, 0, 1);
+		//sr.render(ctx, 0, 1);
 	}
 }
 void clipping_planes_container::draw_clipping_plane(size_t index, cgv::render::context & ctx)
@@ -395,18 +395,18 @@ float clipping_planes_container::signed_distance_from_clipping_plane(size_t inde
 }
 void clipping_planes_container::create_gui()
 {
-	if (origins.empty())
-		return;
-
-	for (int i = 0; i < origins.size(); ++i)
+	for (size_t i = 0; i < origins.size(); ++i)
 	{
-		//if (begin_tree_node("Clipping plane " + std::to_string(i), origins[i])) {
-		//	add_member_control(this, "color", colors[i]);
+		if (begin_tree_node("Clipping Plane " + std::to_string(i + 1), origins[i])) {
+			align("\a");
+			add_member_control(this, "color", colors[i]);
 			//add_member_control(this, "origin_x", origin[0], "value_slider", "ticks=true;min=0;max=1;log=true");
 			//add_member_control(this, "origin_y", origin[1], "value_slider", "ticks=true;min=0;max=1;log=true");
 			//add_member_control(this, "origin_z", origin[2], "value_slider", "ticks=true;min=0;max=1;log=true");
 			//add_gui("direction", direction, "direction");
-		//}
+			align("\b");
+			end_tree_node(origins[i]);
+		}
 	}
 
 	//add_gui("rotation", rotation, "direction", "options='min=-1;max=1;ticks=true'");

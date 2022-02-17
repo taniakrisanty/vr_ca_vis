@@ -10,6 +10,8 @@
 #include <cgv/gui/provider.h>
 #include <cgv_gl/sphere_renderer.h>
 
+#include <unordered_set>
+
 #include "cell_data.h"
 #include "clipped_box_renderer.h"
 #include "regular_grid.h"
@@ -46,6 +48,8 @@ public:
 protected:
 	cells_container_listener* listener;
 
+	bool show_gui;
+
 	// acceleration data structure
 	regular_grid<cell> grid;
 
@@ -56,6 +60,10 @@ protected:
 	mat4 scale_matrix;
 	// inv_scale_matrix is used to prevent expensive scaling of all cells
 	mat4 inv_scale_matrix;
+
+	// cell types (ct1, ct2, etc) and their visibility
+	std::unordered_set<std::string> cell_types;
+	std::vector<unsigned char> cell_type_visibilities;
 
 	// offset set by time_step_start
 	size_t offset;
@@ -75,23 +83,38 @@ protected:
 	rgb get_modified_color(const rgb& color) const;
 public:
 	cells_container(cells_container_listener* _listener, const std::string& _name, const vec3& _extent = vec3(1.f), const quat& _rotation = quat(1, 0, 0, 0));
+	/// return type name
 	std::string get_type_name() const;
+	/// reflect member variables
+	bool self_reflect(cgv::reflect::reflection_handler& rh);
+	/// callback on member updates to keep data structure consistent
 	void on_set(void* member_ptr);
-
+	//@name cgv::nui::focusable interface
+	//@{
 	bool focus_change(cgv::nui::focus_change_action action, cgv::nui::refocus_action rfa, const cgv::nui::focus_demand& demand, const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info);
 	void stream_help(std::ostream& os);
 	bool handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request);
+	//@}
 
+	/// implement closest point algorithm and return whether this was found (failure only for invisible objects) and in this case set \c prj_point to closest point and \c prj_normal to corresponding surface normal
 	bool compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx);
+	/// implement ray object intersection and return whether intersection was found and in this case set \c hit_param to ray parameter and optionally \c hit_normal to surface normal of intersection
 	bool compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx);
 
+	//@name cgv::render::drawable interface
+	//@{
+	/// initialization called once per context creation
 	bool init(cgv::render::context& ctx);
+	/// called before context destruction to clean up GPU objects
 	void clear(cgv::render::context& ctx);
+	/// draw scene here
 	void draw(cgv::render::context& ctx);
-
+	//@}
+	/// cgv::gui::provider function to create classic UI
 	void create_gui();
 
 	void set_scale_matrix(const mat4& _scale_matrix);
+	void set_cell_types(const std::unordered_set<std::string>& _cell_types);
 	void set_cells(size_t _offset, std::vector<cell>::const_iterator cells_begin, std::vector<cell>::const_iterator cells_end);
 	void set_clipping_planes(const std::vector<vec4>& _clipping_planes);
 private:
