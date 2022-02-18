@@ -72,6 +72,8 @@ protected:
 	// clipping planes that are used by clipped_box geometry shader
 	// in the form of ax + by + cz + d = 0
 	std::vector<vec4> clipping_planes;
+	const std::vector<vec3>* clipping_plane_origins = NULL;
+	const std::vector<vec3>* clipping_plane_directions = NULL;
 
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
@@ -117,8 +119,9 @@ public:
 	void set_cell_types(const std::unordered_set<std::string>& _cell_types);
 	void set_cells(size_t _offset, std::vector<cell>::const_iterator cells_begin, std::vector<cell>::const_iterator cells_end);
 	void set_clipping_planes(const std::vector<vec4>& _clipping_planes);
+	void set_clipping_planes(const std::vector<vec3>* _clipping_plane_origins, const std::vector<vec3>* _clipping_plane_directions);
 private:
-	void grab_cell(size_t index);
+	void grab_cell(size_t index) const;
 };
 
 typedef cgv::data::ref_ptr<cells_container> cells_container_ptr;

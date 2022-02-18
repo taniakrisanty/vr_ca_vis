@@ -885,6 +885,8 @@ public:
 			if (o.x() < 0.f || o.x() > 1.f || o.y() < 0.f || o.y() > 1.f || o.z() < 0.f || o.z() > 1.f)
 				return;
 
+			temp_clipping_plane_idx = clipping_planes_ctr->get_num_clipping_planes();
+
 			clipping_planes_ctr->create_clipping_plane(o, control_direction);
 
 			mat4 mat = get_model_transform() * cgv::math::scale4<double>(extent_scale);
@@ -892,7 +894,6 @@ public:
 			vec4 origin4(inv(mat) * control_origin.lift());
 			vec3 origin(origin4 / origin4.w());
 
-			temp_clipping_plane_idx = shader_clipping_planes.size();
 			shader_clipping_planes.emplace_back(control_direction, -dot(origin, control_direction));
 		}
 

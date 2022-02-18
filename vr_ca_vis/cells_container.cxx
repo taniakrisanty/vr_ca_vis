@@ -286,6 +286,7 @@ void cells_container::draw(cgv::render::context& ctx)
 		ctx.mul_modelview_matrix(scale_matrix);
 
 		for (int i = 0; i < clipping_planes.size(); ++i)
+		//for (int i = 0; clipping_plane_origins != NULL && i < clipping_plane_origins->size(); ++i)
 			glEnable(GL_CLIP_DISTANCE0 + i);
 
 		auto& br = ref_clipped_box_renderer(ctx);
@@ -305,6 +306,7 @@ void cells_container::draw(cgv::render::context& ctx)
 			cells[prim_idx].color = tmp_color;
 
 		for (int i = 0; i < clipping_planes.size(); ++i)
+		//for (int i = 0; clipping_plane_origins != NULL && i < clipping_plane_origins->size(); ++i)
 			glDisable(GL_CLIP_DISTANCE0 + i);
 
 		ctx.pop_modelview_matrix();
@@ -380,7 +382,14 @@ void cells_container::set_clipping_planes(const std::vector<vec4>& _clipping_pla
 
 	grid.set_clipping_planes(&clipping_planes);
 }
-void cells_container::grab_cell (size_t index)
+void cells_container::set_clipping_planes(const std::vector<vec3>* _clipping_plane_origins, const std::vector<vec3>* _clipping_plane_directions)
+{
+	clipping_plane_origins = _clipping_plane_origins;
+	clipping_plane_directions = _clipping_plane_directions;
+
+	//grid.set_clipping_planes();
+}
+void cells_container::grab_cell (size_t index) const
 {
 	if (listener)
 		listener->on_cell_grabbed(offset, index);

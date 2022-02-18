@@ -64,20 +64,32 @@ protected:
 	rgb get_modified_color(const rgb& color) const;
 public:
 	clipping_planes_container(clipping_planes_container_listener* _listener, const std::string& name);
+	/// return type name
 	std::string get_type_name() const;
+	/// callback on member updates to keep data structure consistent
 	void on_set(void* member_ptr);
-
+	//@name cgv::nui::focusable interface
+	//@{
 	bool focus_change(cgv::nui::focus_change_action action, cgv::nui::refocus_action rfa, const cgv::nui::focus_demand& demand, const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info);
 	void stream_help(std::ostream& os);
 	bool handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request);
+	//@}
 
+	/// implement closest point algorithm and return whether this was found (failure only for invisible objects) and in this case set \c prj_point to closest point and \c prj_normal to corresponding surface normal
 	bool compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx);
+	/// implement ray object intersection and return whether intersection was found and in this case set \c hit_param to ray parameter and optionally \c hit_normal to surface normal of intersection
 	bool compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx);
 
+	//@name cgv::render::drawable interface
+	//@{
+	/// initialization called once per context creation
 	bool init(cgv::render::context& ctx);
+	/// called before context destruction to clean up GPU objects
 	void clear(cgv::render::context& ctx);
+	/// draw scene here
 	void draw(cgv::render::context& ctx);
-
+	//@}
+	/// cgv::gui::provider function to create classic UI
 	void create_gui();
 	
 	void create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
@@ -85,13 +97,15 @@ public:
 	void delete_clipping_plane(size_t index, size_t count = 1);
 	void clear_clipping_planes();
 
-	size_t get_num_clipping_planes();
+	size_t get_num_clipping_planes() const;
+	const std::vector<vec3>* get_clipping_plane_origins() const;
+	const std::vector<vec3>* get_clipping_plane_directions() const;
 private:
 	void draw_clipping_plane(size_t index, cgv::render::context& ctx);
-	void construct_clipping_plane(size_t index, std::vector<vec3>& polygon);
-	float signed_distance_from_clipping_plane(size_t index, const vec3& p);
+	void construct_clipping_plane(size_t index, std::vector<vec3>& polygon) const;
+	float signed_distance_from_clipping_plane(size_t index, const vec3& p) const;
 
-	void grab_clipping_plane(size_t index);
+	void grab_clipping_plane(size_t index) const;
 };
 
 typedef cgv::data::ref_ptr<clipping_planes_container> clipping_planes_container_ptr;
