@@ -347,7 +347,7 @@ void cells_container::create_gui()
 	for (std::unordered_set<std::string>::const_iterator it = cell_types.begin(); it != cell_types.end(); ++it) {
 		if (begin_tree_node(*it, cell_type_visibilities[i])) {
 			align("\a");
-			add_member_control(this, "show_cells", cell_type_visibilities[i], "check");
+			add_member_control(this, "show_cells", reinterpret_cast<bool&>(cell_type_visibilities[i]), "check");
 			align("\b");
 			end_tree_node(cell_type_visibilities[i]);
 		}

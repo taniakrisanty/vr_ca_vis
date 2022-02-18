@@ -63,7 +63,7 @@ protected:
 
 	// cell types (ct1, ct2, etc) and their visibility
 	std::unordered_set<std::string> cell_types;
-	std::vector<unsigned char> cell_type_visibilities;
+	std::vector<int> cell_type_visibilities;
 
 	// offset set by time_step_start
 	size_t offset;
