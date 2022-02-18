@@ -46,8 +46,8 @@ private:
 
 	vec3 cell_extents;
 
-	const std::vector<T>* cells;
-	const std::vector<vec4>* clipping_planes;
+	const std::vector<T>* cells = NULL;
+	const std::vector<vec4>* clipping_planes = NULL;
 
 	//search entry used internally for nearest and k nearest primitive queries
 	struct search_entry
@@ -157,7 +157,25 @@ public:
 		if (grid == NULL || index < 0 || index >= 10 * 10 * 10)
 			return;
 
-		indices.assign(grid[index].begin(), grid[index].end());
+		for (size_t p_index : grid[index])
+		{
+			vec4 node = cells->at(p_index).node.lift();
+
+			bool clipped = false;
+
+			// ignore if cell is invisible (clipped by the clipping plane)
+			for (const vec4& cp : *clipping_planes)
+			{
+				if (dot(node, cp) < 0)
+				{
+					clipped = true;
+					break;
+				}
+			}
+
+			if (!clipped)
+				indices.push_back(p_index);
+		}
 	}
 
 	void get_closest_indices(const vec3& pos, std::vector<int>& indices) const
@@ -232,11 +250,9 @@ public:
 				bool clipped = false;
 
 				// ignore if cell is invisible (clipped by the clipping plane)
-				for (int i = 0; i < clipping_planes->size(); ++i)
+				for (const vec4& cp : *clipping_planes)
 				{
-					const vec4& cp = clipping_planes->at(i);
-
-					if (dot(node, clipping_planes->at(i)) < 0)
+					if (dot(node, cp) < 0)
 					{
 						clipped = true;
 						break;

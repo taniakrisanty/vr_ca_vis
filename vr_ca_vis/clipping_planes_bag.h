@@ -85,7 +85,7 @@ public:
 	void set_model_transform(const mat4& _model_transform);
 	void set_head_transform(const mat4& _head_transform);
 private:
-	void grab_clipping_plane();
+	void grab_clipping_plane() const;
 };
 
 typedef cgv::data::ref_ptr<clipping_planes_bag> clipping_planes_bag_ptr;

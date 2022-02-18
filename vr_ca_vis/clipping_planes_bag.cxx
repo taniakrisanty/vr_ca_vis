@@ -98,7 +98,7 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 		if (pressed) {
 			state = state_enum::grabbed;
 			on_set(&state);
-			grab_clipping_plane();
+			//grab_clipping_plane();
 			//drag_begin(request, false, original_config);
 		}
 		else {
@@ -128,7 +128,7 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 		if (pressed) {
 			state = state_enum::triggered;
 			on_set(&state);
-			grab_clipping_plane();
+			//grab_clipping_plane();
 			//drag_begin(request, true, original_config);
 		}
 		else {
@@ -145,6 +145,7 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 			debug_point = inter_info.hit_point;
 			hit_point_at_trigger = inter_info.hit_point;
 			position_at_trigger = position;
+			grab_clipping_plane();
 		}
 		else if (state == state_enum::triggered) {
 			// if we still have an intersection point, use as debug point
@@ -259,16 +260,16 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
 	sr.set_color_array(ctx, &color, 1);
-	//sr.render(ctx, 0, 1);
+	sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
 		sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
-		//sr.render(ctx, 0, 1);
+		sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
 		sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
-		//sr.render(ctx, 0, 1);
+		sr.render(ctx, 0, 1);
 	}
 }
 void clipping_planes_bag::create_gui()
@@ -296,13 +297,13 @@ void clipping_planes_bag::set_head_transform(const mat4& _head_transform)
 	
 	mat3 rotation_matrix;
 
-	rotation_matrix.set_col(0, head_transform.col(0) / head_transform.col(0).length());
-	rotation_matrix.set_col(1, head_transform.col(1) / head_transform.col(1).length());
-	rotation_matrix.set_col(2, head_transform.col(2) / head_transform.col(2).length());
+	rotation_matrix.set_col(0, normalize(head_transform.col(0)));
+	rotation_matrix.set_col(1, normalize(head_transform.col(1)));
+	rotation_matrix.set_col(2, normalize(head_transform.col(2)));
 
 	rotation = quat(rotation_matrix);
 }
-void clipping_planes_bag::grab_clipping_plane()
+void clipping_planes_bag::grab_clipping_plane() const
 {
 	if (listener)
 		listener->bag_on_clipping_plane_grabbed();

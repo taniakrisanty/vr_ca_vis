@@ -104,5 +104,3 @@ ivec3 grid_traverser::operator*()
 {
 	return current;
 }
-
-	
