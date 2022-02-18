@@ -8,15 +8,15 @@
 
 #include "grid_utils.h"
 
-#include <cgv/render/render_types.h>
-
-typedef cgv::render::render_types::vec3 vec3;
-typedef cgv::render::render_types::vec4 vec4;
+#include <cgv/render/drawable.h>
 
 template <typename T>
 class regular_grid
 {
 public:
+	typedef cgv::render::drawable::vec3 vec3;
+	typedef cgv::render::drawable::vec4 vec4;
+
 	//result entry for nearest and k nearest primitive queries
 	struct result_entry
 	{
@@ -229,17 +229,22 @@ public:
 			{
 				vec4 node = cells->at(p_index).node.lift();
 
+				bool clipped = false;
+
 				// ignore if cell is invisible (clipped by the clipping plane)
 				for (int i = 0; i < clipping_planes->size(); ++i)
 				{
 					const vec4& cp = clipping_planes->at(i);
 
-					//if (cgv::math::dot(node, clipping_planes[i]) < 0)
-					if (node.x() * cp.x() + node.y() * cp.y() + node.z() * cp.z() + node.w() * cp.w() < 0)
-						continue;
+					if (dot(node, clipping_planes->at(i)) < 0)
+					{
+						clipped = true;
+						break;
+					}
 				}
 
-				res.consider(p_index, (cells->at(p_index).node - q).sqr_length());
+				if (!clipped)
+					res.consider(p_index, (cells->at(p_index).node - q).sqr_length());
 			}
 		}
 	}

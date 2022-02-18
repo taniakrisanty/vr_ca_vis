@@ -6,10 +6,10 @@
 
 #include <array>
 
-#include <cgv/render/render_types.h>
+#include <cgv/render/drawable.h>
 
-typedef cgv::math::fvec<float, 3> vec3;
-typedef cgv::math::fvec<int, 3> ivec3;
+typedef cgv::render::drawable::vec3 vec3;
+typedef cgv::render::drawable::ivec3 ivec3;
 
 //converts 3d floating point position pos into 3d integer grid cell index
 inline ivec3 get_position_to_cell_index(const vec3& pos, const vec3& cell_extents) 
