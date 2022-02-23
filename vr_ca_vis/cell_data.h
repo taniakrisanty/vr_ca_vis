@@ -23,7 +23,15 @@ struct cell : public cgv::render::render_types
 
 	cell(uint16_t _id, uint8_t _type, vec3 _center, vec3 _node, float _b, float _b2) : id(_id), type(_type), center(_center), node(_node), b(_b), b2(_b2)
 	{
-		color = rgb(float(id) / 255.f, 0.f, 0.f);
+		float r = (1.f - float(id) / 60) * 59.f + (float(id) / 60) * 180.f;
+		float g = 76.f - (float(id) / 60) * 72.f;
+		float b = 192.f - (float(id) / 60) * 38.f;
+
+		//float r = type == 2 ? (1.f - float(id - 30) / 30) * 0.f + (float(id - 30) / 30) * 255.f : 0.f;
+		//float g = 0.f;// (1.f - float(id) / 60) * 76.f + (float(id) / 60) * 4.f;
+		//float b = type == 1 ? (1.f - float(id) / 30) * 0.f + (float(id) / 30) * 255.f : 0.f;
+
+		color = rgb(r / 255, g / 255, b / 255);
 	}
 };
 

@@ -586,10 +586,10 @@ public:
 			return;
 
 		// TODO: draw infinite clipping plane (as a disc) only when outside of wireframe box
-		if (clipping_plane_grabbed && temp_clipping_plane_idx == -1 && scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
+		if (clipping_plane_grabbed && temp_clipping_plane_idx == -1 && scene_ptr->is_coordsystem_valid(coordinate_system::right_controller))
 		{
 			ctx.push_modelview_matrix();
-			ctx.mul_modelview_matrix(pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_RIGHT_CONTROLLER)));
+			ctx.mul_modelview_matrix(pose4(scene_ptr->get_coordsystem(coordinate_system::right_controller)));
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			draw_circle(ctx, vec3(0.0f), vec3(0, 0, 1));
@@ -601,14 +601,14 @@ public:
 		if (li_clipping_plane_stats == -1) {
 			li_clipping_plane_stats = scene_ptr->add_label(get_clipping_planes_stats(), stats_bgclr);
 			scene_ptr->fix_label_size(li_clipping_plane_stats);
-			scene_ptr->place_label(li_clipping_plane_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), vr::vr_scene::CS_LEFT_CONTROLLER, vr::vr_scene::LA_TOP);
+			scene_ptr->place_label(li_clipping_plane_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::left_controller, label_alignment::top);
 		}
 
 		// draw information about cell that is being grabbed
 		if (li_cell_stats == -1) {
 			li_cell_stats = scene_ptr->add_label("Cell with id none and type none", stats_bgclr);
 			scene_ptr->fix_label_size(li_cell_stats);
-			scene_ptr->place_label(li_cell_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), vr::vr_scene::CS_RIGHT_CONTROLLER, vr::vr_scene::LA_TOP);
+			scene_ptr->place_label(li_cell_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::right_controller, label_alignment::top);
 		}
 
 		if (li_clipping_plane_visible)
@@ -628,10 +628,10 @@ public:
 			return;
 
 		// draw wireframe box and cells on top of the table
-		if (!scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_TABLE))
+		if (!scene_ptr->is_coordsystem_valid(coordinate_system::head))
 			return;
 
-		mat4 model_transform(pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_TABLE)));
+		mat4 model_transform(pose4(scene_ptr->get_coordsystem(coordinate_system::table)));
 
 		model_transform *= cgv::math::scale4<double>(dvec3(scale));
 		model_transform *= cgv::math::translate4<double>(dvec3(-0.5, 0.0, -0.5));
@@ -656,8 +656,8 @@ public:
 		mat4 h;
 		h.identity();
 
-		if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_HEAD))
-			h *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_HEAD));
+		if (scene_ptr->is_coordsystem_valid(coordinate_system::head))
+			h *= pose4(scene_ptr->get_coordsystem(coordinate_system::head));
 
 		clipping_planes_b->set_head_transform(h);
 
@@ -864,7 +864,7 @@ public:
 
 		temp_clipping_plane_idx = -1;
 
-		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(vr::vr_scene::CS_RIGHT_CONTROLLER))
+		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(coordinate_system::right_controller))
 		{
 			vr_view_interactor* vr_view_ptr = get_view_ptr();
 			if (!vr_view_ptr)
