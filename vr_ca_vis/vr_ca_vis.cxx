@@ -115,6 +115,8 @@ protected:
 	//std::vector<uint32_t> visible_types;
 	//std::vector<rgb> visible_colors;
 
+	size_t selected_cell_idx = SIZE_MAX;
+
 	// attributes
 	uint32_t selected_attr;
 
@@ -606,7 +608,7 @@ public:
 
 		// draw information about cell that is being grabbed
 		if (li_cell_stats == -1) {
-			li_cell_stats = scene_ptr->add_label("Cell with id none and type none", stats_bgclr);
+			li_cell_stats = scene_ptr->add_label("id none and type none", stats_bgclr);
 			scene_ptr->fix_label_size(li_cell_stats);
 			scene_ptr->place_label(li_cell_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::right_controller, label_alignment::top);
 		}
@@ -713,6 +715,27 @@ public:
 						temp_clipping_plane_idx = -1;
 
 						clipping_plane_grabbed = false;
+						return true;
+					}
+				}
+				else {
+					switch (vrke.get_key()) {
+					case::vr::VRF_INPUT0_TOUCH:
+						if (selected_cell_idx < SIZE_MAX) {
+							if (li_cell_stats != -1) {
+								vr::vr_scene* scene_ptr = get_scene_ptr();
+								if (scene_ptr) {
+									const cell& c = cells[selected_cell_idx];
+
+									scene_ptr->update_label_text(li_cell_stats, "id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
+									scene_ptr->fix_label_size(li_cell_stats);
+								}
+							}
+							li_cell_visible = true;
+						}
+						else {
+							li_cell_visible = false;
+						}
 						return true;
 					}
 				}
@@ -830,8 +853,8 @@ public:
 	}
 	void compute_visible_points()
 	{
-		size_t start = time_step_start[time_step];
-		size_t end = (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
+		size_t start = 0; // time_step_start[time_step];
+		size_t end = 5; // (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
 
 		//visible_points.insert(visible_points.end(), points.begin() + start, points.begin() + end);
 		//visible_types.insert(visible_types.end(), group_indices.begin() + start, group_indices.begin() + end);
@@ -939,22 +962,20 @@ public:
 			temp_clipping_plane_idx = 0;
 		}
 	}
+	void vibrate(void* hid_kit)
+	{
+		if (hid_kit) {
+			vr::vr_kit* kit_ptr = vr::get_vr_kit(hid_kit);
+			if (kit_ptr)
+				kit_ptr->set_vibration(1, 0, 50000);
+		}
+	}
 
 #pragma region cells_container_listener
 	// listener for cell grab event inside box
 	void on_cell_grabbed(size_t offset, size_t index)
 	{
-		if (li_cell_stats != -1) {
-			vr::vr_scene* scene_ptr = get_scene_ptr();
-			if (scene_ptr) {
-				const cell& c = cells[offset + index];
-
-				scene_ptr->update_label_text(li_cell_stats, "Cell with id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
-				scene_ptr->fix_label_size(li_cell_stats);
-			}
-		}
-
-		li_cell_visible = true;
+		selected_cell_idx = offset + index;
 	}
 #pragma endregion cells_container_listener
 
@@ -969,11 +990,7 @@ public:
 
 		clipping_plane_grabbed = true;
 
-		if (hid_kit) {
-			vr::vr_kit* kit_ptr = vr::get_vr_kit(hid_kit);
-			if (kit_ptr)
-				kit_ptr->set_vibration(1, 0, 50000);
-		}
+		vibrate(hid_kit);
 	}
 #pragma endregion clipping_planes_bag_listener
 
