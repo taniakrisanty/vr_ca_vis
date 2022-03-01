@@ -23,7 +23,7 @@ clipping_planes_bag::rgb clipping_planes_bag::get_modified_color(const rgb& colo
 	}
 	return mod_col;
 }
-clipping_planes_bag::clipping_planes_bag(clipping_planes_bag_listener* _listener, const std::string& _name, const vec3& _position, const rgb& _color, const vec3& _extent, const quat& _rotation)
+clipping_planes_bag::clipping_planes_bag(clipping_planes_bag_listener* _listener, const std::string& _name, const vec3& _position, const rgba& _color, const vec3& _extent, const quat& _rotation)
 	: cgv::base::node(_name), listener(_listener), position(_position), color(_color), extent(_extent), rotation(_rotation)
 {
 	debug_point = position + 0.5f * extent;
@@ -98,7 +98,6 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 		if (pressed) {
 			state = state_enum::grabbed;
 			on_set(&state);
-			//grab_clipping_plane();
 			//drag_begin(request, false, original_config);
 		}
 		else {
@@ -128,7 +127,6 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 		if (pressed) {
 			state = state_enum::triggered;
 			on_set(&state);
-			//grab_clipping_plane();
 			//drag_begin(request, true, original_config);
 		}
 		else {
@@ -145,7 +143,7 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 			debug_point = inter_info.hit_point;
 			hit_point_at_trigger = inter_info.hit_point;
 			position_at_trigger = position;
-			grab_clipping_plane();
+			grab_clipping_plane(dis_info.hid_id.kit_ptr);
 		}
 		else if (state == state_enum::triggered) {
 			// if we still have an intersection point, use as debug point
@@ -246,12 +244,12 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 	//br.set_rotation_array(ctx, &rotation, 1);
 	br.render(ctx, 0, 1);
 
-	//auto& sr = cgv::render::ref_surfel_renderer(ctx);
-	//sr.set_reference_point_size(1.0f);
-	//sr.set_render_style(surf_rs);
-	//sr.set_position(ctx, position);
-	//sr.set_normal(ctx, vec3(0, 0, 1));
-	//sr.render(ctx, 0, 1);
+	//auto& sfr = cgv::render::ref_surfel_renderer(ctx);
+	//sfr.set_reference_point_size(1.0f);
+	//sfr.set_render_style(surf_rs);
+	//sfr.set_position(ctx, position);
+	//sfr.set_normal(ctx, vec3(0, 0, 1));
+	//sfr.render(ctx, 0, 1);
 
 	ctx.pop_modelview_matrix();
 
@@ -303,8 +301,8 @@ void clipping_planes_bag::set_head_transform(const mat4& _head_transform)
 
 	rotation = quat(rotation_matrix);
 }
-void clipping_planes_bag::grab_clipping_plane() const
+void clipping_planes_bag::grab_clipping_plane(void* hid_kit) const
 {
 	if (listener)
-		listener->bag_on_clipping_plane_grabbed();
+		listener->bag_on_clipping_plane_grabbed(hid_kit);
 }

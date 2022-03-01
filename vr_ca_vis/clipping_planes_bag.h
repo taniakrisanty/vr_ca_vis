@@ -15,7 +15,7 @@
 class clipping_planes_bag_listener
 {
 public:
-	virtual void bag_on_clipping_plane_grabbed() = 0;
+	virtual void bag_on_clipping_plane_grabbed(void* kit_ptr) = 0;
 };
 
 class clipping_planes_bag :
@@ -55,7 +55,7 @@ protected:
 	vec3 position;
 	vec3 extent;
 	quat rotation;
-	rgb  color;
+	rgba color;
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
 	// index of focused primitive
@@ -65,7 +65,7 @@ protected:
 	/// return color modified based on state
 	rgb get_modified_color(const rgb& color) const;
 public:
-	clipping_planes_bag(clipping_planes_bag_listener *_listener, const std::string& _name, const vec3& _position, const rgb& _color = rgb(1.f, 1.f, 0.f), const vec3& _extent = vec3(1.f, 1.f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
+	clipping_planes_bag(clipping_planes_bag_listener *_listener, const std::string& _name, const vec3& _position, const rgba& _color = rgba(0.f, 1.f, 1.f, 0.1f), const vec3& _extent = vec3(1.f, 1.f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
 	std::string get_type_name() const;
 	void on_set(void* member_ptr);
 
@@ -85,7 +85,7 @@ public:
 	void set_model_transform(const mat4& _model_transform);
 	void set_head_transform(const mat4& _head_transform);
 private:
-	void grab_clipping_plane() const;
+	void grab_clipping_plane(void* hid_kit) const;
 };
 
 typedef cgv::data::ref_ptr<clipping_planes_bag> clipping_planes_bag_ptr;
