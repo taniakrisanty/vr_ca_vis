@@ -960,7 +960,7 @@ public:
 
 #pragma region clipping_planes_bag_listener
 	// listener for clipping plane grab event inside bag
-	void bag_on_clipping_plane_grabbed()
+	void bag_on_clipping_plane_grabbed(void* hid_kit)
 	{
 		// ignore if user is already holding a clipping plane
 		// or no clipping plane left (the maximum is 8)
@@ -968,6 +968,12 @@ public:
 			return;
 
 		clipping_plane_grabbed = true;
+
+		if (hid_kit) {
+			vr::vr_kit* kit_ptr = vr::get_vr_kit(hid_kit);
+			if (kit_ptr)
+				kit_ptr->set_vibration(1, 0, 50000);
+		}
 	}
 #pragma endregion clipping_planes_bag_listener
 
