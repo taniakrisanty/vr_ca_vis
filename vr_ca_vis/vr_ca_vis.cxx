@@ -760,6 +760,7 @@ public:
 		add_decorator("bio math", "heading");
 		//add_view("tigger_0", trigger[0]);
 		//add_view("tigger_1", trigger[1]);
+		add_gui("data_dir", dir_name, "directory", "title='Data Directory'");
 		add_member_control(this, "animate", animate, "toggle", "shortcut='A'");
 		add_member_control(this, "scale", scale, "value_slider", "min=0.0001;step=0.00001;max=10;log=true;ticks=true");
 		add_member_control(this, "time_step", time_step, "value_slider", "min=0;ticks=true");
