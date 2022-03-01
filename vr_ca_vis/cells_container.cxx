@@ -98,7 +98,6 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			state = state_enum::grabbed;
 			on_set(&state);
 			//drag_begin(request, false, original_config);
-			grab_cell(prim_idx);
 		}
 		else {
 			//drag_end(request, original_config);
@@ -129,7 +128,6 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			state = state_enum::triggered;
 			on_set(&state);
 			//drag_begin(request, true, original_config);
-			grab_cell(prim_idx);
 		}
 		else {
 			//drag_end(request, original_config);
@@ -146,6 +144,7 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			hit_point_at_trigger = inter_info.hit_point;
 			prim_idx = int(inter_info.primitive_index);
 			position_at_trigger = cells[prim_idx].node;
+			grab_cell(prim_idx);
 		}
 		else if (state == state_enum::triggered) {
 			// if we still have an intersection point, use as debug point
@@ -158,12 +157,13 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 		post_redraw();
 		return true;
 	}
+	grab_cell(SIZE_MAX);
 	return false;
 }
 bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
 {
 	vec4 point_upscaled4(inv_scale_matrix * point.lift());
-	vec3 point_upscaled = point_upscaled4 / point_upscaled4.w();
+	vec3 point_upscaled(point_upscaled4 / point_upscaled4.w());
 
 	float min_dist = std::numeric_limits<float>::max();
 
@@ -176,10 +176,10 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 		primitive_idx = res.prim;
 
 		vec4 position_downscaled4(scale_matrix * cells[primitive_idx].node.lift());
-		vec3 position_downscaled = position_downscaled4 / position_downscaled4.w();
+		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
 
 		vec4 extent_downscaled4(scale_matrix * extent.lift());
-		vec3 extent_downscaled = extent_downscaled4 / extent_downscaled4.w();
+		vec3 extent_downscaled(extent_downscaled4 / extent_downscaled4.w());
 
 		vec3 p = point - position_downscaled;
 		rotation.inverse_rotate(p);
@@ -196,7 +196,7 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
 	vec4 ray_origin_upscaled4(inv_scale_matrix * ray_start.lift());
-	vec3 ray_origin_upscaled = ray_origin_upscaled4 / ray_origin_upscaled4.w();
+	vec3 ray_origin_upscaled(ray_origin_upscaled4 / ray_origin_upscaled4.w());
 
 	hit_param = std::numeric_limits<float>::max();
 
@@ -241,10 +241,10 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 	if (hit_param < std::numeric_limits<float>::max())
 	{
 		vec4 position_downscaled4(scale_matrix * cells[primitive_idx].node.lift());
-		vec3 position_downscaled = position_downscaled4 / position_downscaled4.w();
+		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
 
 		vec4 extent_downscaled4(scale_matrix * extent.lift());
-		vec3 extent_downscaled = extent_downscaled4 / extent_downscaled4.w();
+		vec3 extent_downscaled(extent_downscaled4 / extent_downscaled4.w());
 
 		vec3 n;
 		vec2 res;
@@ -258,8 +258,8 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		hit_param = param;
 		hit_normal = n;
 
-		//std::cout << "Intersection from query ray " << ray_start << " = " << position_downscaled << std::endl;
-		//std::cout << "Hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
+		std::cout << "Intersection from query ray " << ray_start << " = " << position_downscaled << std::endl;
+		std::cout << "Hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
 	}
 
 	return hit_param < std::numeric_limits<float>::max();
@@ -389,7 +389,7 @@ void cells_container::set_clipping_planes(const std::vector<vec3>* _clipping_pla
 
 	//grid.set_clipping_planes();
 }
-void cells_container::grab_cell (size_t index) const
+void cells_container::grab_cell(size_t index) const
 {
 	if (listener)
 		listener->on_cell_grabbed(offset, index);
