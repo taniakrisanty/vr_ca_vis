@@ -106,6 +106,7 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 		else if (state == state_enum::grabbed) {
 			debug_point = prox_info.hit_point;
 			origins[prim_idx] = position_at_grab + prox_info.query_point - query_point_at_grab;
+			post_recreate_gui();
 		}
 		post_redraw();
 		return true;
@@ -141,6 +142,7 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 			// to be save even without new intersection, find closest point on ray to hit point at trigger
 			vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
 			origins[prim_idx] = position_at_trigger + q - hit_point_at_trigger;
+			post_recreate_gui();
 		}
 		post_redraw();
 		return true;
