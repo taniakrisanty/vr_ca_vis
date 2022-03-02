@@ -653,7 +653,7 @@ public:
 		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
 		cells_ctr->set_clipping_planes(shader_clipping_planes);
 
-		clipping_planes_b->set_model_transform(get_model_transform());
+		clipping_planes_b->set_inverse_model_transform(get_inverse_model_transform());
 
 		mat4 h;
 		h.identity();
@@ -974,9 +974,9 @@ public:
 
 #pragma region cells_container_listener
 	// listener for cell grab event inside box
-	void on_cell_grabbed(size_t offset, size_t index)
+	void on_cell_grabbed(size_t index)
 	{
-		selected_cell_idx = offset + index;
+		selected_cell_idx = index;
 	}
 #pragma endregion cells_container_listener
 
