@@ -853,8 +853,8 @@ public:
 	}
 	void compute_visible_points()
 	{
-		size_t start = 0; // time_step_start[time_step];
-		size_t end = 5; // (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
+		size_t start = time_step_start[time_step];
+		size_t end = (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
 
 		//visible_points.insert(visible_points.end(), points.begin() + start, points.begin() + end);
 		//visible_types.insert(visible_types.end(), group_indices.begin() + start, group_indices.begin() + end);
@@ -866,7 +866,8 @@ public:
 
 		//start = 0; end = 10;
 
-		cells_ctr->set_cells(start, cells.begin() + start, cells.begin() + end);
+		//cells_ctr->set_cells(start, cells.begin() + start, cells.begin() + end);
+		cells_ctr->set_cells(&cells, start, end);
 	}
 	std::string get_clipping_planes_stats()
 	{

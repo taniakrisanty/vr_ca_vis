@@ -65,9 +65,9 @@ protected:
 	std::unordered_set<std::string> cell_types;
 	std::vector<int> cell_type_visibilities;
 
-	// offset set by time_step_start
-	size_t offset;
-	std::vector<cell> cells;
+	// cells start offset set by time_step_start
+	size_t cells_start, cells_end;
+	const std::vector<cell>* cells = NULL;
 
 	// clipping planes that are used by clipped_box geometry shader
 	// in the form of ax + by + cz + d = 0
@@ -83,6 +83,7 @@ protected:
 	state_enum state = state_enum::idle;
 	/// return color modified based on state
 	rgb get_modified_color(const rgb& color) const;
+
 public:
 	cells_container(cells_container_listener* _listener, const std::string& _name, const vec3& _extent = vec3(1.f), const quat& _rotation = quat(1, 0, 0, 0));
 	/// return type name
@@ -117,7 +118,7 @@ public:
 
 	void set_scale_matrix(const mat4& _scale_matrix);
 	void set_cell_types(const std::unordered_set<std::string>& _cell_types);
-	void set_cells(size_t _offset, std::vector<cell>::const_iterator cells_begin, std::vector<cell>::const_iterator cells_end);
+	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end);
 	void set_clipping_planes(const std::vector<vec4>& _clipping_planes);
 	void set_clipping_planes(const std::vector<vec3>* _clipping_plane_origins, const std::vector<vec3>* _clipping_plane_directions);
 private:
