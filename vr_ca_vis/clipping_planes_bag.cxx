@@ -285,9 +285,9 @@ void clipping_planes_bag::create_gui()
 		end_tree_node(brs);
 	}
 }
-void clipping_planes_bag::set_model_transform(const mat4& _model_transform)
+void clipping_planes_bag::set_inverse_model_transform(const mat4& _inv_model_transform)
 {
-	inv_model_transform = inv(_model_transform);
+	inv_model_transform = _inv_model_transform;
 }
 void clipping_planes_bag::set_head_transform(const mat4& _head_transform)
 {

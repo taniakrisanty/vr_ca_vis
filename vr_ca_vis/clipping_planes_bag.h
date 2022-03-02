@@ -82,7 +82,7 @@ public:
 
 	void create_gui();
 
-	void set_model_transform(const mat4& _model_transform);
+	void set_inverse_model_transform(const mat4& _inverse_model_transform);
 	void set_head_transform(const mat4& _head_transform);
 private:
 	void grab_clipping_plane(void* hid_kit) const;
