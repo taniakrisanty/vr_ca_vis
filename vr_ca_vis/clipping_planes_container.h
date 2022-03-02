@@ -44,16 +44,14 @@ public:
 protected:
 	clipping_planes_container_listener* listener;
 
-	mat4 modelview_matrix;
-	// inv_modelview_matrix is used to prevent expensive transformation of all clipping planes to lab coordinate
-	mat4 inv_modelview_matrix;
+	mat4 model_transform;
 
 	// geometry of clipping planes with color
 
 	std::vector<vec3> origins;
 	std::vector<vec3> directions;
+	std::vector<quat> rotations;
 	std::vector<rgba> colors;
-	quat rotation;
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
 	// index of focused primitive

@@ -24,7 +24,7 @@ clipping_planes_container::rgb clipping_planes_container::get_modified_color(con
 	return mod_col;
 }
 clipping_planes_container::clipping_planes_container(clipping_planes_container_listener* _listener, const std::string& name)
-	: cgv::base::node(name), listener(_listener), rotation(1, 0, 0, 0)
+	: cgv::base::node(name), listener(_listener)
 {
 	debug_point = vec3(0, 0.5f, 0);
 	srs.radius = 0.01f;
@@ -153,9 +153,13 @@ bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& p
 
 	vec3 q;
 	for (size_t i = 0; i < origins.size(); ++i) {
-		cgv::math::closest_point_on_circle_to_point(origins[i], directions[i], 1.f, point, q);
+		vec3 p = point - origins[i];
+		rotations[i].inverse_rotate(p);
+		cgv::math::closest_point_on_circle_to_point(origins[i], directions[i], 1.4f, point, q);
 		float dist = (point - q).length ();
 		if (dist < min_dist) {
+			rotations[i].rotate(q);
+
 			primitive_idx = i;
 			prj_point = q;
 			prj_normal = directions[i];
@@ -170,9 +174,13 @@ bool clipping_planes_container::compute_intersection(const vec3& ray_start, cons
 	hit_param = std::numeric_limits<float>::max();
 
 	for (size_t i = 0; i < origins.size(); ++i) {
+		vec3 rs = ray_start - origins[i];
+		vec3 rd = ray_direction;
+		rotations[i].inverse_rotate(rs);
+		rotations[i].inverse_rotate(rd);
 		vec3 n;
 		vec2 res;
-		if (cgv::math::ray_box_intersection(ray_start - origins[i], ray_direction, 0.5f * vec3(1.f), res, n) == 0)
+		if (cgv::math::ray_box_intersection(rs, rd, 0.5f * vec3(1.4f, 1.4f, 0.01f), res, n) == 0)
 			continue;
 		float param;
 		if (res[0] < 0) {
@@ -185,6 +193,7 @@ bool clipping_planes_container::compute_intersection(const vec3& ray_start, cons
 		if (param < hit_param) {
 			primitive_idx = i;
 			hit_param = param;
+			rotations[i].rotate(n);
 			hit_normal = n;
 		}
 	}
@@ -236,17 +245,20 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
-	rgb color(0.5f, 0.5f, 0.5f);
+	//rgb color(0.5f, 0.5f, 0.5f);
+	rgb color(prim_idx == 0 ? 1.f : 0.f, prim_idx == 1 ? 1.f : 0.f, 0.f);
 	sr.set_color_array(ctx, &color, 1);
 	sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
-		sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
+		//sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
+		sr.set_color(ctx, rgb(prim_idx == 0 ? 1.f : 0.f, prim_idx == 1 ? 1.f : 0.f, 0.f));
 		sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
-		sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
+		//sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
+		sr.set_color(ctx, rgb(prim_idx == 0 ? 1.f : 0.f, prim_idx == 1 ? 1.f : 0.f, 0.f));
 		sr.render(ctx, 0, 1);
 	}
 }
@@ -423,23 +435,34 @@ void clipping_planes_container::create_clipping_plane(const vec3& origin, const 
 	origins.emplace_back(origin);
 	directions.emplace_back(direction);
 	colors.emplace_back(color);
+
+	mat3 rotation_matrix;
+
+	rotation_matrix.set_col(2, direction);
+	rotation_matrix.set_col(0, normalize(cross(vec3(0.f, 1.f, 0.f), rotation_matrix.col(2))));
+	rotation_matrix.set_col(1, normalize(cross(rotation_matrix.col(2), rotation_matrix.col(0))));
+
+	rotations.emplace_back(rotation_matrix);
 }
 void clipping_planes_container::copy_clipping_plane(size_t index, const rgba& color)
 {
 	origins.emplace_back(origins[index]);
 	directions.emplace_back(directions[index]);
+	rotations.emplace_back(rotations[index]);
 	colors.emplace_back(color);
 }
 void clipping_planes_container::delete_clipping_plane(size_t index, size_t count)
 {
 	origins.erase(origins.begin() + index, origins.begin() + index + count);
 	directions.erase(directions.begin() + index, directions.begin() + index + count);
+	rotations.erase(rotations.begin() + index, rotations.begin() + index + count);
 	colors.erase(colors.begin() + index, colors.begin() + index + count);
 }
 void clipping_planes_container::clear_clipping_planes()
 {
 	origins.clear();
 	directions.clear();
+	rotations.clear();
 	colors.clear();
 }
 size_t clipping_planes_container::get_num_clipping_planes() const
