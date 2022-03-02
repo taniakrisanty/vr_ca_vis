@@ -395,5 +395,5 @@ void cells_container::set_clipping_planes(const std::vector<vec3>* _clipping_pla
 void cells_container::grab_cell(size_t index) const
 {
 	if (listener)
-		listener->on_cell_grabbed(0, index);
+		listener->on_cell_grabbed(index);
 }

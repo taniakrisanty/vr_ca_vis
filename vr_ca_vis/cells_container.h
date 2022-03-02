@@ -19,7 +19,7 @@
 class cells_container_listener
 {
 public:
-	virtual void on_cell_grabbed(size_t offset, size_t index) = 0;
+	virtual void on_cell_grabbed(size_t index) = 0;
 };
 
 class cells_container :
