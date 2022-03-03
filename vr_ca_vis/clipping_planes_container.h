@@ -104,6 +104,8 @@ private:
 	float signed_distance_from_clipping_plane(size_t index, const vec3& p) const;
 
 	void grab_clipping_plane(size_t index) const;
+
+	void update_rotation(size_t index);
 };
 
 typedef cgv::data::ref_ptr<clipping_planes_container> clipping_planes_container_ptr;

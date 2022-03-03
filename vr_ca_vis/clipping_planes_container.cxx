@@ -36,6 +36,12 @@ std::string clipping_planes_container::get_type_name() const
 void clipping_planes_container::on_set(void* member_ptr)
 {
 	update_member(member_ptr);
+	for (size_t i = 0; i < directions.size(); ++i) {
+		if (member_ptr == &directions[i]) {
+			update_rotation(i);
+			break;
+		}
+	}
 	post_redraw();
 }
 bool clipping_planes_container::focus_change(cgv::nui::focus_change_action action, cgv::nui::refocus_action rfa, const cgv::nui::focus_demand& demand, const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info)
@@ -437,14 +443,9 @@ void clipping_planes_container::create_clipping_plane(const vec3& origin, const 
 	origins.emplace_back(origin);
 	directions.emplace_back(direction);
 	colors.emplace_back(color);
+	rotations.emplace_back();
 
-	mat3 rotation_matrix;
-
-	rotation_matrix.set_col(2, direction);
-	rotation_matrix.set_col(0, normalize(cross(vec3(0.f, 1.f, 0.f), rotation_matrix.col(2))));
-	rotation_matrix.set_col(1, normalize(cross(rotation_matrix.col(2), rotation_matrix.col(0))));
-
-	rotations.emplace_back(rotation_matrix);
+	update_rotation(rotations.size() - 1);
 }
 void clipping_planes_container::copy_clipping_plane(size_t index, const rgba& color)
 {
@@ -483,4 +484,14 @@ void clipping_planes_container::grab_clipping_plane(size_t index) const
 {
 	if (listener)
 		listener->container_on_clipping_plane_grabbed(index);
+}
+void clipping_planes_container::update_rotation(size_t index)
+{
+	mat3 rotation_matrix;
+
+	rotation_matrix.set_col(2, directions[index]);
+	rotation_matrix.set_col(0, normalize(cross(vec3(0.f, 1.f, 0.f), rotation_matrix.col(2))));
+	rotation_matrix.set_col(1, normalize(cross(rotation_matrix.col(2), rotation_matrix.col(0))));
+
+	rotations[index] = quat(rotation_matrix);
 }
