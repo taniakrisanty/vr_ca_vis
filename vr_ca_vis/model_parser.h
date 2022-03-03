@@ -1,12 +1,14 @@
 #pragma once
 
 #include <cgv/utils/file.h>
+#include <cgv/render/render_types.h>
+#include <cgv_glutil/color_map.h>
 #include <fstream>
 
 #include "../3rd/rapidxml-1.13/rapidxml.hpp"
 #include "cell_data.h"
 
-class model_parser
+class model_parser : public cgv::render::render_types
 {
 public:
 	typedef cgv::render::drawable::vec3 vec3;
@@ -60,6 +62,11 @@ public:
 					}
 				}
 			}
+
+			cgv::glutil::color_map cm;
+
+			cm.add_color_point(0.f, cgv::render::render_types::rgb(59.f / 255, 76.f / 255, 192.f / 255));
+			cm.add_color_point(1.f, cgv::render::render_types::rgb(180.f / 255, 4.f / 255, 38.f / 255));
 
 			// Iterate over cell populations
 			node = root_node->first_node("CellPopulations");
@@ -179,7 +186,7 @@ public:
 
 								//points.emplace_back(float(x), float(y), float(z));
 
-								cells.emplace_back(id, std::distance(types.begin(), p.first), center, vec3(float(x), float(y), float(z)), b, b2);
+								cells.emplace_back(id, std::distance(types.begin(), p.first), center, vec3(float(x), float(y), float(z)), b, b2, cm);
 							}
 						}
 					}

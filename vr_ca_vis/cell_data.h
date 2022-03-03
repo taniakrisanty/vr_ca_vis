@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cgv/render/render_types.h>
+#include <cgv_glutil/color_map.h>
 
 //struct cell_type
 //{
@@ -10,6 +11,8 @@
 
 struct cell : public cgv::render::render_types
 {
+	//static cgv::glutil::color_map cm;
+
 	uint16_t id;	// CellPopulations > Population > Cell id
 	uint8_t type;	// CellTypes > CellType name & class
 
@@ -21,19 +24,34 @@ struct cell : public cgv::render::render_types
 
 	rgb color;
 
-	cell(uint16_t _id, uint8_t _type, vec3 _center, vec3 _node, float _b, float _b2) : id(_id), type(_type), center(_center), node(_node), b(_b), b2(_b2)
+	cell(uint16_t _id, uint8_t _type, const vec3& _center, const vec3 _node, float _b, float _b2, const cgv::glutil::color_map& cm) : id(_id), type(_type), center(_center), node(_node), b(_b), b2(_b2)
 	{
-		float r = (1.f - float(id) / 60) * 59.f + (float(id) / 60) * 180.f;
-		float g = 76.f - (float(id) / 60) * 72.f;
-		float b = 192.f - (float(id) / 60) * 38.f;
+		float t = (float)(id - 1) / (60.0f - 1.0f);
+		color = cm.interpolate_color(t);
+
+		//float r = (1.f - float(id) / 60) * 59.f + (float(id) / 60) * 180.f;
+		//float g = 76.f - (float(id) / 60) * 72.f;
+		//float b = 192.f - (float(id) / 60) * 38.f;
 
 		//float r = type == 2 ? (1.f - float(id - 30) / 30) * 0.f + (float(id - 30) / 30) * 255.f : 0.f;
 		//float g = 0.f;// (1.f - float(id) / 60) * 76.f + (float(id) / 60) * 4.f;
 		//float b = type == 1 ? (1.f - float(id) / 30) * 0.f + (float(id) / 30) * 255.f : 0.f;
 
-		color = rgb(r / 255, g / 255, b / 255);
+		//color = rgb(r / 255, g / 255, b / 255);
 	}
 };
+
+//cgv::glutil::color_map create_color_map()
+//{
+//	cgv::glutil::color_map cm;
+//
+//	cm.add_color_point(0.f, cgv::render::render_types::rgb(59.f / 255, 76.f / 255, 192.f / 255));
+//	cm.add_color_point(1.f, cgv::render::render_types::rgb(180.f / 255, 4.f / 255, 38.f / 255));
+//
+//	return cm;
+//}
+
+//cgv::glutil::color_map cell<T>::cm = cgv::glutil::color_map();
 
 //class cell_vis : public cell
 //{
