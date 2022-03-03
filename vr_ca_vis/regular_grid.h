@@ -144,7 +144,7 @@ private:
 				++current_cell_index;
 			}
 
-			//std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+			std::this_thread::yield();
 		}
 	}
 
