@@ -6,7 +6,7 @@ addProjectDirs=[CGV_DIR."/libs", CGV_DIR."/plugins", CGV_DIR."/test"];
 addIncDirs=[CGV_DIR."/libs",CGV_DIR."/3rd/zlib"];
 
 addProjectDeps=["cgv_utils", "cgv_type", "cgv_reflect", "cgv_data", "cgv_signal", "cgv_base", "cgv_media", "cgv_gui", 
-"cgv_render", "cgv_os", "cgv_viewer","cg_fltk", "crg_light", "cmi_io", "crg_grid", "cgv_gl", "glew", "cmf_tt_gl_font", 
+"cgv_render", "cgv_os", "cgv_viewer","cg_fltk", "crg_light", "cmi_io", "crg_grid", "cgv_gl", "cgv_glutil", "glew", "cmf_tt_gl_font", 
 "crg_vr_view", "vr_lab", "cg_vr", "vr_emulator", "openvr_driver"
 ];
 
