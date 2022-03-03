@@ -719,25 +719,25 @@ public:
 					}
 				}
 				else {
-					switch (vrke.get_key()) {
-					case::vr::VRF_INPUT0_TOUCH:
-						if (selected_cell_idx < SIZE_MAX) {
-							if (li_cell_stats != -1) {
-								vr::vr_scene* scene_ptr = get_scene_ptr();
-								if (scene_ptr) {
-									const cell& c = cells[selected_cell_idx];
+					//switch (vrke.get_key()) {
+					//case::vr::VRF_INPUT0_TOUCH:
+					//	if (selected_cell_idx < SIZE_MAX) {
+					//		if (li_cell_stats != -1) {
+					//			vr::vr_scene* scene_ptr = get_scene_ptr();
+					//			if (scene_ptr) {
+					//				const cell& c = cells[selected_cell_idx];
 
-									scene_ptr->update_label_text(li_cell_stats, "id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
-									scene_ptr->fix_label_size(li_cell_stats);
-								}
-							}
-							li_cell_visible = true;
-						}
-						else {
-							li_cell_visible = false;
-						}
-						return true;
-					}
+					//				scene_ptr->update_label_text(li_cell_stats, "id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
+					//				scene_ptr->fix_label_size(li_cell_stats);
+					//			}
+					//		}
+					//		li_cell_visible = true;
+					//	}
+					//	else {
+					//		li_cell_visible = false;
+					//	}
+					//	return true;
+					//}
 				}
 			}
 			else if (vrke.get_controller_index() == 0) { // only left controller
@@ -866,8 +866,7 @@ public:
 
 		//start = 0; end = 10;
 
-		//cells_ctr->set_cells(start, cells.begin() + start, cells.begin() + end);
-		cells_ctr->set_cells(&cells, start, end);
+		cells_ctr->set_cells(&cells, start, end, extent);
 	}
 	std::string get_clipping_planes_stats()
 	{
@@ -977,6 +976,22 @@ public:
 	void on_cell_grabbed(size_t index)
 	{
 		selected_cell_idx = index;
+		
+		if (selected_cell_idx < SIZE_MAX) {
+			if (li_cell_stats != -1) {
+				vr::vr_scene* scene_ptr = get_scene_ptr();
+				if (scene_ptr) {
+					const cell& c = cells[selected_cell_idx];
+
+					scene_ptr->update_label_text(li_cell_stats, "id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
+					scene_ptr->fix_label_size(li_cell_stats);
+				}
+			}
+			li_cell_visible = true;
+		}
+		else {
+			li_cell_visible = false;
+		}
 	}
 #pragma endregion cells_container_listener
 

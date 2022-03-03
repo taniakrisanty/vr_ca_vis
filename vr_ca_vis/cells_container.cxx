@@ -173,7 +173,7 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 	{
 		min_dist = sqrt(res.sqr_distance);
 
-		primitive_idx = res.prim + cells_start;
+		primitive_idx = res.prim;
 
 		vec4 position_downscaled4(scale_matrix * cells->at(primitive_idx).node.lift());
 		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
@@ -218,7 +218,7 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		{
 			vec3 n;
 			vec2 res;
-			if (cgv::math::ray_box_intersection(ray_origin_upscaled - cells->at(pi + cells_start).node, ray_direction, 0.5f * extent, res, n) == 0)
+			if (cgv::math::ray_box_intersection(ray_origin_upscaled - cells->at(pi).node, ray_direction, 0.5f * extent, res, n) == 0)
 				continue;
 			float param;
 			if (res[0] < 0) {
@@ -229,7 +229,7 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 			else
 				param = res[0];
 			if (param < hit_param) {
-				primitive_idx = pi + cells_start;
+				primitive_idx = pi;
 				hit_param = param;
 				hit_normal = n;
 			}
@@ -289,6 +289,10 @@ void cells_container::draw(cgv::render::context& ctx)
 		//for (int i = 0; clipping_plane_origins != NULL && i < clipping_plane_origins->size(); ++i)
 			glEnable(GL_CLIP_DISTANCE0 + i);
 
+		//glDisable(GL_DEPTH_TEST);
+		//glEnable(GL_BLEND);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 		auto& br = ref_clipped_box_renderer(ctx);
 		br.set_render_style(brs);
 		br.set_position_array(ctx, &cells->at(cells_start).node, cells->size(), sizeof(cell));
@@ -310,6 +314,9 @@ void cells_container::draw(cgv::render::context& ctx)
 			glDisable(GL_CLIP_DISTANCE0 + i);
 
 		ctx.pop_modelview_matrix();
+
+		//glDisable(GL_BLEND);
+		//glEnable(GL_DEPTH_TEST);
 	}
 
 	// show points
@@ -366,7 +373,7 @@ void cells_container::set_cell_types(const std::unordered_set<std::string>& _cel
 	cell_types = _cell_types;
 	cell_type_visibilities.assign(cell_types.size(), 1);
 }
-void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end)
+void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents)
 {
 	grid.cancel_build_from_vertices();
 
@@ -375,9 +382,7 @@ void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_s
 	cells_start = _cells_start;
 	cells_end = _cells_end;
 
-	grid.build_from_vertices(cells, cells_start, cells_end);
-
-	//grid.print();
+	grid.build_from_vertices(cells, cells_start, cells_end, extents);
 }
 void cells_container::set_clipping_planes(const std::vector<vec4>& _clipping_planes)
 {

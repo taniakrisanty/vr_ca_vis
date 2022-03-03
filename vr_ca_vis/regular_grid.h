@@ -49,15 +49,17 @@ private:
 
 	bool build_grid = false;
 
-	std::vector<size_t>* grid = NULL;
+	// TODO change into size_t* if nodes do not overlap
+	//std::vector<size_t>* grid = NULL;
+	size_t* grid = NULL;
 
 	bool* visited_statuses = NULL;
 
+	vec3 extents;
 	vec3 cell_extents;
 
 	const std::vector<T>* cells = NULL;
-	size_t cells_start, cells_end;
-	size_t current_cell_index;
+	size_t current_cell_index, cells_end;
 
 	const std::vector<vec4>* clipping_planes = NULL;
 
@@ -114,7 +116,7 @@ private:
 		}
 	};
 
-	void build_from_vertices_impl()
+	void build_from_vertices_impl(bool print_grid = false)
 	{
 		auto start = std::chrono::high_resolution_clock::now();
 
@@ -136,6 +138,8 @@ private:
 					auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
 					std::cout << "Time taken by multithreaded build_from_vertices: " << duration.count() << " microseconds" << std::endl;
+
+					if (print_grid) print();
 					break;
 				}
 
@@ -149,29 +153,42 @@ private:
 	}
 
 public:
-	regular_grid(const float _cell_extents = 10) : cells_start(0), cells_end(0), current_cell_index(0)
+	regular_grid(const float _cell_extents = 1.f) : current_cell_index(0), cells_end(0)
 	{
 		cell_extents[0] = cell_extents[1] = cell_extents[2] = _cell_extents;
 	}
 
-	void clear()
+	void reset(const ivec3& _extents)
 	{
-		if (grid) delete[] grid;
-		if (visited_statuses) delete[] visited_statuses;
+		vec3 e(_extents[0] / cell_extents[0], _extents[1] / cell_extents[1], _extents[2] / cell_extents[2]);
 
-		// TODO divide the space by the cell_extents
-		grid = new std::vector<size_t>[10 * 10 * 10];
-		visited_statuses = new bool[10 * 10 * 10];
+		if (e != extents)
+		{
+			if (grid) delete[] grid;
+			if (visited_statuses) delete[] visited_statuses;
+
+			extents[0] = _extents[0] / cell_extents[0];
+			extents[1] = _extents[1] / cell_extents[1];
+			extents[2] = _extents[2] / cell_extents[2];
+
+			//grid = new std::vector<size_t>[extents.x() * extents.y() * extents.z()];
+			grid = new size_t[extents.x() * extents.y() * extents.z()];
+			visited_statuses = new bool[extents.x() * extents.y() * extents.z()];
+		}
+
+		memset(grid, 0, sizeof(size_t) * extents.x() * extents.y() * extents.z());
+		memset(visited_statuses, false, sizeof(bool) * extents.x() * extents.y() * extents.z());
 	}
 
 	int get_cell_index_to_grid_index(const ivec3& ci) const
 	{
-		if (ci.x() < 0 || ci.x() >= 10 ||
-			ci.y() < 0 || ci.y() >= 10 ||
-			ci.z() < 0 || ci.z() >= 10)
+		if (ci.x() < 0 || ci.x() >= extents.x() ||
+			ci.y() < 0 || ci.y() >= extents.y() ||
+			ci.z() < 0 || ci.z() >= extents.z())
 			return -1;
 
-		return ci.x() + ci.y() * 10 + ci.z() * 10 * 10;
+		// TODO check
+		return ci.x() + ci.y() * extents.x() + ci.z() * extents.y() * extents.z();
 	}
 
 	//converts a position to a grid index
@@ -200,10 +217,11 @@ public:
 
 	void get_closest_indices(int index, std::vector<int>& indices) const
 	{
-		if (grid == NULL || index < 0 || index >= 10 * 10 * 10)
+		if (grid == NULL || index < 0 || index >= extents.x() * extents.y() * extents.z())
 			return;
 
-		for (size_t p_index : grid[index])
+		//for (size_t p_index : grid[index])
+		size_t p_index = grid[index];
 		{
 			vec4 node = cells->at(p_index).node.lift();
 
@@ -242,7 +260,8 @@ public:
 	{
 		int index = get_position_to_grid_index(p);
 
-		grid[index].push_back(p_index);
+		//grid[index].push_back(p_index);
+		grid[index] = p_index + 1;
 	}
 
 	void consider_path(const ivec3& ci, const vec3& q, std::priority_queue<search_entry>& qmin, knn_result& res) const
@@ -254,7 +273,8 @@ public:
 		if (gi < 0)
 			return;
 
-		if (grid[gi].empty())
+		//if (grid[gi].empty())
+		if (grid[gi] == 0)
 		{
 			std::vector<ivec3> cis{
 				ivec3(ci.x() - 1, ci.y(), ci.z()),	// left
@@ -289,7 +309,8 @@ public:
 
 			visited_statuses[gi] = true;
 
-			for (int p_index : grid[gi])
+			//for (int p_index : grid[gi])
+			size_t p_index = grid[gi];
 			{
 				vec4 node = cells->at(p_index).node.lift();
 
@@ -315,7 +336,7 @@ public:
 	{
 		if (grid != NULL && visited_statuses != NULL)
 		{
-			memset(visited_statuses, false, sizeof(bool) * 10 * 10 * 10);
+			memset(visited_statuses, false, sizeof(bool) * extents.x() * extents.y() * extents.z());
 
 			ivec3 ci = get_position_to_cell_index(q, cell_extents);
 
@@ -351,25 +372,31 @@ public:
 
 	void print() const
 	{
-		for (int i = 0; i < 10; ++i)
+		for (int i = 0; i < extents.x(); ++i)
 		{
-			for (int j = 0; j < 10; ++j)
+			for (int j = 0; j < extents.y(); ++j)
 			{
-				for (int k = 0; k < 10; ++k)
+				for (int k = 0; k < extents.z(); ++k)
 				{
 					int gi = get_cell_index_to_grid_index(ivec3(i, j, k));
 
-					if (grid[gi].empty())
+					//if (grid[gi].empty())
+					if (grid[gi] == 0)
 						continue;
 
-					std::cout << "Grid[" << i << ", " << j << ", " << k << "]" << std::endl;
+					//std::cout << "Grid[" << i << ", " << j << ", " << k << "]" << std::endl;
 
-					for (size_t index : grid[gi])
-					{
-						std::cout << cells->at(index).node << std::endl;
-					}
+					//for (size_t index : grid[gi])
+					//{
+					//	std::cout << cells->at(index).node << std::endl;
+					//}
 
-					std::cout << "=============" << std::endl;
+					//if (grid[gi].size() > 1)
+					//{
+					//	std::cout << "Nodes overlap at [" << i << ", " << j << ", " << k << "]" << std::endl;
+					//}
+
+					//std::cout << "=============" << std::endl;
 				}
 			}
 		}
@@ -387,19 +414,18 @@ public:
 			thread.join();
 	}
 
-	void build_from_vertices(const std::vector<T>* _cells, size_t _cells_start, size_t _cells_end)
+	void build_from_vertices(const std::vector<T>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& _extents, bool print_grid = false)
 	{
 		{
 			std::lock_guard<std::mutex> lock(mtx);
 
-			clear();
+			//reset(_extents);
+			reset(ivec3(100.f, 100.f, 100.f));
 
 			cells = _cells;
 
-			cells_start = _cells_start;
+			current_cell_index = _cells_start;
 			cells_end = _cells_end;
-
-			current_cell_index = cells_start;
 
 			if (cells == NULL)
 				return;
@@ -419,7 +445,6 @@ public:
 			build_grid = true;
 		}
 
-		thread = std::thread(&regular_grid::build_from_vertices_impl, this);
+		thread = std::thread(&regular_grid::build_from_vertices_impl, this, print_grid);
 	}
 };
- 

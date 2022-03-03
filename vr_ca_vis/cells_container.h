@@ -118,7 +118,7 @@ public:
 
 	void set_scale_matrix(const mat4& _scale_matrix);
 	void set_cell_types(const std::unordered_set<std::string>& _cell_types);
-	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end);
+	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents);
 	void set_clipping_planes(const std::vector<vec4>& _clipping_planes);
 	void set_clipping_planes(const std::vector<vec3>* _clipping_plane_origins, const std::vector<vec3>* _clipping_plane_directions);
 private:
