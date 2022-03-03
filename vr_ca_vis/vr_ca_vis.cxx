@@ -864,8 +864,6 @@ public:
 		//	visible_colors.push_back(group_colors[group_indices[i]]);
 		//}
 
-		//start = 0; end = 10;
-
 		cells_ctr->set_cells(&cells, start, end, extent);
 	}
 	std::string get_clipping_planes_stats()

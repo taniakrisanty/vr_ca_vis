@@ -217,29 +217,35 @@ public:
 
 	void get_closest_indices(int index, std::vector<int>& indices) const
 	{
-		if (grid == NULL || index < 0 || index >= extents.x() * extents.y() * extents.z())
+		if (grid == NULL) // grid is not yet initialized
+			return;
+
+		if (index < 0 || index >= extents.x() * extents.y() * extents.z()) // grid cell index is out of bounds
 			return;
 
 		//for (size_t p_index : grid[index])
 		size_t p_index = grid[index];
+		if (p_index == 0) // grid cell is empty
+			return;
+
+		p_index -= 1;
+
+		vec4 node = cells->at(p_index).node.lift();
+
+		bool clipped = false;
+
+		// ignore if cell is invisible (clipped by the clipping plane)
+		for (const vec4& cp : *clipping_planes)
 		{
-			vec4 node = cells->at(p_index).node.lift();
-
-			bool clipped = false;
-
-			// ignore if cell is invisible (clipped by the clipping plane)
-			for (const vec4& cp : *clipping_planes)
+			if (dot(node, cp) < 0)
 			{
-				if (dot(node, cp) < 0)
-				{
-					clipped = true;
-					break;
-				}
+				clipped = true;
+				break;
 			}
-
-			if (!clipped)
-				indices.push_back(p_index);
 		}
+
+		if (!clipped)
+			indices.push_back(p_index);
 	}
 
 	void get_closest_indices(const vec3& pos, std::vector<int>& indices) const
@@ -274,7 +280,9 @@ public:
 			return;
 
 		//if (grid[gi].empty())
-		if (grid[gi] == 0)
+		size_t p_index = grid[gi];
+
+		if (p_index == 0)
 		{
 			std::vector<ivec3> cis{
 				ivec3(ci.x() - 1, ci.y(), ci.z()),	// left
@@ -310,25 +318,24 @@ public:
 			visited_statuses[gi] = true;
 
 			//for (int p_index : grid[gi])
-			size_t p_index = grid[gi];
+			p_index -= 1;
+
+			vec4 node = cells->at(p_index).node.lift();
+
+			bool clipped = false;
+
+			// ignore if cell is invisible (clipped by the clipping plane)
+			for (const vec4& cp : *clipping_planes)
 			{
-				vec4 node = cells->at(p_index).node.lift();
-
-				bool clipped = false;
-
-				// ignore if cell is invisible (clipped by the clipping plane)
-				for (const vec4& cp : *clipping_planes)
+				if (dot(node, cp) < 0)
 				{
-					if (dot(node, cp) < 0)
-					{
-						clipped = true;
-						break;
-					}
+					clipped = true;
+					break;
 				}
-
-				if (!clipped)
-					res.consider(p_index, (cells->at(p_index).node - q).sqr_length());
 			}
+
+			if (!clipped)
+				res.consider(p_index, (cells->at(p_index).node - q).sqr_length());
 		}
 	}
 
@@ -381,10 +388,15 @@ public:
 					int gi = get_cell_index_to_grid_index(ivec3(i, j, k));
 
 					//if (grid[gi].empty())
-					if (grid[gi] == 0)
+					size_t p_index = grid[gi];
+					if (p_index == 0)
 						continue;
 
-					//std::cout << "Grid[" << i << ", " << j << ", " << k << "]" << std::endl;
+					p_index -= 1;
+
+					std::cout << "Grid[" << i << ", " << j << ", " << k << "]" << std::endl;
+
+					std::cout << cells->at(p_index).node << std::endl;
 
 					//for (size_t index : grid[gi])
 					//{
@@ -396,7 +408,7 @@ public:
 					//	std::cout << "Nodes overlap at [" << i << ", " << j << ", " << k << "]" << std::endl;
 					//}
 
-					//std::cout << "=============" << std::endl;
+					std::cout << "=============" << std::endl;
 				}
 			}
 		}
@@ -419,8 +431,7 @@ public:
 		{
 			std::lock_guard<std::mutex> lock(mtx);
 
-			//reset(_extents);
-			reset(ivec3(100.f, 100.f, 100.f));
+			reset(_extents);
 
 			cells = _cells;
 
