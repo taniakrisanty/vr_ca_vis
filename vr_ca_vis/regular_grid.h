@@ -4,7 +4,11 @@
 
 #pragma once
 
+
+#include <chrono>
+#include <mutex>
 #include <queue>
+#include <thread>
 
 #include "grid_utils.h"
 
@@ -40,6 +44,11 @@ public:
 	};
 
 private:
+	std::mutex mtx;
+	std::thread thread;
+
+	bool build_grid = false;
+
 	std::vector<size_t>* grid = NULL;
 
 	bool* visited_statuses = NULL;
@@ -47,6 +56,9 @@ private:
 	vec3 cell_extents;
 
 	const std::vector<T>* cells = NULL;
+	size_t cells_start, cells_end;
+	size_t current_cell_index;
+
 	const std::vector<vec4>* clipping_planes = NULL;
 
 	//search entry used internally for nearest and k nearest primitive queries
@@ -102,8 +114,42 @@ private:
 		}
 	};
 
+	void build_from_vertices_impl()
+	{
+		auto start = std::chrono::high_resolution_clock::now();
+
+		while (true)
+		{
+			{
+				std::lock_guard<std::mutex> lock(mtx);
+
+				if (!build_grid)
+				{
+					std::cout << "build_from_vertices cancelled at index " << current_cell_index << std::endl;
+					break;
+				}
+
+				if (current_cell_index == cells_end)
+				{
+					auto stop = std::chrono::high_resolution_clock::now();
+
+					auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+
+					std::cout << "Time taken by multithreaded build_from_vertices: " << duration.count() << " microseconds" << std::endl;
+					break;
+				}
+
+				insert(current_cell_index, cells->at(current_cell_index).node);
+
+				++current_cell_index;
+			}
+
+			//std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+		}
+	}
+
 public:
-	regular_grid(const float _cell_extents = 10)
+	regular_grid(const float _cell_extents = 10) : cells_start(0), cells_end(0), current_cell_index(0)
 	{
 		cell_extents[0] = cell_extents[1] = cell_extents[2] = _cell_extents;
 	}
@@ -298,6 +344,11 @@ public:
 		return result_entry();
 	}
 
+	void set_clipping_planes(const std::vector<vec4>* _clipping_planes)
+	{
+		clipping_planes = _clipping_planes;
+	}
+
 	void print() const
 	{
 		for (int i = 0; i < 10; ++i)
@@ -324,22 +375,51 @@ public:
 		}
 	}
 
-	void build_from_vertices(const std::vector<T>* _cells)
+	void cancel_build_from_vertices()
 	{
-		clear();
+		{
+			std::lock_guard<std::mutex> lock(mtx);
 
-		cells = _cells;
+			build_grid = false;
+		}
 
-		if (cells == NULL)
-			return;
-
-		size_t index = 0;
-		for (std::vector<T>::const_iterator vit = cells->begin(), vend = cells->end(); vit != vend; ++vit)
-			insert(index++, vit->node);
+		if (thread.joinable())
+			thread.join();
 	}
 
-	void set_clipping_planes(const std::vector<vec4>* _clipping_planes)
+	void build_from_vertices(const std::vector<T>* _cells, size_t _cells_start, size_t _cells_end)
 	{
-		clipping_planes = _clipping_planes;
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+
+			clear();
+
+			cells = _cells;
+
+			cells_start = _cells_start;
+			cells_end = _cells_end;
+
+			current_cell_index = cells_start;
+
+			if (cells == NULL)
+				return;
+
+			//auto start = std::chrono::high_resolution_clock::now();
+
+			//size_t index = 0;
+			//for (std::vector<T>::const_iterator vit = cells->begin(), vend = cells->end(); vit != vend; ++vit)
+			//	insert(index++, vit->node);
+
+			//auto stop = std::chrono::high_resolution_clock::now();
+
+			//auto duration = std::chrono::duration_cast<std::chrono::microseconds > (stop - start);
+
+			//std::cout << "Time taken by single-threaded build_from_vertices: " << duration.count() << " microseconds" << std::endl;
+
+			build_grid = true;
+		}
+
+		thread = std::thread(&regular_grid::build_from_vertices_impl, this);
 	}
 };
+ 

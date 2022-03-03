@@ -368,14 +368,14 @@ void cells_container::set_cell_types(const std::unordered_set<std::string>& _cel
 }
 void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end)
 {
-	//grid.cancel_build_from_vertices();
+	grid.cancel_build_from_vertices();
 
 	cells = _cells;
 
 	cells_start = _cells_start;
 	cells_end = _cells_end;
 
-	//grid.build_from_vertices(cells);
+	grid.build_from_vertices(cells, cells_start, cells_end);
 
 	//grid.print();
 }
