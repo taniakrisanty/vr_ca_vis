@@ -1,7 +1,6 @@
 // This source code is adapted from simple_primitive_container in vr_lab_test plugin
 
 #include "cells_container.h"
-#include <cgv/math/ftransform.h>
 #include <cgv/math/proximity.h>
 #include <cgv/math/intersection.h>
 
@@ -36,6 +35,8 @@ cells_container::cells_container(cells_container_listener* _listener, const std:
 	show_gui = true;
 
 	scale_matrix.identity();
+
+	grid.set_clipping_planes(&clipping_planes);
 }
 std::string cells_container::get_type_name() const
 {
@@ -365,8 +366,13 @@ void cells_container::create_gui()
 }
 void cells_container::set_scale_matrix(const mat4& _scale_matrix)
 {
-	scale_matrix = _scale_matrix;
-	inv_scale_matrix = inv(_scale_matrix);
+	if (scale_matrix != _scale_matrix)
+	{
+		scale_matrix = _scale_matrix;
+		inv_scale_matrix = inv(_scale_matrix);
+
+		// TODO update all clipping planes
+	}
 }
 void cells_container::set_cell_types(const std::unordered_set<std::string>& _cell_types)
 {
@@ -384,19 +390,45 @@ void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_s
 
 	grid.build_from_vertices(cells, cells_start, cells_end, extents);
 }
-void cells_container::set_clipping_planes(const std::vector<vec4>& _clipping_planes)
+void cells_container::create_clipping_plane(const vec3& origin, const vec3& direction)
 {
-	clipping_planes = _clipping_planes;
+	vec4 scaled_origin4(inv_scale_matrix * origin.lift());
+	vec3 scaled_origin(scaled_origin4 / scaled_origin4.w());
 
-	grid.set_clipping_planes(&clipping_planes);
+	clipping_planes.emplace_back(direction, -dot(scaled_origin, direction));
 }
-void cells_container::set_clipping_planes(const std::vector<vec3>* _clipping_plane_origins, const std::vector<vec3>* _clipping_plane_directions)
+void cells_container::copy_clipping_plane(size_t index)
 {
-	clipping_plane_origins = _clipping_plane_origins;
-	clipping_plane_directions = _clipping_plane_directions;
-
-	//grid.set_clipping_planes();
+	clipping_planes.emplace_back(clipping_planes[index]);
 }
+void cells_container::delete_clipping_plane(size_t index, size_t count)
+{
+	clipping_planes.erase(clipping_planes.begin() + index, clipping_planes.begin() + index + count);
+}
+void cells_container::clear_clipping_planes()
+{
+	clipping_planes.clear();
+}
+void cells_container::update_clipping_plane(size_t index, const vec3& origin, const vec3& direction)
+{
+	vec4 scaled_origin4(inv_scale_matrix * origin.lift());
+	vec3 scaled_origin(scaled_origin4 / scaled_origin4.w());
+
+	clipping_planes[index] = vec4(direction, -dot(scaled_origin, direction));
+}
+//void cells_container::set_clipping_planes(const std::vector<vec4>& _clipping_planes)
+//{
+//	clipping_planes = _clipping_planes;
+//
+//	grid.set_clipping_planes(&clipping_planes);
+//}
+//void cells_container::set_clipping_planes(const std::vector<vec3>* _clipping_plane_origins, const std::vector<vec3>* _clipping_plane_directions)
+//{
+//	clipping_plane_origins = _clipping_plane_origins;
+//	clipping_plane_directions = _clipping_plane_directions;
+//
+//	grid.set_clipping_planes(clipping_plane_origins, clipping_plane_directions);
+//}
 void cells_container::grab_cell(size_t index) const
 {
 	if (listener)

@@ -15,12 +15,9 @@
 #include <cgv/render/drawable.h>
 
 template <typename T>
-class regular_grid
+class regular_grid : cgv::render::render_types
 {
 public:
-	typedef cgv::render::drawable::vec3 vec3;
-	typedef cgv::render::drawable::vec4 vec4;
-
 	//result entry for nearest and k nearest primitive queries
 	struct result_entry
 	{

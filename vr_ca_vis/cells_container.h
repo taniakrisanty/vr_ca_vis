@@ -72,8 +72,6 @@ protected:
 	// clipping planes that are used by clipped_box geometry shader
 	// in the form of ax + by + cz + d = 0
 	std::vector<vec4> clipping_planes;
-	const std::vector<vec3>* clipping_plane_origins = NULL;
-	const std::vector<vec3>* clipping_plane_directions = NULL;
 
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
@@ -119,8 +117,13 @@ public:
 	void set_scale_matrix(const mat4& _scale_matrix);
 	void set_cell_types(const std::unordered_set<std::string>& _cell_types);
 	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents);
-	void set_clipping_planes(const std::vector<vec4>& _clipping_planes);
-	void set_clipping_planes(const std::vector<vec3>* _clipping_plane_origins, const std::vector<vec3>* _clipping_plane_directions);
+
+	void create_clipping_plane(const vec3& origin, const vec3& direction);
+	void copy_clipping_plane(size_t index);
+	void delete_clipping_plane(size_t index, size_t count = 1);
+	void clear_clipping_planes();
+
+	void update_clipping_plane(size_t index, const vec3& origin, const vec3& direction);
 private:
 	void grab_cell(size_t index) const;
 };

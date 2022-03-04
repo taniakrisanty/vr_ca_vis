@@ -104,7 +104,6 @@ protected:
 	// index of temporary clipping plane in clipping planes container
 	int temp_clipping_plane_idx = -1;
 	// clipping planes that are sent to cells container, to be used by clipped_box geometry shader, in the form of ax + by + cz + d = 0
-	std::vector<vec4> shader_clipping_planes;
 	// clipping planes that are sent to clipping planes container, in the form of origin and direction (stored by the container)
 
 	// extent
@@ -652,7 +651,7 @@ public:
 			compute_clipping_planes();
 
 		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
-		cells_ctr->set_clipping_planes(shader_clipping_planes);
+		//cells_ctr->set_clipping_planes(shader_clipping_planes);
 
 		clipping_planes_b->set_inverse_model_transform(get_inverse_model_transform());
 
@@ -710,7 +709,9 @@ public:
 						{
 							clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
 
-							shader_clipping_planes.erase(shader_clipping_planes.begin() + temp_clipping_plane_idx);
+							cells_ctr->delete_clipping_plane(temp_clipping_plane_idx);
+
+							//shader_clipping_planes.erase(shader_clipping_planes.begin() + temp_clipping_plane_idx);
 						}
 
 						temp_clipping_plane_idx = -1;
@@ -885,7 +886,9 @@ public:
 		{
 			clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
 
-			shader_clipping_planes.erase(shader_clipping_planes.begin() + temp_clipping_plane_idx);
+			cells_ctr->delete_clipping_plane(temp_clipping_plane_idx);
+
+			//shader_clipping_planes.erase(shader_clipping_planes.begin() + temp_clipping_plane_idx);
 		}
 
 		temp_clipping_plane_idx = -1;
@@ -904,23 +907,25 @@ public:
 			// control_origin have to be transformed to local space of the cells
 			vec3 control_origin = reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[9]);
 
-			vec4 o4(get_inverse_model_transform() * control_origin.lift());
-			vec3 o(o4 / o4.w());
+			vec4 origin4(get_inverse_model_transform() * control_origin.lift());
+			vec3 origin(origin4 / origin4.w());
 
 			// TODO: check if plane actually intersects the box, otherwise draw the infinite cutting plane
-			if (o.x() < 0.f || o.x() > 1.f || o.y() < 0.f || o.y() > 1.f || o.z() < 0.f || o.z() > 1.f)
+			if (origin.x() < 0.f || origin.x() > 1.f || origin.y() < 0.f || origin.y() > 1.f || origin.z() < 0.f || origin.z() > 1.f)
 				return;
 
 			temp_clipping_plane_idx = clipping_planes_ctr->get_num_clipping_planes();
 
-			clipping_planes_ctr->create_clipping_plane(o, control_direction);
+			clipping_planes_ctr->create_clipping_plane(origin, control_direction);
 
-			mat4 mat = get_model_transform() * cgv::math::scale4<double>(extent_scale);
+			cells_ctr->create_clipping_plane(origin, control_direction);
 
-			vec4 origin4(inv(mat) * control_origin.lift());
-			vec3 origin(origin4 / origin4.w());
+			//mat4 mat = inv(cgv::math::scale4<double>(extent_scale));
 
-			shader_clipping_planes.emplace_back(control_direction, -dot(origin, control_direction));
+			//vec4 scaled_origin4(mat * origin4);
+			//vec3 scaled_origin(scaled_origin4 / scaled_origin4.w());
+
+			//shader_clipping_planes.emplace_back(control_direction, -dot(scaled_origin, control_direction));
 		}
 
 		post_recreate_gui();
@@ -952,14 +957,21 @@ public:
 		{
 			clipping_planes_ctr->clear_clipping_planes();
 
-			shader_clipping_planes.clear();
+			cells_ctr->clear_clipping_planes();
+
+			//shader_clipping_planes.clear();
 		}
 		else // we are grabbing a (temporary) clipping plane, duplicate it first, then clear all installed clipping plane objects
 		{
-			clipping_planes_ctr->copy_clipping_plane(temp_clipping_plane_idx);
-			clipping_planes_ctr->delete_clipping_plane(0, shader_clipping_planes.size());
+			size_t num_clipping_planes = clipping_planes_ctr->get_num_clipping_planes();
 
-			shader_clipping_planes.assign(shader_clipping_planes.begin() + temp_clipping_plane_idx, shader_clipping_planes.begin() + temp_clipping_plane_idx + 1);
+			clipping_planes_ctr->copy_clipping_plane(temp_clipping_plane_idx);
+			clipping_planes_ctr->delete_clipping_plane(0, num_clipping_planes);
+
+			cells_ctr->copy_clipping_plane(temp_clipping_plane_idx);
+			cells_ctr->delete_clipping_plane(0, num_clipping_planes);
+
+			//shader_clipping_planes.assign(shader_clipping_planes.begin() + temp_clipping_plane_idx, shader_clipping_planes.begin() + temp_clipping_plane_idx + 1);
 
 			temp_clipping_plane_idx = 0;
 		}
@@ -1013,10 +1025,14 @@ public:
 #pragma endregion clipping_planes_bag_listener
 
 #pragma region clipping_planes_container_listener
-	// listener for existing clipping plane grab event inside box
-	void container_on_clipping_plane_grabbed(size_t index)
+	// listener for existing clipping plane drag event inside box
+	void container_on_clipping_plane_updated(size_t index, const vec3& origin, const vec3& direction)
 	{
-
+		cells_ctr->update_clipping_plane(index, origin, direction);
+	}
+	void container_on_clipping_plane_deleted(size_t index)
+	{
+		cells_ctr->delete_clipping_plane(index);
 	}
 #pragma endregion clipping_planes_container_listener
 };

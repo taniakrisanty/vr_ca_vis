@@ -14,7 +14,8 @@
 class clipping_planes_container_listener
 {
 public:
-	virtual void container_on_clipping_plane_grabbed(size_t index) = 0;
+	virtual void container_on_clipping_plane_updated(size_t index, const cgv::render::render_types::vec3& origin, const cgv::render::render_types::vec3& direction) = 0;
+	virtual void container_on_clipping_plane_deleted(size_t index) = 0;
 };
 
 class clipping_planes_container :
@@ -96,14 +97,14 @@ public:
 	void clear_clipping_planes();
 
 	size_t get_num_clipping_planes() const;
-	const std::vector<vec3>* get_clipping_plane_origins() const;
-	const std::vector<vec3>* get_clipping_plane_directions() const;
+	//const std::vector<vec3>* get_clipping_plane_origins() const;
+	//const std::vector<vec3>* get_clipping_plane_directions() const;
 private:
 	void draw_clipping_plane(size_t index, cgv::render::context& ctx);
 	void construct_clipping_plane(size_t index, std::vector<vec3>& polygon) const;
 	float signed_distance_from_clipping_plane(size_t index, const vec3& p) const;
 
-	void grab_clipping_plane(size_t index) const;
+	void end_drag_clipping_plane(size_t index);
 
 	void update_rotation(size_t index);
 };

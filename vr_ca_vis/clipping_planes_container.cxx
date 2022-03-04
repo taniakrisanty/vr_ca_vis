@@ -39,6 +39,10 @@ void clipping_planes_container::on_set(void* member_ptr)
 	for (size_t i = 0; i < directions.size(); ++i) {
 		if (member_ptr == &directions[i]) {
 			update_rotation(i);
+
+			if (listener)
+				listener->container_on_clipping_plane_updated(i, origins[i], directions[i]);
+
 			break;
 		}
 	}
@@ -90,7 +94,6 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 		if (pressed) {
 			state = state_enum::grabbed;
 			on_set(&state);
-			//grab_clipping_plane(prim_idx);
 			drag_begin(request, false, original_config);
 		}
 		else {
@@ -112,6 +115,7 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 		else if (state == state_enum::grabbed) {
 			debug_point = prox_info.hit_point;
 			origins[prim_idx] = position_at_grab + prox_info.query_point - query_point_at_grab;
+			end_drag_clipping_plane(prim_idx);
 			post_recreate_gui();
 		}
 		post_redraw();
@@ -122,7 +126,6 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 		if (pressed) {
 			state = state_enum::triggered;
 			on_set(&state);
-			//grab_clipping_plane(prim_idx);
 			drag_begin(request, true, original_config);
 		}
 		else {
@@ -148,6 +151,7 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 			// to be save even without new intersection, find closest point on ray to hit point at trigger
 			vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
 			origins[prim_idx] = position_at_trigger + q - hit_point_at_trigger;
+			end_drag_clipping_plane(prim_idx);
 			post_recreate_gui();
 		}
 		post_redraw();
@@ -320,7 +324,7 @@ void clipping_planes_container::construct_clipping_plane(size_t index, std::vect
 				   distance between each box corner and the slice. Assume that outside vertices
 				   have a positive distance.*/
 
-	vec3 corners[8] = { vec3(0, 0, 0), vec3(1, 0, 0), vec3(1, 1, 0), vec3(0, 1, 0), vec3(0, 0, 1), vec3(1, 0, 1), vec3(1, 1, 1), vec3(0, 1, 1) };
+	static vec3 corners[8] = { vec3(0, 0, 0), vec3(1, 0, 0), vec3(1, 1, 0), vec3(0, 1, 0), vec3(0, 0, 1), vec3(1, 0, 1), vec3(1, 1, 1), vec3(0, 1, 1) };
 	float values[8];
 	bool corner_classifications[8]; // true = outside, false = inside
 
@@ -341,9 +345,9 @@ void clipping_planes_container::construct_clipping_plane(size_t index, std::vect
 				   polygon. Store the ordered edge points in the polygon-vector. Create your own
 				   helper structures for edge-face adjacenies etc.*/
 
-	int a_corner_comparisons[12] = { 0, 3, 7, 4, 0, 4, 5, 1, 0, 1, 2, 3 };
-	int b_corner_comparisons[12] = { 1, 2, 6, 5, 3, 7, 6, 2, 4, 5, 6, 7 };
-	int  comparison_to_edges[12] = { 0, 2, 6, 4, 3, 7, 5, 1, 8, 9, 10, 11 };
+	static int a_corner_comparisons[12] = { 0, 3, 7, 4, 0, 4, 5, 1, 0, 1, 2, 3 };
+	static int b_corner_comparisons[12] = { 1, 2, 6, 5, 3, 7, 6, 2, 4, 5, 6, 7 };
+	static int comparison_to_edges[12] = { 0, 2, 6, 4, 3, 7, 5, 1, 8, 9, 10, 11 };
 
 	std::vector<vec3> p;
 
@@ -472,18 +476,34 @@ size_t clipping_planes_container::get_num_clipping_planes() const
 {
 	return origins.size();
 }
-const std::vector<cgv::render::render_types::vec3>* clipping_planes_container::get_clipping_plane_origins() const
+//const std::vector<cgv::render::render_types::vec3>* clipping_planes_container::get_clipping_plane_origins() const
+//{
+//	return &origins;
+//}
+//const std::vector<cgv::render::render_types::vec3>* clipping_planes_container::get_clipping_plane_directions() const
+//{
+//	return &directions;
+//}
+void clipping_planes_container::end_drag_clipping_plane(size_t index)
 {
-	return &origins;
-}
-const std::vector<cgv::render::render_types::vec3>* clipping_planes_container::get_clipping_plane_directions() const
-{
-	return &directions;
-}
-void clipping_planes_container::grab_clipping_plane(size_t index) const
-{
-	if (listener)
-		listener->container_on_clipping_plane_grabbed(index);
+	vec3 origin(origins[index]);
+
+	// TODO check drag state
+
+	//if (origin.x() < 0.f || origin.x() > 1.f || origin.y() < 0.f || origin.y() > 1.f || origin.z() < 0.f || origin.z() > 1.f)
+	//{
+	//	prim_idx = -1;
+
+	//	delete_clipping_plane(index);
+
+	//	if (listener)
+	//		listener->container_on_clipping_plane_deleted(index);
+	//}
+	//else
+	{
+		if (listener)
+			listener->container_on_clipping_plane_updated(index, origins[index], directions[index]);
+	}
 }
 void clipping_planes_container::update_rotation(size_t index)
 {
