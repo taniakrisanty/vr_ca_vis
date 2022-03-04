@@ -144,6 +144,8 @@ public:
 							}
 						}
 
+						//cell_data cell(id, std::distance(types.begin(), p.first), center, b, b2);
+
 						rapidxml::xml_node<>* nodes_node = cell_node->first_node("Nodes");
 						if (nodes_node != NULL)
 						{
@@ -180,15 +182,13 @@ public:
 								if (!cgv::utils::is_integer(node_str_vector[0], x) || !cgv::utils::is_integer(node_str_vector[1], y) || !cgv::utils::is_integer(node_str_vector[2], z))
 									continue;
 
-								//ids.push_back(id);
-
-								//group_ids.push_back(type_index);
-
-								//points.emplace_back(float(x), float(y), float(z));
+								//cell.add_node(x, y, z);
 
 								cells.emplace_back(id, std::distance(types.begin(), p.first), center, vec3(float(x), float(y), float(z)), b, b2, cm);
 							}
 						}
+
+						//cells.emplace_back(cell);
 					}
 				}
 			}

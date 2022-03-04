@@ -90,6 +90,7 @@ protected:
 
 	// cell data
 	std::vector<cell> cells;
+	//std::vector<cell_data> cells;
 
 	std::unordered_set<std::string> types;
 	//std::vector<uint32_t> ids;
@@ -716,6 +717,9 @@ public:
 
 						clipping_plane_grabbed = false;
 						return true;
+					case vr::VR_DPAD_DOWN:
+						reset_clipping_plane();
+						return true;
 					}
 				}
 				else {
@@ -944,13 +948,13 @@ public:
 	}
 	void reset_clipping_plane()
 	{
-		if (temp_clipping_plane_idx == -1)
+		if (temp_clipping_plane_idx == -1) // we are not grabbing a (temporary) clipping plane, clear all installed clipping plane objects
 		{
 			clipping_planes_ctr->clear_clipping_planes();
 
 			shader_clipping_planes.clear();
 		}
-		else
+		else // we are grabbing a (temporary) clipping plane, duplicate it first, then clear all installed clipping plane objects
 		{
 			clipping_planes_ctr->copy_clipping_plane(temp_clipping_plane_idx);
 			clipping_planes_ctr->delete_clipping_plane(0, shader_clipping_planes.size());
