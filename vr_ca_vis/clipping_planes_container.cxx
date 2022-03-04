@@ -163,7 +163,7 @@ bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& p
 	for (size_t i = 0; i < origins.size(); ++i) {
 		vec3 p = point - origins[i];
 		rotations[i].inverse_rotate(p);
-		cgv::math::closest_point_on_circle_to_point(origins[i], directions[i], 1.4f, point, q);
+		cgv::math::closest_point_on_circle_to_point(origins[i], directions[i], 1.f, point, q);
 		float dist = (point - q).length ();
 		if (dist < min_dist) {
 			rotations[i].rotate(q);
@@ -188,7 +188,7 @@ bool clipping_planes_container::compute_intersection(const vec3& ray_start, cons
 		rotations[i].inverse_rotate(rd);
 		vec3 n;
 		vec2 res;
-		if (cgv::math::ray_box_intersection(rs, rd, 0.5f * vec3(1.4f, 1.4f, 0.01f), res, n) == 0)
+		if (cgv::math::ray_box_intersection(rs, rd, 0.5f * vec3(1.f, 1.f, 0.01f), res, n) == 0)
 			continue;
 		float param;
 		if (res[0] < 0) {
