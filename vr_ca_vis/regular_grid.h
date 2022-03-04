@@ -44,7 +44,7 @@ public:
 	};
 
 private:
-	std::mutex mtx;
+	mutable std::mutex mutex;
 	std::thread thread;
 
 	bool build_grid = false;
@@ -123,7 +123,7 @@ private:
 		while (true)
 		{
 			{
-				std::lock_guard<std::mutex> lock(mtx);
+				std::lock_guard<std::mutex> lock(mutex);
 
 				if (!build_grid)
 				{
@@ -138,6 +138,8 @@ private:
 					auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
 					std::cout << "Time taken by multithreaded build_from_vertices: " << duration.count() << " microseconds" << std::endl;
+
+					build_grid = false;
 
 					if (print_grid) print();
 					break;
@@ -217,35 +219,37 @@ public:
 
 	void get_closest_indices(int index, std::vector<int>& indices) const
 	{
-		if (grid == NULL) // grid is not yet initialized
-			return;
-
 		if (index < 0 || index >= extents.x() * extents.y() * extents.z()) // grid cell index is out of bounds
 			return;
 
-		//for (size_t p_index : grid[index])
-		size_t p_index = grid[index];
-		if (p_index == 0) // grid cell is empty
-			return;
+		std::lock_guard<std::mutex> lock(mutex);
 
-		p_index -= 1;
-
-		vec4 node = cells->at(p_index).node.lift();
-
-		bool clipped = false;
-
-		// ignore if cell is invisible (clipped by the clipping plane)
-		for (const vec4& cp : *clipping_planes)
+		if (!build_grid && grid != NULL)
 		{
-			if (dot(node, cp) < 0)
-			{
-				clipped = true;
-				break;
-			}
-		}
+			//for (size_t p_index : grid[index])
+			size_t p_index = grid[index];
+			if (p_index == 0) // grid cell is empty
+				return;
 
-		if (!clipped)
-			indices.push_back(p_index);
+			p_index -= 1;
+
+			vec4 node = cells->at(p_index).node.lift();
+
+			bool clipped = false;
+
+			// ignore if cell is invisible (clipped by the clipping plane)
+			for (const vec4& cp : *clipping_planes)
+			{
+				if (dot(node, cp) < 0)
+				{
+					clipped = true;
+					break;
+				}
+			}
+
+			if (!clipped)
+				indices.push_back(p_index);
+		}
 	}
 
 	void get_closest_indices(const vec3& pos, std::vector<int>& indices) const
@@ -341,32 +345,36 @@ public:
 
 	result_entry closest_point(const vec3& q) const
 	{
-		if (grid != NULL && visited_statuses != NULL)
 		{
-			memset(visited_statuses, false, sizeof(bool) * extents.x() * extents.y() * extents.z());
+			std::lock_guard<std::mutex> lock(mutex);
 
-			ivec3 ci = get_position_to_cell_index(q, cell_extents);
-
-			knn_result k_best(1);
-
-			std::priority_queue<search_entry> qmin;
-			consider_path(ci, q, qmin, k_best);
-
-			while (!qmin.empty())
+			if (!build_grid && grid != NULL && visited_statuses != NULL)
 			{
-				search_entry se = qmin.top();
-				int gi = se.grid_index;
-				float dist = se.sqr_distance;
-				qmin.pop();
+				memset(visited_statuses, false, sizeof(bool) * extents.x() * extents.y() * extents.z());
 
-				if (dist > k_best.max_dist())
-					break;
+				ivec3 ci = get_position_to_cell_index(q, cell_extents);
 
-				consider_path(gi, q, qmin, k_best);
+				knn_result k_best(1);
+
+				std::priority_queue<search_entry> qmin;
+				consider_path(ci, q, qmin, k_best);
+
+				while (!qmin.empty())
+				{
+					search_entry se = qmin.top();
+					int gi = se.grid_index;
+					float dist = se.sqr_distance;
+					qmin.pop();
+
+					if (dist > k_best.max_dist())
+						break;
+
+					consider_path(gi, q, qmin, k_best);
+				}
+
+				if (!k_best.queue.empty())
+					return k_best.queue.top();
 			}
-
-			if (!k_best.queue.empty())
-				return k_best.queue.top();
 		}
 
 		return result_entry();
@@ -417,7 +425,7 @@ public:
 	void cancel_build_from_vertices()
 	{
 		{
-			std::lock_guard<std::mutex> lock(mtx);
+			std::lock_guard<std::mutex> lock(mutex);
 
 			build_grid = false;
 		}
@@ -429,7 +437,7 @@ public:
 	void build_from_vertices(const std::vector<T>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& _extents, bool print_grid = false)
 	{
 		{
-			std::lock_guard<std::mutex> lock(mtx);
+			std::lock_guard<std::mutex> lock(mutex);
 
 			reset(_extents);
 
