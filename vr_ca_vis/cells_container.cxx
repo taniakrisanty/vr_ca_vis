@@ -8,6 +8,8 @@
 
 #include "grid_traverser.h"
 
+#define DEBUG
+
 cells_container::rgb cells_container::get_modified_color(const rgb& color) const
 {
 	rgb mod_col(color);
@@ -34,6 +36,7 @@ cells_container::cells_container(cells_container_listener* _listener, const std:
 	
 	brs.culling_mode = cgv::render::CullingMode::CM_BACKFACE;
 	brs.use_group_color = true;
+	brs.use_group_transformation = true;
 
 	show_gui = true;
 
@@ -311,7 +314,6 @@ void cells_container::draw(cgv::render::context& ctx)
 		ctx.mul_modelview_matrix(scale_matrix);
 
 		for (int i = 0; i < clipping_planes.size(); ++i)
-			//for (int i = 0; clipping_plane_origins != NULL && i < clipping_plane_origins->size(); ++i)
 			glEnable(GL_CLIP_DISTANCE0 + i);
 
 		// save previous blend configuration
@@ -348,7 +350,6 @@ void cells_container::draw(cgv::render::context& ctx)
 		//	cells->at(prim_idx).color = tmp_color;
 
 		for (int i = 0; i < clipping_planes.size(); ++i)
-			//for (int i = 0; clipping_plane_origins != NULL && i < clipping_plane_origins->size(); ++i)
 			glDisable(GL_CLIP_DISTANCE0 + i);
 
 		ctx.pop_modelview_matrix();
@@ -425,6 +426,11 @@ void cells_container::set_scale_matrix(const mat4& _scale_matrix)
 		inv_scale_matrix = inv(_scale_matrix);
 
 		// TODO update all clipping planes
+
+#ifdef DEBUG
+		if (clipping_planes.empty())
+			create_clipping_plane(vec3(0.558930457f, 0.278098106f, 0.932542086f), vec3(-0.902267516f, 0, -0.431176722f));
+#endif
 	}
 }
 void cells_container::set_cell_types(const std::unordered_set<std::string>& _cell_types)
@@ -512,11 +518,18 @@ void cells_container::remove_color_point(size_t index, float t)
 }
 void cells_container::update_color_points_vector()
 {
-	color_points_vector.clear();
+	group_colors.clear();
+	group_translations.clear();
+	group_rotations.clear();
 
 	for (const auto& cm : color_maps) {
 		std::vector<rgba> i = cm.interpolate(size_t(21));
-		color_points_vector.insert(color_points_vector.end(), i.begin(), i.end());
+		group_colors.insert(group_colors.end(), i.begin(), i.end());
+
+		for (size_t i = 0; i < 21; ++i) {
+			group_translations.emplace_back(0, 0, 0);
+			group_rotations.emplace_back(0, 0, 0, 1);
+		}
 	}
 }
 void cells_container::create_clipping_plane(const vec3& origin, const vec3& direction)
@@ -589,8 +602,12 @@ void cells_container::transmit_cells(cgv::render::context& ctx)
 }
 void cells_container::set_group_geometry(cgv::render::context& ctx, cgv::render::group_renderer& gr)
 {
-	if (!color_points_vector.empty())
-		gr.set_group_colors(ctx, color_points_vector);
+	if (!group_colors.empty())
+		gr.set_group_colors(ctx, group_colors);
+	if (!group_translations.empty())
+		gr.set_group_translations(ctx, group_translations);
+	if (!group_rotations.empty())
+		gr.set_group_rotations(ctx, group_rotations);
 }
 void cells_container::set_geometry(cgv::render::context& ctx, cgv::render::group_renderer& gr)
 {

@@ -385,11 +385,11 @@ public:
 		cells_ctr = new cells_container(this, "Cells");
 		append_child(cells_ctr);
 
-		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 1.f));
-		append_child(clipping_planes_b);
-
 		clipping_planes_ctr = new clipping_planes_container(this, "Clipping Planes");
 		append_child(clipping_planes_ctr);
+
+		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 1.f));
+		append_child(clipping_planes_b);
 
 		// clipping plane
 		clipping_plane_grabbed = false;
@@ -518,12 +518,6 @@ public:
 		b_renderer.clear(ctx);
 		cgv::render::ref_surfel_renderer(ctx, -1);
 	}
-	//void set_group_geometry(cgv::render::context& ctx, cgv::render::group_renderer& sr)
-	//{
-	//	sr.set_group_colors(ctx, group_colors);
-	//	sr.set_group_translations(ctx, group_translations);
-	//	sr.set_group_rotations(ctx, group_rotations);
-	//}
 	//void set_geometry(cgv::render::context& ctx, cgv::render::group_renderer& sr)
 	//{
 	//	if (!visible_points.empty())
@@ -933,14 +927,6 @@ public:
 	}
 	void set_clipping_plane()
 	{
-		// uncomment for temporary fix until grabbing the bag is fixed
-		//if (temp_clipping_plane_idx > -1)
-		//{
-		//	clipping_planes_ctr->copy_clipping_plane(temp_clipping_plane_idx);
-
-		//	shader_clipping_planes.emplace_back(shader_clipping_planes[temp_clipping_plane_idx]);
-		//}
-
 		temp_clipping_plane_idx = -1;
 
 		if (li_clipping_plane_stats != -1) {
@@ -949,7 +935,6 @@ public:
 				scene_ptr->update_label_text(li_clipping_plane_stats, get_clipping_planes_stats());
 		}
 
-		// comment for temporary fix until grabbing the bag is fixed
 		clipping_plane_grabbed = false;
 	}
 	void reset_clipping_plane()

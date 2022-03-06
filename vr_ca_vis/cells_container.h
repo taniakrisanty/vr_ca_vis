@@ -71,12 +71,14 @@ protected:
 
 	std::vector<unsigned int> cell_ids;
 
-	// group index
-
 	// color map
 	std::vector<cgv::glutil::color_map> color_maps;
 	std::vector<std::map<float, rgba>> color_points_maps;
-	std::vector<rgba> color_points_vector;
+
+	// per group information
+	std::vector<rgba> group_colors;
+	std::vector<vec3> group_translations;
+	std::vector<vec4> group_rotations;
 
 	bool cells_out_of_date = true;
 

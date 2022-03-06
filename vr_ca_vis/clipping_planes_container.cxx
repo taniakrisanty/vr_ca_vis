@@ -4,6 +4,8 @@
 #include <cgv/math/proximity.h>
 #include <cgv/math/intersection.h>
 
+#define DEBUG
+
 cgv::render::shader_program clipping_planes_container::prog;
 
 clipping_planes_container::rgb clipping_planes_container::get_modified_color(const rgb& color) const
@@ -28,6 +30,10 @@ clipping_planes_container::clipping_planes_container(clipping_planes_container_l
 {
 	debug_point = vec3(0, 0.5f, 0);
 	srs.radius = 0.01f;
+
+#ifdef DEBUG
+	create_clipping_plane(vec3(0.558930457f, 0.278098106f, 0.932542086f), vec3(-0.902267516f, 0, -0.431176722f));
+#endif
 }
 std::string clipping_planes_container::get_type_name() const
 {
@@ -236,17 +242,17 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 
 		glDisable(GL_DEPTH_TEST);
 
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		//glEnable(GL_BLEND);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		for (int i = 0; i < origins.size(); ++i)
 		{
-			//glEnable(GL_BLEND);
-			//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 			draw_clipping_plane(i, ctx);
 
-			//glDisable(GL_BLEND);
+			glDisable(GL_BLEND);
 		}
 
 		//glDisable(GL_BLEND);
