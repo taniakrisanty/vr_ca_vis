@@ -103,8 +103,6 @@ protected:
 	bool clipping_plane_grabbed;
 	// index of temporary clipping plane in clipping planes container
 	int temp_clipping_plane_idx = -1;
-	// clipping planes that are sent to cells container, to be used by clipped_box geometry shader, in the form of ax + by + cz + d = 0
-	// clipping planes that are sent to clipping planes container, in the form of origin and direction (stored by the container)
 
 	// extent
 	ivec3 extent;
@@ -361,7 +359,7 @@ public:
 		ooc_mode = false;
 		opacity = 1.0f;
 		scale = 1.0f;
-		trigger[0] = trigger[1] = 0.0f;
+		trigger[0] = trigger[1] = 0.0f; // TODO check
 		time_delta = 0.0;
 		clr_scale = cgv::media::ColorScale::CS_TEMPERATURE;
 		sphere_style.radius = 0.5f;
@@ -505,9 +503,9 @@ public:
 		//mat4 h;
 		//h.identity();
 
-		vr::vr_scene* scene_ptr = get_scene_ptr();
-		if (!scene_ptr)
-			return;
+		//vr::vr_scene* scene_ptr = get_scene_ptr();
+		//if (!scene_ptr)
+		//	return;
 
 		//if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_HEAD))
 		//	h *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_HEAD));
@@ -689,8 +687,9 @@ public:
 		{
 			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
 			if (vrke.get_key() == vr::VR_MENU) {
-				if (vrke.get_action() != cgv::gui::KA_RELEASE)
+				if (vrke.get_action() != cgv::gui::KA_RELEASE) {
 					animate = !animate;
+				}
 	
 				return true;
 			}
@@ -803,28 +802,28 @@ public:
 		//add_member_control(this, "use_boxes", use_boxes, "toggle", "shortcut='M'");
 		add_gui("box_extent", box_extent, "", "gui_type='value_slider';options='min=0;max=1'");
 
-		if (begin_tree_node("geometry and groups", time_step, true)) {
-			align("\a");
-			if (begin_tree_node("group colors", group_colors, false)) {
-				align("\a");
-				for (unsigned i = 0; i < group_colors.size(); ++i) {
-					add_member_control(this, std::string("C") + cgv::utils::to_string(i), reinterpret_cast<rgba&>(group_colors[i]));
-				}
-				align("\b");
-				end_tree_node(group_colors);
-			}
-			if (begin_tree_node("group transformations", group_translations, false)) {
-				align("\a");
-				for (unsigned i = 0; i < group_translations.size(); ++i) {
-					add_gui(std::string("T") + cgv::utils::to_string(i), group_translations[i]);
-					add_gui(std::string("Q") + cgv::utils::to_string(i), group_rotations[i], "direction");
-				}
-				align("\b");
-				end_tree_node(group_translations);
-			}
-			align("\b");
-			end_tree_node(time_step);
-		}
+		//if (begin_tree_node("geometry and groups", time_step, true)) {
+		//	align("\a");
+		//	if (begin_tree_node("group colors", group_colors, false)) {
+		//		align("\a");
+		//		for (unsigned i = 0; i < group_colors.size(); ++i) {
+		//			add_member_control(this, std::string("C") + cgv::utils::to_string(i), reinterpret_cast<rgba&>(group_colors[i]));
+		//		}
+		//		align("\b");
+		//		end_tree_node(group_colors);
+		//	}
+		//	if (begin_tree_node("group transformations", group_translations, false)) {
+		//		align("\a");
+		//		for (unsigned i = 0; i < group_translations.size(); ++i) {
+		//			add_gui(std::string("T") + cgv::utils::to_string(i), group_translations[i]);
+		//			add_gui(std::string("Q") + cgv::utils::to_string(i), group_rotations[i], "direction");
+		//		}
+		//		align("\b");
+		//		end_tree_node(group_translations);
+		//	}
+		//	align("\b");
+		//	end_tree_node(time_step);
+		//}
 		if (begin_tree_node("Sphere Rendering", sphere_style, false)) {
 			align("\a");
 			add_gui("sphere_style", sphere_style);
@@ -869,6 +868,8 @@ public:
 		//	visible_colors.push_back(group_colors[group_indices[i]]);
 		//}
 
+		cells_ctr->set_animate(animate);
+		cells_ctr->set_cell_types(types);
 		cells_ctr->set_cells(&cells, start, end, extent);
 	}
 	std::string get_clipping_planes_stats()

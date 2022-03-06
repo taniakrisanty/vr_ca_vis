@@ -9,6 +9,7 @@
 #include <cg_nui/grabable.h>
 #include <cgv/gui/provider.h>
 #include <cgv_gl/sphere_renderer.h>
+#include <cgv_glutil/color_map.h>
 
 #include <unordered_set>
 
@@ -62,12 +63,29 @@ protected:
 	mat4 inv_scale_matrix;
 
 	// cell types (ct1, ct2, etc) and their visibility
-	std::unordered_set<std::string> cell_types;
-	std::vector<int> cell_type_visibilities;
+	std::vector<std::string> cell_types;
 
 	// cells start offset set by time_step_start
 	size_t cells_start, cells_end;
 	const std::vector<cell>* cells = NULL;
+
+	std::vector<unsigned int> cell_ids;
+
+	// group index
+
+	// color map
+	std::vector<cgv::glutil::color_map> color_maps;
+	std::vector<std::map<float, rgba>> color_points_maps;
+	std::vector<rgba> color_points_vector;
+
+	bool cells_out_of_date = true;
+
+	// vertex buffer
+	bool use_vbo = false;
+
+	bool recreate_vbo = true;
+	cgv::render::vertex_buffer vb_nodes;
+	//cgv::render::vertex_buffer vb_types;
 
 	// clipping planes that are used by clipped_box geometry shader
 	// in the form of ax + by + cz + d = 0
@@ -87,7 +105,7 @@ public:
 	/// return type name
 	std::string get_type_name() const;
 	/// reflect member variables
-	bool self_reflect(cgv::reflect::reflection_handler& rh);
+	//bool self_reflect(cgv::reflect::reflection_handler& rh);
 	/// callback on member updates to keep data structure consistent
 	void on_set(void* member_ptr);
 	//@name cgv::nui::focusable interface
@@ -108,6 +126,8 @@ public:
 	bool init(cgv::render::context& ctx);
 	/// called before context destruction to clean up GPU objects
 	void clear(cgv::render::context& ctx);
+	/// 
+	void init_frame(cgv::render::context& ctx);
 	/// draw scene here
 	void draw(cgv::render::context& ctx);
 	//@}
@@ -117,7 +137,9 @@ public:
 	void set_scale_matrix(const mat4& _scale_matrix);
 	void set_cell_types(const std::unordered_set<std::string>& _cell_types);
 	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents);
+	void set_animate(bool animate);
 
+	/// clipping planes
 	void create_clipping_plane(const vec3& origin, const vec3& direction);
 	void copy_clipping_plane(size_t index);
 	void delete_clipping_plane(size_t index, size_t count = 1);
@@ -125,6 +147,18 @@ public:
 
 	void update_clipping_plane(size_t index, const vec3& origin, const vec3& direction);
 private:
+	void transmit_cells(cgv::render::context& ctx);
+
+	void set_group_geometry(cgv::render::context& ctx, cgv::render::group_renderer& gr);
+	void set_geometry(cgv::render::context& ctx, cgv::render::group_renderer& gr);
+
+	/// color map
+	void add_color_point(size_t index, float t, rgba color);
+	void update_color_point(size_t index, float t, rgba color);
+	void remove_color_point(size_t index, float t);
+
+	void update_color_points_vector();
+
 	void grab_cell(size_t index) const;
 };
 

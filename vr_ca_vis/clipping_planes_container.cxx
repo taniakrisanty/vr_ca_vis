@@ -234,15 +234,22 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 		glGetIntegerv(GL_BLEND_SRC_ALPHA, &blend_src);
 		glGetIntegerv(GL_BLEND_DST_ALPHA, &blend_dst);
 
+		glDisable(GL_DEPTH_TEST);
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 		for (int i = 0; i < origins.size(); ++i)
 		{
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			//glEnable(GL_BLEND);
+			//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 			draw_clipping_plane(i, ctx);
 
-			glDisable(GL_BLEND);
+			//glDisable(GL_BLEND);
 		}
+
+		//glDisable(GL_BLEND);
 
 		// restore previous blend configuration
 		if (blend)
@@ -251,6 +258,8 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 			glDisable(GL_BLEND);
 
 		glBlendFunc(blend_src, blend_dst);
+
+		glEnable(GL_DEPTH_TEST);
 	}
 
 	// show points
@@ -503,6 +512,8 @@ void clipping_planes_container::end_drag_clipping_plane(size_t index)
 	{
 		if (listener)
 			listener->container_on_clipping_plane_updated(index, origins[index], directions[index]);
+
+		// TODO GUI not responding pas tarik cp2
 	}
 }
 void clipping_planes_container::update_rotation(size_t index)

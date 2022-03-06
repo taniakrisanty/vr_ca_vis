@@ -63,11 +63,6 @@ public:
 				}
 			}
 
-			cgv::glutil::color_map cm;
-
-			cm.add_color_point(0.f, cgv::render::render_types::rgb(59.f / 255, 76.f / 255, 192.f / 255));
-			cm.add_color_point(1.f, cgv::render::render_types::rgb(180.f / 255, 4.f / 255, 38.f / 255));
-
 			// Iterate over cell populations
 			node = root_node->first_node("CellPopulations");
 			if (node != NULL)
@@ -184,7 +179,7 @@ public:
 
 								//cell.add_node(x, y, z);
 
-								cells.emplace_back(id, std::distance(types.begin(), p.first), center, vec3(float(x), float(y), float(z)), b, b2, cm);
+								cells.emplace_back(id, std::distance(types.begin(), p.first), center, vec3(float(x), float(y), float(z)), b, b2);
 							}
 						}
 

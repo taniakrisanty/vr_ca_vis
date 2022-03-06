@@ -26,29 +26,46 @@ cells_container::rgb cells_container::get_modified_color(const rgb& color) const
 	return mod_col;
 }
 cells_container::cells_container(cells_container_listener* _listener, const std::string& _name, const vec3& _extent, const quat& _rotation)
-	: cgv::base::node(_name), listener(_listener), extent(_extent), rotation(_rotation)
+	: cgv::base::node(_name), listener(_listener), extent(_extent), rotation(_rotation)//, vb_types(cgv::render::VBT_INDICES)
 {
 	debug_point = vec3(0, 0.5f, 0);
+	
 	srs.radius = 0.01f;
+	
 	brs.culling_mode = cgv::render::CullingMode::CM_BACKFACE;
+	brs.use_group_color = true;
 
 	show_gui = true;
 
 	scale_matrix.identity();
-
+	
 	grid.set_clipping_planes(&clipping_planes);
 }
 std::string cells_container::get_type_name() const
 {
 	return "cells_container";
 }
-bool cells_container::self_reflect(cgv::reflect::reflection_handler& rh)
-{
-	return rh.reflect_member("cell_type_visibilities", cell_type_visibilities);
-}
+//bool cells_container::self_reflect(cgv::reflect::reflection_handler& rh)
+//{
+//	return rh.reflect_member("cell_type_visibilities", cell_type_visibilities);
+//}
 void cells_container::on_set(void* member_ptr)
 {
 	update_member(member_ptr);
+
+	bool found = false;
+	for (size_t i = 0; i < color_points_maps.size(); ++i) {
+		for (size_t j = 0; j < color_points_maps[i].size(); ++j) {
+			if (member_ptr == &color_points_maps[i][j]) {
+				update_color_point(i, j, color_points_maps[i][j]);
+				found = true;
+				break;
+			}
+		}
+
+		if (found) break;
+	}
+
 	post_redraw();
 }
 bool cells_container::focus_change(cgv::nui::focus_change_action action, cgv::nui::refocus_action rfa, const cgv::nui::focus_demand& demand, const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info)
@@ -278,6 +295,13 @@ void cells_container::clear(cgv::render::context& ctx)
 	cgv::render::ref_sphere_renderer(ctx, -1);
 	cgv::render::ref_line_renderer(ctx, -1);
 }
+void cells_container::init_frame(cgv::render::context& ctx)
+{
+	if (cells_out_of_date && use_vbo) {
+		transmit_cells(ctx);
+		cells_out_of_date = false;
+	}
+}
 void cells_container::draw(cgv::render::context& ctx)
 {
 	// show box
@@ -287,22 +311,35 @@ void cells_container::draw(cgv::render::context& ctx)
 		ctx.mul_modelview_matrix(scale_matrix);
 
 		for (int i = 0; i < clipping_planes.size(); ++i)
-		//for (int i = 0; clipping_plane_origins != NULL && i < clipping_plane_origins->size(); ++i)
+			//for (int i = 0; clipping_plane_origins != NULL && i < clipping_plane_origins->size(); ++i)
 			glEnable(GL_CLIP_DISTANCE0 + i);
 
-		//glDisable(GL_DEPTH_TEST);
-		//glEnable(GL_BLEND);
-		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		// save previous blend configuration
+		GLboolean blend;
+		glGetBooleanv(GL_BLEND, &blend);
+
+		GLint blend_src, blend_dst;
+		glGetIntegerv(GL_BLEND_SRC_ALPHA, &blend_src);
+		glGetIntegerv(GL_BLEND_DST_ALPHA, &blend_dst);
+
+		glDisable(GL_DEPTH_TEST);
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		auto& br = ref_clipped_box_renderer(ctx);
 		br.set_render_style(brs);
-		br.set_position_array(ctx, &cells->at(cells_start).node, cells->size(), sizeof(cell));
-		rgb tmp_color;
+		// TODO copy to vertex_buffer
+		// TODO ask about low frame rate during animation when using vertex buffer
+
+		set_group_geometry(ctx, br);
+		set_geometry(ctx, br);
+
+		//rgb tmp_color;
 		//if (prim_idx >= cells_start && prim_idx < cells_end) {
 		//	tmp_color = cells->at(prim_idx).color;
 		//	cells->at(prim_idx).color = get_modified_color(cells->at(prim_idx).color);
 		//}
-		br.set_color_array(ctx, &cells->at(cells_start).color, cells->size(), sizeof(cell));
 		br.set_extent(ctx, extent);
 		//br.set_rotation_array(ctx, &rotation, cells.size());
 		br.set_clipping_planes(clipping_planes);
@@ -311,13 +348,20 @@ void cells_container::draw(cgv::render::context& ctx)
 		//	cells->at(prim_idx).color = tmp_color;
 
 		for (int i = 0; i < clipping_planes.size(); ++i)
-		//for (int i = 0; clipping_plane_origins != NULL && i < clipping_plane_origins->size(); ++i)
+			//for (int i = 0; clipping_plane_origins != NULL && i < clipping_plane_origins->size(); ++i)
 			glDisable(GL_CLIP_DISTANCE0 + i);
 
 		ctx.pop_modelview_matrix();
 
-		//glDisable(GL_BLEND);
-		//glEnable(GL_DEPTH_TEST);
+		// restore previous blend configuration
+		if (blend)
+			glEnable(GL_BLEND);
+		else
+			glDisable(GL_BLEND);
+
+		glBlendFunc(blend_src, blend_dst);
+
+		glEnable(GL_DEPTH_TEST);
 	}
 
 	// show points
@@ -353,15 +397,24 @@ void cells_container::create_gui()
 	//	end_tree_node(brs);
 	//}
 
-	size_t i = 0;
-	for (std::unordered_set<std::string>::const_iterator it = cell_types.begin(); it != cell_types.end(); ++it) {
-		if (begin_tree_node(*it, cell_type_visibilities[i])) {
+	//if (begin_tree_node("Color Map", color_map, false)) {
+	//	align("\a");
+	//	for (std::map<float, rgb>::iterator i = color_points_map.begin(); i != color_points_map.end(); ++i) {
+	//		add_member_control(this, "color", i->second);
+	//	}
+	//	align("\b");
+	//	end_tree_node(color_map);
+	//}
+
+	for (size_t i = 0; i < cell_types.size(); ++i) {
+		if (begin_tree_node(cell_types[i], color_points_maps[i])) {
 			align("\a");
-			add_member_control(this, "show_cells", reinterpret_cast<bool&>(cell_type_visibilities[i]), "check");
+			//add_member_control(this, "show_cells", reinterpret_cast<bool&>(cell_types[i]), "check");
+			for (auto& cp : color_points_maps[i])
+				add_member_control(this, "color", cp.second);
 			align("\b");
-			end_tree_node(cell_type_visibilities[i]);
+			end_tree_node(cell_types[i]);
 		}
-		++i;
 	}
 }
 void cells_container::set_scale_matrix(const mat4& _scale_matrix)
@@ -376,12 +429,26 @@ void cells_container::set_scale_matrix(const mat4& _scale_matrix)
 }
 void cells_container::set_cell_types(const std::unordered_set<std::string>& _cell_types)
 {
-	cell_types = _cell_types;
-	cell_type_visibilities.assign(cell_types.size(), 1);
+	cell_types.clear();
+
+	size_t i = 0;
+	for (const auto& ct : _cell_types) {
+		cell_types.emplace_back(ct);
+
+		add_color_point(i, 0.f, rgba(59.f / 255, 76.f / 255, 192.f / 255, 0.f));
+		add_color_point(i, 1.f, rgba(180.f / 255, 4.f / 255, 38.f / 255, 0.f));
+		
+		++i;
+	}
 }
 void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents)
 {
 	grid.cancel_build_from_vertices();
+
+	if (cells != _cells || cells_end - cells_start != _cells_end - _cells_start) {
+		recreate_vbo = true;
+		cells_out_of_date = true;
+	}
 
 	cells = _cells;
 
@@ -389,6 +456,68 @@ void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_s
 	cells_end = _cells_end;
 
 	grid.build_from_vertices(cells, cells_start, cells_end, extents);
+}
+void cells_container::set_animate(bool animate)
+{
+	if (use_vbo) {
+		if (animate)
+			use_vbo = false;
+	}
+	else {
+		if (!animate)
+			use_vbo = true;
+	}
+}
+void cells_container::add_color_point(size_t index, float t, rgba color)
+{
+	if (color_points_maps.size() <= index)
+		color_points_maps.emplace_back();
+
+	color_points_maps[index].emplace(t, color);
+
+	if (color_maps.size() <= index)
+		color_maps.emplace_back();
+
+	color_maps[index].add_color_point(t, color);
+	color_maps[index].add_opacity_point(t, color.alpha());
+
+	update_color_points_vector();
+}
+void cells_container::update_color_point(size_t index, float t, rgba color)
+{
+	color_points_maps[index][t] = color;
+
+	color_maps[index].clear();
+
+	for (const auto& cp : color_points_maps[index]) {
+		color_maps[index].add_color_point(cp.first, cp.second);
+		color_maps[index].add_opacity_point(cp.first, cp.second.alpha());
+	}
+
+	update_color_points_vector();
+}
+void cells_container::remove_color_point(size_t index, float t)
+{
+	if (color_points_maps[index].erase(t) > 0)
+	{
+		color_maps[index].clear();
+
+		for (const auto& cp : color_points_maps[index]) {
+			color_maps[index].add_color_point(cp.first, cp.second);
+			color_maps[index].add_opacity_point(cp.first, cp.second.alpha());
+		}
+	}
+
+	update_color_points_vector();
+}
+void cells_container::update_color_points_vector()
+{
+	color_points_vector.clear();
+
+	for (const auto& cm : color_maps) {
+		std::vector<rgba> i = cm.interpolate(size_t(21));
+		color_points_vector.insert(color_points_vector.end(), i.begin(), i.end());
+	}
 }
 void cells_container::create_clipping_plane(const vec3& origin, const vec3& direction)
 {
@@ -429,6 +558,54 @@ void cells_container::update_clipping_plane(size_t index, const vec3& origin, co
 //
 //	grid.set_clipping_planes(clipping_plane_origins, clipping_plane_directions);
 //}
+void cells_container::transmit_cells(cgv::render::context& ctx)
+{
+	std::vector<vec3> cell_positions;
+
+	cell_ids.clear();
+
+	for (size_t i = cells_start; i < cells_end; ++i) {
+		const cell& c = cells->at(i);
+
+		cell_positions.push_back(c.node);
+		cell_ids.push_back(c.id);
+	}
+
+	if (recreate_vbo) {
+		if (!vb_nodes.is_created())
+			vb_nodes.create(ctx, cell_positions);
+		
+		//if (!vb_types.is_created())
+		//	vb_types.create(ctx, cell_ids);
+		
+		recreate_vbo = false;
+	}
+	else {
+		vb_nodes.replace(ctx, 0, &cell_positions[0], cell_positions.size());
+		//vb_types.replace(ctx, 0, &cell_ids[0], cell_ids.size());
+	}
+
+	cells_out_of_date = false;
+}
+void cells_container::set_group_geometry(cgv::render::context& ctx, cgv::render::group_renderer& gr)
+{
+	if (!color_points_vector.empty())
+		gr.set_group_colors(ctx, color_points_vector);
+}
+void cells_container::set_geometry(cgv::render::context& ctx, cgv::render::group_renderer& gr)
+{
+	if (cells_end - cells_start > 0) {
+		if (use_vbo) {
+			gr.set_position_array<vec3>(ctx, vb_nodes, 0, cells_end - cells_start);
+		}
+		else {
+			gr.set_position_array(ctx, &cells->at(cells_start).node, cells_end - cells_start, sizeof(cell));
+		}
+		gr.set_color_array(ctx, &cells->at(cells_start).color, cells_end - cells_start, sizeof(cell));
+		gr.set_group_index_array(ctx, cell_ids);
+		//gr.set_group_index_array<unsigned int>(ctx, vb_types, 0, cells_end - cells_start);
+	}
+}
 void cells_container::grab_cell(size_t index) const
 {
 	if (listener)

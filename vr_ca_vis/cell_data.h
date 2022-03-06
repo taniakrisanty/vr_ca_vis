@@ -11,23 +11,21 @@
 
 struct cell : public cgv::render::render_types
 {
-	//static cgv::glutil::color_map cm;
+	uint16_t id;		// CellPopulations > Population > Cell id
+	unsigned int type;	// CellTypes > CellType name & class
 
-	uint16_t id;	// CellPopulations > Population > Cell id
-	uint8_t type;	// CellTypes > CellType name & class
+	vec3 center;		// CellPopulations > Population > Cell > Center
+	vec3 node;			// CellPopulations > Population > Cell > Nodes
 
-	vec3 center;	// CellPopulations > Population > Cell > Center
-	vec3 node;		// CellPopulations > Population > Cell > Nodes
+	float b;			// CellPopulations > Population > Cell > PropertyData symbol-ref
+	float b2;			// CellPopulations > Population > Cell > PropertyData symbol-ref
 
-	float b;		// CellPopulations > Population > Cell > PropertyData symbol-ref
-	float b2;		// CellPopulations > Population > Cell > PropertyData symbol-ref
+	rgba color;
 
-	rgb color;
-
-	cell(uint16_t _id, uint8_t _type, const vec3& _center, const vec3& _node, float _b, float _b2, const cgv::glutil::color_map& cm) : id(_id), type(_type), center(_center), node(_node), b(_b), b2(_b2)
+	cell(uint16_t _id, unsigned int _type, const vec3& _center, const vec3& _node, float _b, float _b2) : id(_id), type(_type), center(_center), node(_node), b(_b), b2(_b2)
 	{
-		float t = (float)(id - 1) / (60.0f - 1.0f);
-		color = cm.interpolate_color(t);
+		//float t = (float)(id - 1) / (60.0f - 1.0f);
+		//color = cm.interpolate_color(t);
 	}
 };
 
