@@ -91,7 +91,7 @@ protected:
 	// cell data
 	std::vector<cell> cells;
 
-	std::unordered_map<std::string, cell_type> types;
+	std::unordered_map<std::string, cell_type> cell_types;
 	//std::unordered_set<std::string> types;
 	//std::vector<uint32_t> ids;
 	//std::vector<vec3> points;
@@ -144,6 +144,7 @@ protected:
 	bool sort_points;
 	bool blend;
 	bool animate;
+	float animation_speed;
 	float opacity;
 	float trigger[2];
 	float time_delta;
@@ -234,7 +235,7 @@ public:
 
 				size_t previous_num_points = cells.size();
 
-				model_parser parser(file_name, extent, types, cells /* , ids, group_indices, points */);
+				model_parser parser(file_name, extent, cell_types, cells /* , ids, group_indices, points */);
 				extent_scale = dvec3(1.0) / extent;
 
 				std::cout << "read " << file_name << " with " << cells.size() - previous_num_points << " cells" << std::endl;
@@ -349,13 +350,18 @@ public:
 			}
 		}
 		if (animate) {
-			step();
+			time_delta += animation_speed * (float)dt;
+			if (time_delta >= 0.5f) {
+				time_delta = 0;
+				step();
+			}
 		}
 	}
 	/// define format and texture filters in constructor
 	vr_ca_vis() : cgv::base::group("vr_ca_vis"), box_extent(1, 1, 1)
 	{
 		animate = false;
+		animation_speed = 1.f;
 		sort_points = false;
 		use_boxes = true;
 		blend = false;
@@ -583,22 +589,17 @@ public:
 			scene_ptr->place_label(li_clipping_plane_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::left_controller, label_alignment::top);
 		}
 
-		// draw information about cell that is being grabbed
-		if (li_cell_stats == -1) {
-			li_cell_stats = scene_ptr->add_label("id none and type none", stats_bgclr);
-			scene_ptr->fix_label_size(li_cell_stats);
-			scene_ptr->place_label(li_cell_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::right_controller, label_alignment::top);
-		}
-
 		if (li_clipping_plane_visible)
 			scene_ptr->show_label(li_clipping_plane_stats);
 		else
 			scene_ptr->hide_label(li_clipping_plane_stats);
 
-		if (li_cell_visible)
-			scene_ptr->show_label(li_cell_stats);
-		else
-			scene_ptr->hide_label(li_cell_stats);
+		if (li_cell_stats != -1) {
+			if (li_cell_visible && selected_cell_idx < SIZE_MAX && selected_node_idx < SIZE_MAX)
+				scene_ptr->show_label(li_cell_stats);
+			else
+				scene_ptr->hide_label(li_cell_stats);
+		}
 	}
 	void draw(cgv::render::context& ctx)
 	{
@@ -673,14 +674,22 @@ public:
 				animate = false;
 
 				if (vrke.get_controller_index() == 1) { // only right controller
-					if (vrke.get_action() != cgv::gui::KA_RELEASE) {
+					if (vrke.get_action() == cgv::gui::KA_RELEASE) {
+						switch (vrke.get_key()) {
+						case vr::VR_INPUT0_TOUCH:
+							li_cell_visible = false;
+							return true;
+						}
+					} else {
 						switch (vrke.get_key()) {
 						case vr::VR_DPAD_LEFT: // put current clipping plane permanently, temporary use this when using only one controller
 							set_clipping_plane();
 							return true;
 						case vr::VR_DPAD_RIGHT: // remove clipping plane
-							if (temp_clipping_plane_idx > -1)
-							{
+							if (temp_clipping_plane_idx == -1) {
+								reset_clipping_plane();
+							}
+							else {
 								clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
 
 								cells_ctr->delete_clipping_plane(temp_clipping_plane_idx);
@@ -692,31 +701,10 @@ public:
 
 							clipping_plane_grabbed = false;
 							return true;
-						case vr::VR_DPAD_DOWN:
-							reset_clipping_plane();
+						case vr::VR_INPUT0_TOUCH:
+							li_cell_visible = !clipping_plane_grabbed;
 							return true;
 						}
-					}
-					else {
-						//switch (vrke.get_key()) {
-						//case::vr::VRF_INPUT0_TOUCH:
-						//	if (selected_cell_idx < SIZE_MAX) {
-						//		if (li_cell_stats != -1) {
-						//			vr::vr_scene* scene_ptr = get_scene_ptr();
-						//			if (scene_ptr) {
-						//				const cell& c = cells[selected_cell_idx];
-
-						//				scene_ptr->update_label_text(li_cell_stats, "id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
-						//				scene_ptr->fix_label_size(li_cell_stats);
-						//			}
-						//		}
-						//		li_cell_visible = true;
-						//	}
-						//	else {
-						//		li_cell_visible = false;
-						//	}
-						//	return true;
-						//}
 					}
 				}
 				else if (vrke.get_controller_index() == 0) { // only left controller
@@ -786,6 +774,7 @@ public:
 		add_decorator("bio math", "heading");
 		add_gui("data_dir", dir_name, "directory", "title='Data Directory'");
 		add_member_control(this, "animate", animate, "toggle", "shortcut='A'");
+		add_member_control(this, "animation_speed", animation_speed, "value_slider", "min=0.1;step=0.00001;max=5;log=true;ticks=true");
 		add_member_control(this, "scale", scale, "value_slider", "min=0.0001;step=0.00001;max=10;log=true;ticks=true");
 		add_member_control(this, "time_step", time_step, "value_slider", "min=0;ticks=true");
 		if (find_control(time_step))
@@ -865,10 +854,7 @@ public:
 		//	visible_colors.push_back(group_colors[group_indices[i]]);
 		//}
 
-		//start = 0; end = 5;
-
-		cells_ctr->set_animate(animate);
-		cells_ctr->set_cell_types(types);
+		cells_ctr->set_cell_types(cell_types);
 		cells_ctr->set_cells(&cells, start, end, extent);
 	}
 	std::string get_clipping_planes_stats()
@@ -944,16 +930,14 @@ public:
 	}
 	void reset_clipping_plane()
 	{
-		if (temp_clipping_plane_idx == -1) // we are not grabbing a (temporary) clipping plane, clear all installed clipping plane objects
-		{
+		if (temp_clipping_plane_idx == -1) { // we are not grabbing a (temporary) clipping plane, clear all installed clipping plane objects
 			clipping_planes_ctr->clear_clipping_planes();
 
 			cells_ctr->clear_clipping_planes();
 
 			//shader_clipping_planes.clear();
 		}
-		else // we are grabbing a (temporary) clipping plane, duplicate it first, then clear all installed clipping plane objects
-		{
+		else { // we are grabbing a (temporary) clipping plane, duplicate it first, then clear all installed clipping plane objects
 			size_t num_clipping_planes = clipping_planes_ctr->get_num_clipping_planes();
 
 			clipping_planes_ctr->copy_clipping_plane(temp_clipping_plane_idx);
@@ -982,21 +966,21 @@ public:
 	{
 		selected_cell_idx = cell_index;
 		selected_node_idx = node_index;
-		
-		if (selected_cell_idx < SIZE_MAX && selected_node_idx < SIZE_MAX) {
-			if (li_cell_stats != -1) {
-				vr::vr_scene* scene_ptr = get_scene_ptr();
-				if (scene_ptr) {
-					const cell& c = cells[selected_cell_idx];
 
-					//scene_ptr->update_label_text(li_cell_stats, "id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
+		if (selected_cell_idx < SIZE_MAX && selected_node_idx < SIZE_MAX) {
+			const cell& c = cells[selected_cell_idx];
+
+			vr::vr_scene* scene_ptr = get_scene_ptr();
+			if (scene_ptr != NULL) {
+				if (li_cell_stats == -1) {
+					li_cell_stats = scene_ptr->add_label(" id 00 | type 000 ", stats_bgclr);
+					scene_ptr->place_label(li_cell_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::right_controller, label_alignment::top);
 					scene_ptr->fix_label_size(li_cell_stats);
 				}
+				else {
+					scene_ptr->update_label_text(li_cell_stats, " id " + std::to_string(c.id) + " | type " + std::next(cell_types.begin(), c.type)->first + " ");
+				}
 			}
-			li_cell_visible = true;
-		}
-		else {
-			li_cell_visible = false;
 		}
 	}
 #pragma endregion cells_container_listener
