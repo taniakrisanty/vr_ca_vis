@@ -42,16 +42,28 @@ std::string clipping_planes_container::get_type_name() const
 void clipping_planes_container::on_set(void* member_ptr)
 {
 	update_member(member_ptr);
-	for (size_t i = 0; i < directions.size(); ++i) {
-		if (member_ptr == &directions[i]) {
-			update_rotation(i);
 
-			if (listener)
-				listener->container_on_clipping_plane_updated(i, origins[i], directions[i]);
-
-			break;
+	size_t clipping_plane_index = SIZE_MAX;
+	if (clipping_plane_index == SIZE_MAX) {
+		for (size_t i = 0; i < origins.size(); ++i) {
+			if (member_ptr == &origins[i]) {
+				clipping_plane_index = i;
+				break;
+			}
 		}
 	}
+	if (clipping_plane_index == SIZE_MAX) {
+		for (size_t i = 0; i < directions.size(); ++i) {
+			if (member_ptr == &directions[i]) {
+				clipping_plane_index = i;
+				update_rotation(i);
+				break;
+			}
+		}
+	}
+	if (clipping_plane_index < SIZE_MAX && listener)
+		listener->container_on_clipping_plane_updated(clipping_plane_index, origins[clipping_plane_index], directions[clipping_plane_index]);
+
 	post_redraw();
 }
 bool clipping_planes_container::focus_change(cgv::nui::focus_change_action action, cgv::nui::refocus_action rfa, const cgv::nui::focus_demand& demand, const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info)
@@ -174,7 +186,7 @@ bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& p
 		vec3 p = point - origins[i];
 		rotations[i].inverse_rotate(p);
 		cgv::math::closest_point_on_circle_to_point(origins[i], directions[i], 1.f, point, q);
-		float dist = (point - q).length ();
+		float dist = (point - q).length();
 		if (dist < min_dist) {
 			rotations[i].rotate(q);
 
@@ -185,7 +197,13 @@ bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& p
 		}
 	}
 
-	return min_dist < std::numeric_limits<float>::max();
+	if (min_dist < std::numeric_limits<float>::max()) {
+		std::cout << "clipping_planes_container::compute_closest_point query " << point << " = " << origins[primitive_idx] << std::endl;
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 bool clipping_planes_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
@@ -216,7 +234,13 @@ bool clipping_planes_container::compute_intersection(const vec3& ray_start, cons
 		}
 	}
 
-	return hit_param < std::numeric_limits<float>::max();
+	if (hit_param < std::numeric_limits<float>::max()) {
+		std::cout << "clipping_planes_container::compute_intersection query " << ray_start << " = " << origins[primitive_idx] << " | hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 bool clipping_planes_container::init(cgv::render::context& ctx)
 {
@@ -272,20 +296,20 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
-	//rgb color(0.5f, 0.5f, 0.5f);
-	rgb color(prim_idx == 0 ? 1.f : 0.f, prim_idx == 1 ? 1.f : 0.f, 0.f);
+	rgb color(0.5f, 0.5f, 0.5f);
+	//rgb color(prim_idx == 0 ? 1.f : 0.f, prim_idx == 1 ? 1.f : 0.f, 0.f);
 	sr.set_color_array(ctx, &color, 1);
 	sr.render(ctx, 0, 1);
 	if (state == state_enum::grabbed) {
 		sr.set_position(ctx, query_point_at_grab);
-		//sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
-		sr.set_color(ctx, rgb(prim_idx == 0 ? 1.f : 0.f, prim_idx == 1 ? 1.f : 0.f, 0.f));
+		sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
+		//sr.set_color(ctx, rgb(prim_idx == 0 ? 1.f : 0.f, prim_idx == 1 ? 1.f : 0.f, 0.f));
 		sr.render(ctx, 0, 1);
 	}
 	if (state == state_enum::triggered) {
 		sr.set_position(ctx, hit_point_at_trigger);
-		//sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
-		sr.set_color(ctx, rgb(prim_idx == 0 ? 1.f : 0.f, prim_idx == 1 ? 1.f : 0.f, 0.f));
+		sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
+		//sr.set_color(ctx, rgb(prim_idx == 0 ? 1.f : 0.f, prim_idx == 1 ? 1.f : 0.f, 0.f));
 		sr.render(ctx, 0, 1);
 	}
 }
