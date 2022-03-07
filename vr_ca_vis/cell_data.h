@@ -36,20 +36,13 @@ struct cell_type
 
 struct cell : public cgv::render::render_types
 {
-//public:
-//	static cgv::glutil::color_map cm;
+	unsigned int id;				// CellPopulations > Population > Cell id
+	unsigned int type;				// CellTypes > CellType name & class
 
-//private:
-	unsigned int id;			// CellPopulations > Population > Cell id
-	unsigned int type;			// CellTypes > CellType name & class
+	vec3 center;					// CellPopulations > Population > Cell > Center
+	std::vector<vec3> nodes;		// CellPopulations > Population > Cell > Nodes
 
-	vec3 center;				// CellPopulations > Population > Cell > Center
-	std::vector<vec3> nodes;	// CellPopulations > Population > Cell > Nodes
-
-	std::vector<float> properties;
-
-	//float b;					// CellPopulations > Population > Cell > PropertyData symbol-ref
-	//float b2;					// CellPopulations > Population > Cell > PropertyData symbol-ref
+	std::vector<float> properties;	// CellPopulations > Population > Cell > PropertyData symbol-ref
 
 	rgba color;
 

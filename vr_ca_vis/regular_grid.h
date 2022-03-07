@@ -137,7 +137,7 @@ private:
 
 					auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
-					std::cout << "Time taken by multithreaded build_from_vertices: " << duration.count() << " microseconds" << std::endl;
+					std::cout << "build_from_vertices finished in " << duration.count() << " microseconds" << std::endl;
 
 					build_grid = false;
 
@@ -451,7 +451,7 @@ public:
 
 			//auto duration = std::chrono::duration_cast<std::chrono::microseconds > (stop - start);
 
-			//std::cout << "Time taken by single-threaded build_from_vertices: " << duration.count() << " microseconds" << std::endl;
+			//std::cout << "build_from_vertices finished in " << duration.count() << " microseconds" << std::endl;
 
 			build_grid = true;
 		}
