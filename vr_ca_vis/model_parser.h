@@ -3,7 +3,9 @@
 #include <cgv/utils/file.h>
 #include <cgv/render/render_types.h>
 #include <cgv_glutil/color_map.h>
+
 #include <fstream>
+#include <unordered_map>
 
 #include "../3rd/rapidxml-1.13/rapidxml.hpp"
 #include "cell_data.h"
@@ -11,13 +13,10 @@
 class model_parser : public cgv::render::render_types
 {
 public:
-	typedef cgv::render::drawable::vec3 vec3;
-	typedef cgv::render::drawable::ivec3 ivec3;
-public:
 	model_parser() = delete;
 	model_parser(const model_parser&) = delete;
 
-	model_parser(const std::string& file_name, ivec3& extent, std::unordered_set<std::string>& types, std::vector<cell>& cells /* std::vector<uint32_t>& type_start, std::vector<unsigned int>& ids, std::vector<unsigned int>& group_ids, std::vector<vec3>& points */)
+	model_parser(const std::string& file_name, ivec3& extent, std::unordered_map<std::string, cell_type>& cell_types, std::vector<cell>& cells /* std::vector<uint32_t>& type_start, std::vector<unsigned int>& ids, std::vector<unsigned int>& group_ids, std::vector<vec3>& points */)
 	{
 		// Set lattice extent to default
 		extent.set(100, 100, 100);
@@ -63,16 +62,39 @@ public:
 				}
 			}
 
-			// Iterate over cell populations
+			// Iterate over cell types
+			node = root_node->first_node("CellTypes");
+			if (node != NULL)
+			{
+				for (rapidxml::xml_node<>* type_node = node->first_node("CellType"); type_node != NULL; type_node = type_node->next_sibling("CellType"))
+				{
+					std::string name(type_node->first_attribute("name")->value());
+					std::string cell_class(type_node->first_attribute("class")->value());
+
+					cell_type type(name, cell_class);
+
+					for (rapidxml::xml_node<>* property_node = type_node->first_node("Property"); property_node != NULL; property_node = property_node->next_sibling("Property"))
+					{
+						type.add_property(property_node->first_attribute("symbol")->value());
+					}
+
+					cell_types.emplace(name, type);
+				}
+			}
+
+			// Iterate over cell populations 
 			node = root_node->first_node("CellPopulations");
 			if (node != NULL)
 			{
-				for (rapidxml::xml_node<>* population_node = node->first_node("Population"); population_node != NULL; population_node = population_node->next_sibling())
+				for (rapidxml::xml_node<>* population_node = node->first_node("Population"); population_node != NULL; population_node = population_node->next_sibling("Population"))
 				{
 					std::string type(population_node->first_attribute("type")->value());
 
-					//type_start.push_back(points.size());
-					std::pair<std::unordered_set<std::string>::iterator, bool> p = types.insert(type);
+					std::unordered_map<std::string, cell_type>::const_iterator t = cell_types.find(type);
+					if (t == cell_types.end())
+						continue;
+
+					std::ptrdiff_t type_index = std::distance<std::unordered_map<std::string, cell_type>::const_iterator>(cell_types.begin(), t);
 
 					for (rapidxml::xml_node<>* cell_node = population_node->first_node("Cell"); cell_node; cell_node = cell_node->next_sibling())
 					{
@@ -80,36 +102,28 @@ public:
 						if (!cgv::utils::is_integer(std::string(cell_node->first_attribute("id")->value()), id) || id == 0)
 							continue;
 
-						double b, b2;
+						std::vector<float> properties;
 
-						rapidxml::xml_node<>* property_node = cell_node->first_node("PropertyData");
-						while (property_node != NULL)
+						for (const auto& property_symbol : t->second.properties)
 						{
-							std::string symbol_ref(property_node->first_attribute("symbol-ref")->value());
-							if (symbol_ref == "b")
+							rapidxml::xml_node<>* property_node = cell_node->first_node("PropertyData");
+							while (property_node != NULL)
 							{
-								std::string value_str(property_node->first_attribute("value")->value());
-								cgv::utils::is_double(value_str, b);
+								std::string symbol_ref(property_node->first_attribute("symbol-ref")->value());
+								if (symbol_ref == property_symbol)
+								{
+									std::string value_str(property_node->first_attribute("value")->value());
+									
+									double property;
+									cgv::utils::is_double(value_str, property);
 
-								break;
+									properties.emplace_back(property);
+
+									break;
+								}
+
+								property_node = property_node->next_sibling("PropertyData");
 							}
-
-							property_node = property_node->next_sibling();
-						}
-
-						property_node = cell_node->first_node("PropertyData");
-						while (property_node != NULL)
-						{
-							std::string symbol_ref(property_node->first_attribute("symbol-ref")->value());
-							if (symbol_ref == "b2")
-							{
-								std::string value_str(property_node->first_attribute("value")->value());
-								cgv::utils::is_double(value_str, b2);
-
-								break;
-							}
-
-							property_node = property_node->next_sibling();
 						}
 
 						vec3 center;
@@ -139,7 +153,7 @@ public:
 							}
 						}
 
-						//cell_data cell(id, std::distance(types.begin(), p.first), center, b, b2);
+						cell cell(id, type_index, center, properties);
 
 						rapidxml::xml_node<>* nodes_node = cell_node->first_node("Nodes");
 						if (nodes_node != NULL)
@@ -177,13 +191,13 @@ public:
 								if (!cgv::utils::is_integer(node_str_vector[0], x) || !cgv::utils::is_integer(node_str_vector[1], y) || !cgv::utils::is_integer(node_str_vector[2], z))
 									continue;
 
-								//cell.add_node(x, y, z);
+								cell.add_node(x, y, z);
 
-								cells.emplace_back(id, std::distance(types.begin(), p.first), center, vec3(float(x), float(y), float(z)), b, b2);
+								//cells.emplace_back(id, std::distance(types.begin(), p.first), center, vec3(float(x), float(y), float(z)), b, b2);
 							}
 						}
 
-						//cells.emplace_back(cell);
+						cells.emplace_back(cell);
 					}
 				}
 			}

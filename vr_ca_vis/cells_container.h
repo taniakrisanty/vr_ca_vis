@@ -11,7 +11,7 @@
 #include <cgv_gl/sphere_renderer.h>
 #include <cgv_glutil/color_map.h>
 
-#include <unordered_set>
+#include <unordered_map>
 
 #include "cell_data.h"
 #include "clipped_box_renderer.h"
@@ -20,7 +20,7 @@
 class cells_container_listener
 {
 public:
-	virtual void on_cell_grabbed(size_t index) = 0;
+	virtual void on_cell_grabbed(size_t cell_index, size_t node_index) = 0;
 };
 
 class cells_container :
@@ -63,10 +63,11 @@ protected:
 	mat4 inv_scale_matrix;
 
 	// cell types (ct1, ct2, etc) and their visibility
-	std::vector<std::string> cell_types;
+	std::unordered_map<std::string, cell_type> cell_types;
 
 	// cells start offset set by time_step_start
 	size_t cells_start, cells_end;
+	size_t nodes_count;
 	const std::vector<cell>* cells = NULL;
 
 	std::vector<unsigned int> cell_ids;
@@ -137,7 +138,7 @@ public:
 	void create_gui();
 
 	void set_scale_matrix(const mat4& _scale_matrix);
-	void set_cell_types(const std::unordered_set<std::string>& _cell_types);
+	void set_cell_types(const std::unordered_map<std::string, cell_type>& _cell_types);
 	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents);
 	void set_animate(bool animate);
 
@@ -161,7 +162,7 @@ private:
 
 	void update_color_points_vector();
 
-	void grab_cell(size_t index) const;
+	void grab_cell(size_t cell_index, size_t node_index) const;
 };
 
 typedef cgv::data::ref_ptr<cells_container> cells_container_ptr;

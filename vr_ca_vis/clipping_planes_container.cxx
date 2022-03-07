@@ -4,7 +4,7 @@
 #include <cgv/math/proximity.h>
 #include <cgv/math/intersection.h>
 
-#define DEBUG
+//#define DEBUG
 
 cgv::render::shader_program clipping_planes_container::prog;
 

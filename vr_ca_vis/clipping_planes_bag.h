@@ -58,8 +58,6 @@ protected:
 	rgba color;
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
-	// index of focused primitive
-	int prim_idx = -1;
 	// state of object
 	state_enum state = state_enum::idle;
 	/// return color modified based on state

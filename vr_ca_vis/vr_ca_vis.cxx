@@ -90,9 +90,9 @@ protected:
 
 	// cell data
 	std::vector<cell> cells;
-	//std::vector<cell_data> cells;
 
-	std::unordered_set<std::string> types;
+	std::unordered_map<std::string, cell_type> types;
+	//std::unordered_set<std::string> types;
 	//std::vector<uint32_t> ids;
 	//std::vector<vec3> points;
 	std::vector<uint32_t> group_indices;
@@ -114,6 +114,7 @@ protected:
 	//std::vector<rgb> visible_colors;
 
 	size_t selected_cell_idx = SIZE_MAX;
+	size_t selected_node_idx = SIZE_MAX;
 
 	// attributes
 	uint32_t selected_attr;
@@ -129,8 +130,6 @@ protected:
 	// current time step
 	uint32_t current_time_step;
 	uint32_t time_step;
-	// first frame in current time step
-	bool first_frame;
 
 	// ooc handling
 	bool ooc_mode;
@@ -217,7 +216,7 @@ public:
 		std::vector<std::string> file_names;
 		if (cgv::utils::dir::glob(dir_name, file_names, "*.xml"))
 		{
-			for (auto file_name : file_names)
+			for (const auto& file_name : file_names)
 			{
 				std::string time_str = cgv::utils::file::get_file_name(file_name);
 				time_str = cgv::utils::file::drop_extension(time_str);
@@ -249,7 +248,7 @@ public:
 		std::vector<std::string> file_names;
 		if (cgv::utils::dir::glob(dir_name, file_names, "*.xml.gz"))
 		{
-			for (auto file_name : file_names)
+			for (const auto& file_name : file_names)
 			{
 				std::string xml_file_name = cgv::utils::file::drop_extension(file_name);
 
@@ -261,8 +260,13 @@ public:
 	}
 	bool read_data_dir_ascii(const std::string& dir_name)
 	{
-		attr_names.push_back("b");
-		nr_attributes = uint32_t(attr_names.size());
+		std::string fn = dir_name + ".cae";
+		if (cgv::utils::file::exists(fn))
+			if (read_file(fn))
+				return true;
+
+		//attr_names.push_back("b");
+		//nr_attributes = uint32_t(attr_names.size());
 
 		if (read_xml_dir(dir_name) || read_gz_dir(dir_name) && read_xml_dir(dir_name))
 		{
@@ -289,10 +293,10 @@ public:
 			std::cout << "read " << file_name << " with "
 				<< cells.size() << " points, " << times.size() << " time steps, " << group_colors.size() << " ids, and "
 				<< nr_attributes << " attributes" << std::endl;
-			//// concatenate
-			//write_file(fn);
+			// concatenate
+			write_file(fn);
 
-			cells_ctr->set_cell_types(types);
+			//cells_ctr->set_cell_types(types);
 
 			return true;
 		}
@@ -353,7 +357,6 @@ public:
 	{
 		animate = false;
 		sort_points = false;
-		//sort_points = true;
 		use_boxes = true;
 		blend = false;
 		ooc_mode = false;
@@ -367,7 +370,6 @@ public:
 		box_style.map_color_to_material = cgv::render::CM_COLOR;
 		box_style.use_group_color = true;
 		time_step = 0;
-		first_frame = true;
 		connect(cgv::gui::get_animation_trigger().shoot, this, &vr_ca_vis::timer_event);
 
 		vr_view_ptr = 0;
@@ -391,10 +393,8 @@ public:
 		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 1.f));
 		append_child(clipping_planes_b);
 
-		// clipping plane
 		clipping_plane_grabbed = false;
 
-		// GUI
 		li_clipping_plane_stats = li_cell_stats = -1;
 		li_clipping_plane_visible = li_cell_visible = false;
 		stats_bgclr = rgba(0.8f, 0.6f, 0.0f, 0.6f);
@@ -406,17 +406,11 @@ public:
 	void on_set(void* member_ptr)
 	{
 		if (member_ptr == &time_step) {
-			cgv::type::uint64_type beg = (ooc_mode ? 0 : time_step_start[time_step]);
-			cgv::type::uint64_type end = (ooc_mode ? cells.size() : ((time_step + 1 == time_step_start.size()) ? cells.size() : time_step_start[time_step + 1]));
-
 			if (ooc_mode && !ooc_file_name.empty())
 				read_ooc_time_step(ooc_file_name, time_step);
-
-			first_frame = true;
 		}
 		if (member_ptr == &dir_name) {
 			read_data_dir_ascii(dir_name);
-
 			time_step = 0;
 			on_set(&time_step);
 			post_recreate_gui();
@@ -444,6 +438,7 @@ public:
 	bool init(cgv::render::context& ctx)
 	{
 		cgv::render::ref_surfel_renderer(ctx, 1);
+
 		ctx.set_bg_clr_idx(4);
 
 		if (!b_renderer.init(ctx))
@@ -518,16 +513,6 @@ public:
 		b_renderer.clear(ctx);
 		cgv::render::ref_surfel_renderer(ctx, -1);
 	}
-	//void set_geometry(cgv::render::context& ctx, cgv::render::group_renderer& sr)
-	//{
-	//	if (!visible_points.empty())
-	//		sr.set_position_array(ctx, visible_points);
-	//	//if (!points.empty())
-	//	//	sr.set_position_array(ctx, points);
-	//	sr.set_color_array(ctx, colors);
-	//	//sr.set_group_index_array(ctx, group_indices);
-	//	sr.set_group_index_array(ctx, visible_types);
-	//}
 	//void draw_points(unsigned ti) // draw voxels
 	//{
 	//	cgv::type::uint64_type beg = (ooc_mode? 0 : time_step_start[ti]);
@@ -637,13 +622,10 @@ public:
 
 		draw_box(ctx);
 
-		//ctx.mul_modelview_matrix(cgv::math::scale4<double>(extent_scale));
-
 		if (clipping_plane_grabbed)
 			compute_clipping_planes();
 
 		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
-		//cells_ctr->set_clipping_planes(shader_clipping_planes);
 
 		clipping_planes_b->set_inverse_model_transform(get_inverse_model_transform());
 
@@ -674,96 +656,119 @@ public:
 	bool handle(cgv::gui::event& e)
 	{
 		// check if vr event flag is not set and don't process events in this case
-		if ((e.get_flags() & cgv::gui::EF_VR) == 0)
-			return false;
-		switch (e.get_kind()) {
-		case cgv::gui::EID_KEY:
-		{
-			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
-			if (vrke.get_key() == vr::VR_MENU) {
-				if (vrke.get_action() != cgv::gui::KA_RELEASE) {
-					animate = !animate;
+		if ((e.get_flags() & cgv::gui::EF_VR) != 0) {
+			switch (e.get_kind()) {
+			case cgv::gui::EID_KEY:
+			{
+				cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
+				if (vrke.get_key() == vr::VR_MENU) {
+					if (vrke.get_action() != cgv::gui::KA_RELEASE) {
+						animate = !animate;
+					}
+
+					return true;
 				}
-	
-				return true;
-			}
 
-			// stop animation when
-			animate = false;
+				// stop animation when interaction is detected
+				animate = false;
 
-			if (vrke.get_controller_index() == 1) { // only right controller
-				if (vrke.get_action() != cgv::gui::KA_RELEASE) {
-					switch (vrke.get_key()) {
-					case vr::VR_DPAD_LEFT: // put current clipping plane permanently, temporary use this when using only one controller
-						set_clipping_plane();
-						return true;
-					case vr::VR_DPAD_RIGHT: // remove clipping plane
-						if (temp_clipping_plane_idx > -1)
-						{
-							clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
+				if (vrke.get_controller_index() == 1) { // only right controller
+					if (vrke.get_action() != cgv::gui::KA_RELEASE) {
+						switch (vrke.get_key()) {
+						case vr::VR_DPAD_LEFT: // put current clipping plane permanently, temporary use this when using only one controller
+							set_clipping_plane();
+							return true;
+						case vr::VR_DPAD_RIGHT: // remove clipping plane
+							if (temp_clipping_plane_idx > -1)
+							{
+								clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
 
-							cells_ctr->delete_clipping_plane(temp_clipping_plane_idx);
+								cells_ctr->delete_clipping_plane(temp_clipping_plane_idx);
 
-							//shader_clipping_planes.erase(shader_clipping_planes.begin() + temp_clipping_plane_idx);
+								//shader_clipping_planes.erase(shader_clipping_planes.begin() + temp_clipping_plane_idx);
+							}
+
+							temp_clipping_plane_idx = -1;
+
+							clipping_plane_grabbed = false;
+							return true;
+						case vr::VR_DPAD_DOWN:
+							reset_clipping_plane();
+							return true;
 						}
+					}
+					else {
+						//switch (vrke.get_key()) {
+						//case::vr::VRF_INPUT0_TOUCH:
+						//	if (selected_cell_idx < SIZE_MAX) {
+						//		if (li_cell_stats != -1) {
+						//			vr::vr_scene* scene_ptr = get_scene_ptr();
+						//			if (scene_ptr) {
+						//				const cell& c = cells[selected_cell_idx];
 
-						temp_clipping_plane_idx = -1;
-
-						clipping_plane_grabbed = false;
-						return true;
-					case vr::VR_DPAD_DOWN:
-						reset_clipping_plane();
-						return true;
+						//				scene_ptr->update_label_text(li_cell_stats, "id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
+						//				scene_ptr->fix_label_size(li_cell_stats);
+						//			}
+						//		}
+						//		li_cell_visible = true;
+						//	}
+						//	else {
+						//		li_cell_visible = false;
+						//	}
+						//	return true;
+						//}
 					}
 				}
-				else {
-					//switch (vrke.get_key()) {
-					//case::vr::VRF_INPUT0_TOUCH:
-					//	if (selected_cell_idx < SIZE_MAX) {
-					//		if (li_cell_stats != -1) {
-					//			vr::vr_scene* scene_ptr = get_scene_ptr();
-					//			if (scene_ptr) {
-					//				const cell& c = cells[selected_cell_idx];
+				else if (vrke.get_controller_index() == 0) { // only left controller
+					if (vrke.get_action() != cgv::gui::KA_RELEASE) {
+						switch (vrke.get_key()) {
+						case vr::VR_DPAD_LEFT: // put current clipping plane permanently
+							set_clipping_plane();
+							return true;
+						case vr::VR_DPAD_RIGHT: // forward
+							if (time_step + 1 < times.size())
+								time_step += 1;
+							else
+								time_step = 0;
 
-					//				scene_ptr->update_label_text(li_cell_stats, "id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
-					//				scene_ptr->fix_label_size(li_cell_stats);
-					//			}
-					//		}
-					//		li_cell_visible = true;
-					//	}
-					//	else {
-					//		li_cell_visible = false;
-					//	}
-					//	return true;
-					//}
+							on_set(&time_step);
+							return true;
+						}
+					}
+					else {
+						switch (vrke.get_key()) {
+						case vr::VR_MENU: // toggle help
+							li_clipping_plane_visible = !li_clipping_plane_visible;
+							return true;
+						}
+					}
 				}
+				break;
 			}
-			else if (vrke.get_controller_index() == 0) { // only left controller
-				if (vrke.get_action() != cgv::gui::KA_RELEASE) {
-					switch (vrke.get_key()) {
-					case vr::VR_DPAD_LEFT: // put current clipping plane permanently
-						set_clipping_plane();
-						return true;
-					case vr::VR_DPAD_RIGHT: // forward
-						if (time_step + 1 < times.size())
-							time_step += 1;
-						else
-							time_step = 0;
-
-						on_set(&time_step);
-						return true;
-					}
-				}
-				else {
-					switch (vrke.get_key()) {
-					case vr::VR_MENU: // toggle help
-						li_clipping_plane_visible = !li_clipping_plane_visible;
-						return true;
-					}
-				}
+			return false;
 			}
-			break;
 		}
+
+		if (e.get_kind() != cgv::gui::EID_KEY)
+			return false;
+		cgv::gui::key_event& ke = static_cast<cgv::gui::key_event&>(e);
+		if (ke.get_action() == cgv::gui::KA_RELEASE)
+			return false;
+		switch (ke.get_key()) {
+		case cgv::gui::KEY_Right:
+			step();
+			return true;
+		case cgv::gui::KEY_Left:
+			step_back();
+			return true;
+		case cgv::gui::KEY_Home:
+			time_step = 0;
+			on_set(&time_step);
+			return true;
+		case cgv::gui::KEY_End:
+			time_step = uint32_t(times.size() - 1);
+			on_set(&time_step);
+			return true;
 		}
 		return false;
 	}
@@ -774,13 +779,11 @@ public:
 	void stream_help(std::ostream& os)
 	{
 		os << "vr_ca_vis: use <left>, <right>, <home>, and <end> to navigate time\n";
-		os << "vr_ca_vis: select draw <M>ode, press vr pad or trigger to draw, grip to change color" << std::endl;
+		//os << "vr_ca_vis: select draw <M>ode, press vr pad or trigger to draw, grip to change color" << std::endl;
 	}
 	void create_gui()
 	{
 		add_decorator("bio math", "heading");
-		//add_view("tigger_0", trigger[0]);
-		//add_view("tigger_1", trigger[1]);
 		add_gui("data_dir", dir_name, "directory", "title='Data Directory'");
 		add_member_control(this, "animate", animate, "toggle", "shortcut='A'");
 		add_member_control(this, "scale", scale, "value_slider", "min=0.0001;step=0.00001;max=10;log=true;ticks=true");
@@ -788,13 +791,13 @@ public:
 		if (find_control(time_step))
 			find_control(time_step)->set("max", times.size() - 1);
 		add_member_control(this, "blend", blend, "toggle", "shortcut='B'");
-		add_member_control(this, "sort_points", sort_points, "toggle", "shortcut='S'");
-		add_member_control(this, "opacity", opacity, "value_slider", "min=0;max=1;ticks=true");
-		add_member_control(this, "color_scale", clr_scale, "dropdown", "enums='Temperature,Hue,Hue+Luminance'");
+		//add_member_control(this, "sort_points", sort_points, "toggle", "shortcut='S'");
+		//add_member_control(this, "opacity", opacity, "value_slider", "min=0;max=1;ticks=true");
+		//add_member_control(this, "color_scale", clr_scale, "dropdown", "enums='Temperature,Hue,Hue+Luminance'");
 		//rgba color;
 		//add_member_control(this, "color", color);
 		//add_member_control(this, "use_boxes", use_boxes, "toggle", "shortcut='M'");
-		add_gui("box_extent", box_extent, "", "gui_type='value_slider';options='min=0;max=1'");
+		//add_gui("box_extent", box_extent, "", "gui_type='value_slider';options='min=0;max=1'");
 
 		//if (begin_tree_node("geometry and groups", time_step, true)) {
 		//	align("\a");
@@ -861,6 +864,8 @@ public:
 		//{
 		//	visible_colors.push_back(group_colors[group_indices[i]]);
 		//}
+
+		//start = 0; end = 5;
 
 		cells_ctr->set_animate(animate);
 		cells_ctr->set_cell_types(types);
@@ -973,17 +978,18 @@ public:
 
 #pragma region cells_container_listener
 	// listener for cell grab event inside box
-	void on_cell_grabbed(size_t index)
+	void on_cell_grabbed(size_t cell_index, size_t node_index)
 	{
-		selected_cell_idx = index;
+		selected_cell_idx = cell_index;
+		selected_node_idx = node_index;
 		
-		if (selected_cell_idx < SIZE_MAX) {
+		if (selected_cell_idx < SIZE_MAX && selected_node_idx < SIZE_MAX) {
 			if (li_cell_stats != -1) {
 				vr::vr_scene* scene_ptr = get_scene_ptr();
 				if (scene_ptr) {
 					const cell& c = cells[selected_cell_idx];
 
-					scene_ptr->update_label_text(li_cell_stats, "id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
+					//scene_ptr->update_label_text(li_cell_stats, "id " + std::to_string(c.id) + " and type " + *std::next(types.begin(), c.type));
 					scene_ptr->fix_label_size(li_cell_stats);
 				}
 			}

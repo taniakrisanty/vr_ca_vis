@@ -173,7 +173,7 @@ bool clipping_planes_bag::compute_closest_point(const vec3& point, vec3& prj_poi
 	rotation.rotate(p);
 	prj_point = p + position_in_table;
 
-	//std::cout << "Closest point from query point " << point << " = " << position_in_table << std::endl;
+	std::cout << "Closest point from query point " << point << " = " << position_in_table << std::endl;
 	
 	return true;
 }
@@ -201,11 +201,11 @@ bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3
 	else {
 		hit_param = res[0];
 	}
-	hit_normal = n;
 	rotation.rotate(n);
+	hit_normal = n;
 
-	//std::cout << "Intersection from query ray " << ray_start << " = " << position_in_table << std::endl;
-	//std::cout << "Hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
+	std::cout << "Intersection from query ray " << ray_start << " = " << position_in_table << std::endl;
+	std::cout << "Hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
 
 	return true;
 }
@@ -291,15 +291,17 @@ void clipping_planes_bag::set_inverse_model_transform(const mat4& _inv_model_tra
 }
 void clipping_planes_bag::set_head_transform(const mat4& _head_transform)
 {
-	head_transform = _head_transform;
-	
-	mat3 rotation_matrix;
+	if (head_transform != _head_transform) {
+		head_transform = _head_transform;
 
-	rotation_matrix.set_col(0, normalize(head_transform.col(0)));
-	rotation_matrix.set_col(1, normalize(head_transform.col(1)));
-	rotation_matrix.set_col(2, normalize(head_transform.col(2)));
+		mat3 rotation_matrix;
 
-	rotation = quat(rotation_matrix);
+		rotation_matrix.set_col(0, normalize(head_transform.col(0)));
+		rotation_matrix.set_col(1, normalize(head_transform.col(1)));
+		rotation_matrix.set_col(2, normalize(head_transform.col(2)));
+
+		rotation = quat(rotation_matrix);
+	}
 }
 void clipping_planes_bag::grab_clipping_plane(void* hid_kit) const
 {

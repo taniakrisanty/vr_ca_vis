@@ -3,51 +3,58 @@
 #include <cgv/render/render_types.h>
 #include <cgv_glutil/color_map.h>
 
-//struct cell_type
+//struct cell : public cgv::render::render_types
 //{
-//	std::string name;		// CellTypes > CellType name
-//	std::string cell_class;	// CellTypes > CellType class
+//	uint16_t id;		// CellPopulations > Population > Cell id
+//	unsigned int type;	// CellTypes > CellType name & class
+//
+//	vec3 center;		// CellPopulations > Population > Cell > Center
+//	vec3 node;			// CellPopulations > Population > Cell > Nodes
+//
+//	float b;			// CellPopulations > Population > Cell > PropertyData symbol-ref
+//	float b2;			// CellPopulations > Population > Cell > PropertyData symbol-ref
+//
+//	rgba color;
+//
+//	cell(uint16_t _id, unsigned int _type, const vec3& _center, const vec3& _node, float _b, float _b2) : id(_id), type(_type), center(_center), node(_node), b(_b), b2(_b2)
+//	{
+//		//float t = (float)(id - 1) / (60.0f - 1.0f);
+//		//color = cm.interpolate_color(t);
+//	}
 //};
+
+struct cell_type
+{
+	std::string name;		// CellTypes > CellType name
+	std::string cell_class;	// CellTypes > CellType class
+
+	std::vector<std::string> properties;
+
+	cell_type(const std::string& name, const std::string& cell_class);
+	void add_property(const std::string& property);
+};
 
 struct cell : public cgv::render::render_types
 {
-	uint16_t id;		// CellPopulations > Population > Cell id
-	unsigned int type;	// CellTypes > CellType name & class
+//public:
+//	static cgv::glutil::color_map cm;
 
-	vec3 center;		// CellPopulations > Population > Cell > Center
-	vec3 node;			// CellPopulations > Population > Cell > Nodes
-
-	float b;			// CellPopulations > Population > Cell > PropertyData symbol-ref
-	float b2;			// CellPopulations > Population > Cell > PropertyData symbol-ref
-
-	rgba color;
-
-	cell(uint16_t _id, unsigned int _type, const vec3& _center, const vec3& _node, float _b, float _b2) : id(_id), type(_type), center(_center), node(_node), b(_b), b2(_b2)
-	{
-		//float t = (float)(id - 1) / (60.0f - 1.0f);
-		//color = cm.interpolate_color(t);
-	}
-};
-
-class cell_data : public cgv::render::render_types
-{
-public:
-	static cgv::glutil::color_map cm;
-
-private:
-	uint16_t id;				// CellPopulations > Population > Cell id
-	uint8_t type;				// CellTypes > CellType name & class
+//private:
+	unsigned int id;			// CellPopulations > Population > Cell id
+	unsigned int type;			// CellTypes > CellType name & class
 
 	vec3 center;				// CellPopulations > Population > Cell > Center
 	std::vector<vec3> nodes;	// CellPopulations > Population > Cell > Nodes
 
-	float b;					// CellPopulations > Population > Cell > PropertyData symbol-ref
-	float b2;					// CellPopulations > Population > Cell > PropertyData symbol-ref
+	std::vector<float> properties;
 
-	rgb color;
+	//float b;					// CellPopulations > Population > Cell > PropertyData symbol-ref
+	//float b2;					// CellPopulations > Population > Cell > PropertyData symbol-ref
 
-public:
-	cell_data(uint16_t _id, uint8_t _type, const vec3& _center, float _b, float _b2);
+	rgba color;
+
+//public:
+	cell(unsigned int id, unsigned int type, const vec3& center, const std::vector<float>& properties);
 	void add_node(float x, float y, float z);
 };
 
@@ -62,21 +69,3 @@ public:
 //}
 
 //cgv::glutil::color_map cell<T>::cm = cgv::glutil::color_map();
-
-//class cell_vis : public cell
-//{
-//protected:
-//	rgba8 color;
-//
-//public:
-//	cell_vis(uint16_t cell_id, int16_t x, int16_t y, int16_t z, float cell_attr) : cell(cell_id, x, y, z, cell_attr), color(rgba8())
-//	{}
-//
-//	cell_vis(uint16_t cell_time, uint16_t cell_id, uint8_t cell_type, int16_t x, int16_t y, int16_t z, float cell_attr, rgba8 cell_color) : cell(cell_time, cell_id, cell_type, x, y, z, cell_attr), color(cell_color)
-//	{}
-//
-//	rgba8 get_color() const
-//	{
-//		return color;
-//	}
-//};
