@@ -78,15 +78,12 @@ protected:
 
 	// per group information
 	std::vector<rgba> group_colors;
-	std::vector<vec3> group_translations;
-	std::vector<vec4> group_rotations;
+	//std::vector<vec3> group_translations;
+	//std::vector<vec4> group_rotations;
 
 	bool cells_out_of_date = true;
 
 	// vertex buffer
-	bool use_vbo = false;
-
-	bool recreate_vbo = true;
 	cgv::render::vertex_buffer vb_nodes;
 	//cgv::render::vertex_buffer vb_types;
 
@@ -140,7 +137,6 @@ public:
 	void set_scale_matrix(const mat4& _scale_matrix);
 	void set_cell_types(const std::unordered_map<std::string, cell_type>& _cell_types);
 	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents);
-	void set_animate(bool animate);
 
 	/// clipping planes
 	void create_clipping_plane(const vec3& origin, const vec3& direction);
