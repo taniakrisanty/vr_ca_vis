@@ -173,7 +173,7 @@ bool clipping_planes_bag::compute_closest_point(const vec3& point, vec3& prj_poi
 	rotation.rotate(p);
 	prj_point = p + position_in_table;
 
-	std::cout << "Closest point from query point " << point << " = " << position_in_table << std::endl;
+	//std::cout << "clipping_planes_bag::compute_closest_point query " << point << " = " << position_in_table << std::endl;
 	
 	return true;
 }
@@ -204,10 +204,13 @@ bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3
 	rotation.rotate(n);
 	hit_normal = n;
 
-	std::cout << "Intersection from query ray " << ray_start << " = " << position_in_table << std::endl;
-	std::cout << "Hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
-
-	return true;
+	if (hit_param < std::numeric_limits<float>::max()) {
+		std::cout << "clipping_planes_bag::compute_intersection query " << ray_start << " = " << position_in_table << " | hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 bool clipping_planes_bag::init(cgv::render::context& ctx)
 {
