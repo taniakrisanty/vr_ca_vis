@@ -31,7 +31,7 @@ class cells_container :
 	public cgv::nui::pointable,
 	public cgv::gui::provider
 {
-	cgv::render::box_render_style brs;
+	clipped_box_render_style brs;
 	cgv::render::sphere_render_style srs;
 	vec3 debug_point;
 	vec3 query_point_at_grab, position_at_grab;
@@ -67,7 +67,6 @@ protected:
 
 	// cells start offset set by time_step_start
 	size_t cells_start, cells_end;
-	size_t nodes_count;
 	const std::vector<cell>* cells = NULL;
 
 	// color map
@@ -78,11 +77,18 @@ protected:
 	std::vector<rgba> group_colors;
 	//std::vector<vec3> group_translations;
 	//std::vector<vec4> group_rotations;
-	std::vector<float> group_visibilities;
+
+	// visibility filter
+	visibility_filter_enum visibility_filter = visibility_filter_enum::by_id;
+
+	std::vector<int> visibilities;
 
 	bool cells_out_of_date = true;
 
 	// vertex buffer
+	size_t nodes_count;
+
+	cgv::render::vertex_buffer vb_visibility_indices;
 	cgv::render::vertex_buffer vb_group_indices;
 	cgv::render::vertex_buffer vb_nodes;
 	cgv::render::vertex_buffer vb_colors;

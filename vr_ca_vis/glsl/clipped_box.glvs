@@ -12,10 +12,12 @@ in int group_index;
 in vec4 rotation;
 in vec3 translation;
 
+in int visibility_index;
+
 out mat3 NM;
 out mat4 PM;
 out vec4 color_gs;
-out float visible;
+flat out int visible;
 
 //***** begin interface of quaternion.glsl ***********************************
 vec4 unit_quaternion();
@@ -47,7 +49,7 @@ mat3 get_inverse_normal_matrix();
 //***** end interface of view.glsl ***********************************
 
 //***** begin interface of clipped_box_group.glsl ***********************************
-float group_visibility(in float visible, int group_index);
+int visibility(in int visible, int index);
 //***** end interface of clipped_box_group.glsl ***********************************
 
 void main()
@@ -98,5 +100,5 @@ void main()
 
 	gl_Position = position;
 
-	visible = group_visibility(1.0, group_index);
+	visible = visibility(1, visibility_index);
 }

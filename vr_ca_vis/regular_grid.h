@@ -11,6 +11,7 @@
 #include <thread>
 
 #include "grid_utils.h"
+#include "visibility_utils.h"
 
 #include <cgv/render/drawable.h>
 
@@ -61,6 +62,12 @@ private:
 	const std::vector<T>* cells = NULL;
 	size_t current_cell_index, cells_end;
 
+	// visibility filter
+	visibility_filter_enum visibility_filter = visibility_filter_enum::none;
+
+	const std::vector<int>* visibilities = NULL;
+	
+	// clipping plane
 	const std::vector<vec4>* clipping_planes = NULL;
 
 	//search entry used internally for nearest and k nearest primitive queries
@@ -222,37 +229,38 @@ public:
 		return get_cell_center(get_position_to_cell_index(pos, cell_extents));
 	}
 
-	void get_closest_index(int index, size_t& cell_index, size_t& node_index) const
+	bool get_closest_index(int index, size_t& cell_index, size_t& node_index) const
 	{
 		if (index < 0 || index >= extents.x() * extents.y() * extents.z()) // grid cell index is out of bounds
-			return;
+			return false;
 
 		std::lock_guard<std::mutex> lock(mutex);
 
-		if (!build_grid && cell_grid != NULL && node_grid != NULL)
+		if (build_grid)
+			return false;
+		
+		if (cell_grid != NULL && node_grid != NULL)
 		{
 			size_t c_index = cell_grid[index];
 			if (c_index == 0)
-				return;
+				return false;
 
 			size_t n_index = node_grid[index];
 			if (n_index == 0)
-				return;
+				return false;
 
 			c_index -= 1;
 			n_index -= 1;
 
-			vec4 node = cells->at(c_index).nodes[n_index].lift();
+			const cell& c = cells->at(c_index);
 
-			// ignore if cell is invisible (clipped by the clipping plane)
-			for (const vec4& cp : *clipping_planes)
+			if (is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(c.nodes[n_index]))
 			{
-				if (dot(node, cp) < 0)
-					return;
+				cell_index = c_index;
+				node_index = n_index;
+				
+				return true;
 			}
-
-			cell_index = c_index;
-			node_index = n_index;
 		}
 	}
 
@@ -327,17 +335,11 @@ public:
 			c_index -= 1;
 			n_index -= 1;
 
-			vec3 node = cells->at(c_index).nodes[n_index];
-			vec4 node4 = node.lift();
+			const cell& c = cells->at(c_index);
 
-			// ignore if cell is invisible (clipped by the clipping plane)
-			for (const vec4& cp : *clipping_planes)
-			{
-				if (dot(node4, cp) < 0)
-					return;
+			if (is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(c.nodes[n_index])) {
+				res.consider(c_index, n_index, (c.nodes[n_index] - q).sqr_length());
 			}
-
-			res.consider(c_index, n_index, (node - q).sqr_length());
 		}
 	}
 
@@ -378,9 +380,33 @@ public:
 		return result_entry();
 	}
 
+	void set_visibility_filter(visibility_filter_enum _visibility_filter)
+	{
+		visibility_filter = _visibility_filter;
+	}
+
+	void set_visibilities(const std::vector<int>* _visibilities)
+	{
+		visibilities = _visibilities;
+	}
+
 	void set_clipping_planes(const std::vector<vec4>* _clipping_planes)
 	{
 		clipping_planes = _clipping_planes;
+	}
+
+	bool is_cell_clipped(const vec3& node) const
+	{
+		vec4 node4 = node.lift();
+
+		// ignore if cell is clipped by the clipping plane
+		for (const vec4& cp : *clipping_planes)
+		{
+			if (dot(node4, cp) < 0)
+				return true;
+		}
+
+		return false;
 	}
 
 	void print() const

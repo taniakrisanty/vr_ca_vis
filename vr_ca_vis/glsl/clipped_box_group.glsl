@@ -3,7 +3,7 @@
 /*
 The following interface is implemented in this shader:
 //***** begin interface of group.glsl ***********************************
-float group_visibility(in float visibility, int group_index);
+int visibility(in int visible, int index);
 //***** end interface of group.glsl ***********************************
 */
 
@@ -12,13 +12,13 @@ float group_visibility(in float visibility, int group_index);
 //    float visibilities[];
 //};
 
-uniform bool use_group_visibility = false;
-uniform float group_visibilities[250];
+uniform bool use_visibility;
+uniform int visibilities[250];
 
-float group_visibility(in float visible, int group_index)
+int visibility(in int visible, int index)
 {
-	if (use_group_visibility) {
-		return group_visibilities[group_index];
+	if (use_visibility) {
+		return visibilities[index];
 	}
 	else {
 		return visible;

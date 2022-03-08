@@ -7,7 +7,7 @@ layout(triangle_strip, max_vertices = 24) out;
 in mat3 NM[];
 in mat4 PM[];
 in vec4 color_gs[];
-in float visible[];
+flat in int visible[];
 
 out vec3 normal;
 out vec4 color_fs;
@@ -39,7 +39,7 @@ mat3 get_inverse_normal_matrix();
 
 void emit_face(in vec3 normal_in, in vec4 c0, in vec4 c1, in vec4 c2, in vec4 c3)
 {
-	if (visible[0] < 0.5)
+	if (visible[0] < 1)
 		return;
 
 	color_fs = color_gs[0];

@@ -48,7 +48,6 @@ protected:
 	mat4 model_transform;
 
 	// geometry of clipping planes with color
-
 	std::vector<vec3> origins;
 	std::vector<vec3> directions;
 	std::vector<quat> rotations;
@@ -91,6 +90,8 @@ public:
 	/// cgv::gui::provider function to create classic UI
 	void create_gui();
 	
+	void set_model_transform(const mat4& _model_transform);
+
 	void create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
 	void copy_clipping_plane(size_t index, const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
 	void delete_clipping_plane(size_t index, size_t count = 1);

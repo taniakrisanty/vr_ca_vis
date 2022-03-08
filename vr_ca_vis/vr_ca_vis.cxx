@@ -491,26 +491,6 @@ public:
 
 			compute_visible_points();
 		}
-
-		//if (clipping_plane_grabbed)
-		//	compute_clipping_planes();
-
-		//cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
-		//cells_ctr->set_clipping_planes(shader_clipping_planes);
-
-		//clipping_planes_b->set_modelview_matrix(get_model_transform());
-
-		//mat4 h;
-		//h.identity();
-
-		//vr::vr_scene* scene_ptr = get_scene_ptr();
-		//if (!scene_ptr)
-		//	return;
-
-		//if (scene_ptr->is_coordsystem_valid(vr::vr_scene::CS_HEAD))
-		//	h *= pose4(scene_ptr->get_coordsystem(vr::vr_scene::CS_HEAD));
-
-		//clipping_planes_b->set_head_matrix(h);
 	}
 	void clear(cgv::render::context& ctx)
 	{
@@ -626,6 +606,8 @@ public:
 			compute_clipping_planes();
 
 		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
+
+		clipping_planes_ctr->set_model_transform(get_inverse_model_transform());
 
 		clipping_planes_b->set_inverse_model_transform(get_inverse_model_transform());
 
