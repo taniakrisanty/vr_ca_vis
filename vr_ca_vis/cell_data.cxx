@@ -9,7 +9,7 @@ cell_type::cell_type(const std::string& _name, const std::string& _cell_class) :
 
 void cell_type::add_property(const std::string& property)
 {
-	properties.emplace_back(property);
+	properties.push_back(property);
 }
 
 cell::cell(unsigned int _id, unsigned int _type, const vec3& _center, const std::vector<float>& _properties) : id(_id), type(_type), center(_center), properties(_properties)

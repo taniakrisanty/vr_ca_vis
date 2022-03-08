@@ -127,7 +127,7 @@ private:
 
 				if (!build_grid)
 				{
-					std::cout << "build_from_vertices cancelled at index " << current_cell_index << std::endl;
+					std::cout << "regular_grid::build_from_vertices cancelled at index " << current_cell_index << std::endl;
 					break;
 				}
 
@@ -137,7 +137,7 @@ private:
 
 					auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
-					std::cout << "build_from_vertices finished in " << duration.count() << " microseconds" << std::endl;
+					std::cout << "regular_grid::build_from_vertices finished in " << duration.count() << " microseconds" << std::endl;
 
 					build_grid = false;
 

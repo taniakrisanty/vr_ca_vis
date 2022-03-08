@@ -44,7 +44,7 @@ struct cell : public cgv::render::render_types
 
 	std::vector<float> properties;	// CellPopulations > Population > Cell > PropertyData symbol-ref
 
-	rgba color;
+	//rgba color;
 
 //public:
 	cell(unsigned int id, unsigned int type, const vec3& center, const std::vector<float>& properties);

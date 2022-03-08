@@ -29,7 +29,7 @@ cells_container::rgb cells_container::get_modified_color(const rgb& color) const
 	return mod_col;
 }
 cells_container::cells_container(cells_container_listener* _listener, const std::string& _name, const vec3& _extent, const quat& _rotation)
-	: cgv::base::node(_name), listener(_listener), extent(_extent), rotation(_rotation)//, vb_types(cgv::render::VBT_INDICES)
+	: cgv::base::node(_name), listener(_listener), extent(_extent), rotation(_rotation)
 {
 	debug_point = vec3(0, 0.5f, 0);
 	
@@ -397,9 +397,10 @@ void cells_container::create_gui()
 	for (const auto& ct : cell_types) {
 		if (begin_tree_node(ct.first, color_points_maps[i])) {
 			align("\a");
-			//add_member_control(this, "show_cells", reinterpret_cast<bool&>(cell_types[i]), "check");
-			for (size_t j = i; j < group_colors.size(); ++j)
+			add_member_control(this, "show_cells", reinterpret_cast<bool&>(group_visibilities[i]), "check");
+			for (size_t j = i; j < group_colors.size(); ++j) {
 				add_member_control(this, std::string("C") + cgv::utils::to_string(j), group_colors[i]);
+			}
 			align("\b");
 			//align("\a");
 			//for (size_t i = 0; i < group_translations.size(); ++i) {
@@ -435,11 +436,13 @@ void cells_container::set_cell_types(const std::unordered_map<std::string, cell_
 	for (const auto& ct : _cell_types) {
 		cell_types.emplace(ct);
 
-		add_color_point(i, 0.f, rgba(59.f / 255, 76.f / 255, 192.f / 255, 0.f));
-		add_color_point(i, 1.f, rgba(180.f / 255, 4.f / 255, 38.f / 255, 0.f));
+		add_color_point(i, 0.f, rgba(59.f / 255, 76.f / 255, 192.f / 255, 0.2f));
+		add_color_point(i, 1.f, rgba(180.f / 255, 4.f / 255, 38.f / 255, 0.2f));
 		
 		++i;
 	}
+
+	group_visibilities.assign(63, 1.f);
 }
 void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents)
 {
@@ -536,48 +539,65 @@ void cells_container::update_clipping_plane(size_t index, const vec3& origin, co
 }
 void cells_container::transmit_cells(cgv::render::context& ctx)
 {
-	std::vector<vec3> cell_positions;
-
-	cell_ids.clear();
+	std::vector<unsigned int> node_group_indices;
+	std::vector<vec3> node_positions;
 
 	for (size_t i = cells_start; i < cells_end; ++i) {
 		const auto& c = cells->at(i);
 
 		for (const auto& n : c.nodes) {
-			cell_positions.push_back(n);
-			cell_ids.push_back(c.id);
+			node_group_indices.push_back(c.id);
+			node_positions.push_back(n);
 		}
 	}
 
-	if (nodes_count != cell_positions.size())
+	if (nodes_count != node_positions.size()) {
+		vb_group_indices.destruct(ctx);
 		vb_nodes.destruct(ctx);
+		vb_colors.destruct(ctx);
+	}
 
-	nodes_count = cell_positions.size();
+	nodes_count = node_positions.size();
 
 	if (nodes_count > 0) {
-		if (!vb_nodes.is_created())
-			vb_nodes.create(ctx, cell_positions);
+		std::vector<rgba> node_colors;
+		node_colors.assign(nodes_count, rgba(1.f));
+
+		if (!vb_group_indices.is_created())
+			vb_group_indices.create(ctx, node_group_indices);
 		else
-			vb_nodes.replace(ctx, 0, &cell_positions[0], nodes_count);
+			vb_group_indices.replace(ctx, 0, &node_group_indices[0], nodes_count);
+
+		if (!vb_nodes.is_created())
+			vb_nodes.create(ctx, node_positions);
+		else
+			vb_nodes.replace(ctx, 0, &node_positions[0], nodes_count);
+
+		if (!vb_colors.is_created())
+			vb_colors.create(ctx, node_colors);
+		else
+			vb_colors.replace(ctx, 0, &node_colors[0], nodes_count);
 	}
 
 	cells_out_of_date = false;
 }
-void cells_container::set_group_geometry(cgv::render::context& ctx, cgv::render::group_renderer& gr)
+void cells_container::set_group_geometry(cgv::render::context& ctx, clipped_box_renderer& br)
 {
 	if (!group_colors.empty())
-		gr.set_group_colors(ctx, group_colors);
+		br.set_group_colors(ctx, group_colors);
 	//if (!group_translations.empty())
-	//	gr.set_group_translations(ctx, group_translations);
+	//	br.set_group_translations(ctx, group_translations);
 	//if (!group_rotations.empty())
-	//	gr.set_group_rotations(ctx, group_rotations);
+	//	br.set_group_rotations(ctx, group_rotations);
+	if (!group_visibilities.empty())
+		br.set_group_visibilities(ctx, group_visibilities);
 }
-void cells_container::set_geometry(cgv::render::context& ctx, cgv::render::group_renderer& gr)
+void cells_container::set_geometry(cgv::render::context& ctx, clipped_box_renderer& br)
 {
 	if (nodes_count > 0) {
-		gr.set_position_array<vec3>(ctx, vb_nodes, 0, nodes_count);
-		gr.set_group_index_array(ctx, cell_ids);
-		//gr.set_group_index_array<unsigned int>(ctx, vb_types, 0, cells_end - cells_start);
+		br.set_group_index_array<unsigned int>(ctx, vb_group_indices, 0, nodes_count);
+		br.set_position_array<vec3>(ctx, vb_nodes, 0, nodes_count);
+		br.set_color_array<rgba>(ctx, vb_colors, 0, nodes_count);
 	}
 }
 void cells_container::grab_cell(size_t cell_index, size_t node_index) const

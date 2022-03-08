@@ -62,15 +62,13 @@ protected:
 	// inv_scale_matrix is used to prevent expensive scaling of all cells
 	mat4 inv_scale_matrix;
 
-	// cell types (ct1, ct2, etc) and their visibility
+	// cell types (ct1, ct2, etc)
 	std::unordered_map<std::string, cell_type> cell_types;
 
 	// cells start offset set by time_step_start
 	size_t cells_start, cells_end;
 	size_t nodes_count;
 	const std::vector<cell>* cells = NULL;
-
-	std::vector<unsigned int> cell_ids;
 
 	// color map
 	std::vector<cgv::glutil::color_map> color_maps;
@@ -80,12 +78,14 @@ protected:
 	std::vector<rgba> group_colors;
 	//std::vector<vec3> group_translations;
 	//std::vector<vec4> group_rotations;
+	std::vector<float> group_visibilities;
 
 	bool cells_out_of_date = true;
 
 	// vertex buffer
+	cgv::render::vertex_buffer vb_group_indices;
 	cgv::render::vertex_buffer vb_nodes;
-	//cgv::render::vertex_buffer vb_types;
+	cgv::render::vertex_buffer vb_colors;
 
 	// clipping planes that are used by clipped_box geometry shader
 	// in the form of ax + by + cz + d = 0
@@ -148,8 +148,8 @@ public:
 private:
 	void transmit_cells(cgv::render::context& ctx);
 
-	void set_group_geometry(cgv::render::context& ctx, cgv::render::group_renderer& gr);
-	void set_geometry(cgv::render::context& ctx, cgv::render::group_renderer& gr);
+	void set_group_geometry(cgv::render::context& ctx, clipped_box_renderer& br);
+	void set_geometry(cgv::render::context& ctx, clipped_box_renderer& br);
 
 	/// color map
 	void add_color_point(size_t index, float t, rgba color);

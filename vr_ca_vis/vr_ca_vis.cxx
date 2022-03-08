@@ -297,8 +297,7 @@ public:
 			// concatenate
 			write_file(fn);
 
-			//cells_ctr->set_cell_types(types);
-
+			cells_ctr->set_cell_types(cell_types);
 			return true;
 		}
 		else
@@ -854,7 +853,6 @@ public:
 		//	visible_colors.push_back(group_colors[group_indices[i]]);
 		//}
 
-		cells_ctr->set_cell_types(cell_types);
 		cells_ctr->set_cells(&cells, start, end, extent);
 	}
 	std::string get_clipping_planes_stats()
