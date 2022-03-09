@@ -16,7 +16,7 @@ public:
 	model_parser() = delete;
 	model_parser(const model_parser&) = delete;
 
-	model_parser(const std::string& file_name, ivec3& extent, std::unordered_map<std::string, cell_type>& cell_types, std::vector<cell>& cells /* std::vector<uint32_t>& type_start, std::vector<unsigned int>& ids, std::vector<unsigned int>& group_ids, std::vector<vec3>& points */)
+	model_parser(const std::string& file_name, ivec3& extent, std::unordered_map<std::string, cell_type>& cell_types, std::vector<cell>& cells, std::vector<vec3>& cell_centers, std::vector<vec3>& cell_nodes)
 	{
 		// Set lattice extent to default
 		extent.set(100, 100, 100);
@@ -126,6 +126,8 @@ public:
 							}
 						}
 
+						cell cell(id, type_index, properties);
+
 						vec3 center;
 
 						rapidxml::xml_node<>* center_node = cell_node->first_node("Center");
@@ -153,7 +155,13 @@ public:
 							}
 						}
 
-						cell cell(id, type_index, center, properties);
+						// set cell center
+						cell.set_center(cell_centers.size());
+
+						cell_centers.push_back(center);
+
+						// set cell nodes
+						size_t start_index = cell_nodes.size();
 
 						rapidxml::xml_node<>* nodes_node = cell_node->first_node("Nodes");
 						if (nodes_node != NULL)
@@ -191,11 +199,11 @@ public:
 								if (!cgv::utils::is_integer(node_str_vector[0], x) || !cgv::utils::is_integer(node_str_vector[1], y) || !cgv::utils::is_integer(node_str_vector[2], z))
 									continue;
 
-								cell.add_node(x, y, z);
-
-								//cells.emplace_back(id, std::distance(types.begin(), p.first), center, vec3(float(x), float(y), float(z)), b, b2);
+								cell_nodes.emplace_back(x, y, z);
 							}
 						}
+
+						cell.set_nodes(start_index, cell_nodes.size());
 
 						cells.emplace_back(cell);
 					}

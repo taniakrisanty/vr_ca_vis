@@ -150,7 +150,6 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			size_t cell_index = prim_idx >> cell_bitwise_shift;
 			size_t node_index = prim_idx & node_bitwise_and;
 
-			position_at_grab = cells->at(cell_index).nodes[node_index];
 			point_at_cell(cell_index, node_index);
 		}
 		else if (state == state_enum::grabbed) {
@@ -191,7 +190,6 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			size_t cell_index = prim_idx >> cell_bitwise_shift;
 			size_t node_index = prim_idx & node_bitwise_and;
 			
-			position_at_trigger = cells->at(cell_index).nodes[node_index];
 			point_at_cell(cell_index, node_index);
 		}
 		else if (state == state_enum::triggered) {
@@ -227,7 +225,9 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 
 		primitive_idx = (res.cell_index << cell_bitwise_shift) | res.node_index;
 
-		vec4 position_downscaled4(scale_matrix * cells->at(res.cell_index).nodes[res.node_index].lift());
+		const auto& c = cells->at(res.cell_index);
+
+		vec4 position_downscaled4(scale_matrix * cell_nodes->at(c.nodes_start_index + res.node_index).lift());
 		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
 
 		vec4 extent_downscaled4(scale_matrix * extent.lift());
@@ -265,7 +265,9 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		if (!grid.get_closest_index(index, cell_index, node_index))
 			continue;
 
-		vec4 position_downscaled4(scale_matrix * cells->at(cell_index).nodes[node_index].lift());
+		const auto& c = cells->at(cell_index);
+
+		vec4 position_downscaled4(scale_matrix * cell_nodes->at(c.nodes_start_index + node_index).lift());
 		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
 
 		vec4 extent_downscaled4(scale_matrix * extent.lift());
@@ -317,7 +319,7 @@ void cells_container::init_frame(cgv::render::context& ctx)
 void cells_container::draw(cgv::render::context& ctx)
 {
 	// show box
-	if (cells_end - cells_start > 0)
+	if (nodes_count > 0)
 	{
 		ctx.push_modelview_matrix();
 		ctx.mul_modelview_matrix(scale_matrix);
@@ -455,7 +457,7 @@ void cells_container::set_cell_types(const std::unordered_map<std::string, cell_
 
 	visibilities.assign(cell_types.size(), 1);
 }
-void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents)
+void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const std::vector<vec3>* _cell_centers, const std::vector<vec3>* _cell_nodes, const ivec3& extents)
 {
 	grid.cancel_build_from_vertices();
 
@@ -464,15 +466,18 @@ void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_s
 	cells_start = _cells_start;
 	cells_end = _cells_end;
 
+	cell_centers = _cell_centers;
+	cell_nodes = _cell_nodes;
+
 	cells_out_of_date = true;
 
-	grid.build_from_vertices(cells, cells_start, cells_end, extents);
+	grid.build_from_vertices(cells, cells_start, cells_end, cell_nodes, extents);
 }
 void cells_container::unset_cells()
 {
 	grid.cancel_build_from_vertices();
 
-	grid.build_from_vertices(NULL, 0, 0);
+	grid.build_from_vertices(NULL, 0, 0, NULL);
 }
 void cells_container::add_color_point(size_t index, float t, rgba color)
 {
@@ -567,30 +572,38 @@ void cells_container::set_torch(bool _burn, const vec3& _unscaled_burn_center, f
 		burn_distance = _burn_distance;
 	}
 }
+void cells_container::toggle_cell_visibility(size_t cell_index)
+{
+	const auto& c = cells->at(cell_index);
+	
+	visibilities[c.type] = !visibilities[c.type];
+}
 void cells_container::transmit_cells(cgv::render::context& ctx)
 {
 	std::vector<unsigned int> ids;
 	std::vector<unsigned int> types;
-	std::vector<vec3> positions;
+
+	size_t nodes_start_index = cells->at(cells_start).nodes_start_index;
+	size_t nodes_end_index = cells->at(cells_end - 1).nodes_end_index;
 
 	for (size_t i = cells_start; i < cells_end; ++i) {
 		const auto& c = cells->at(i);
 
-		for (const auto& n : c.nodes) {
+		for (size_t j = c.nodes_start_index; j < c.nodes_end_index; ++j) {
 			ids.push_back(c.id);
 			types.push_back(c.type);
-			positions.push_back(n);
 		}
 	}
 
-	if (nodes_count != positions.size()) {
+	if (nodes_count != nodes_end_index - nodes_start_index) {
+		nodes_count = nodes_end_index - nodes_start_index;
+
 		vb_visibility_indices.destruct(ctx);
 		vb_group_indices.destruct(ctx);
 		vb_nodes.destruct(ctx);
 		vb_colors.destruct(ctx);
+		vb_centers.destruct(ctx);
 	}
-
-	nodes_count = positions.size();
 
 	if (nodes_count > 0) {
 		std::vector<rgba> colors;
@@ -607,9 +620,9 @@ void cells_container::transmit_cells(cgv::render::context& ctx)
 			vb_group_indices.replace(ctx, 0, &ids[0], nodes_count);
 
 		if (!vb_nodes.is_created())
-			vb_nodes.create(ctx, positions);
+			vb_nodes.create(ctx, &cell_nodes->at(nodes_start_index), nodes_count);
 		else
-			vb_nodes.replace(ctx, 0, &positions[0], nodes_count);
+			vb_nodes.replace(ctx, 0, &cell_nodes->at(nodes_start_index), nodes_count);
 
 		if (!vb_colors.is_created())
 			vb_colors.create(ctx, colors);

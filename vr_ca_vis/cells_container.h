@@ -68,6 +68,8 @@ protected:
 	// cells start offset set by time_step_start
 	size_t cells_start, cells_end;
 	const std::vector<cell>* cells = NULL;
+	const std::vector<vec3>* cell_centers = NULL;
+	const std::vector<vec3>* cell_nodes = NULL;
 
 	// color map
 	std::vector<cgv::glutil::color_map> color_maps;
@@ -90,6 +92,7 @@ protected:
 	cgv::render::vertex_buffer vb_group_indices;
 	cgv::render::vertex_buffer vb_nodes;
 	cgv::render::vertex_buffer vb_colors;
+	cgv::render::vertex_buffer vb_centers;
 
 	// clipping planes that are used by clipped_box geometry shader
 	// in the form of ax + by + cz + d = 0
@@ -149,7 +152,7 @@ public:
 
 	void set_scale_matrix(const mat4& _scale_matrix);
 	void set_cell_types(const std::unordered_map<std::string, cell_type>& _cell_types);
-	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents);
+	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const std::vector<vec3>* _cell_centers, const std::vector<vec3>* _cell_nodes, const ivec3& extents);
 	void unset_cells();
 
 	/// clipping planes
@@ -162,6 +165,9 @@ public:
 
 	// torch
 	void set_torch(bool _burn, const vec3& _unscaled_burn_center = vec3(), float _burn_distance = 0);
+
+	// visibility
+	void toggle_cell_visibility(size_t cell_index);
 private:
 	void transmit_cells(cgv::render::context& ctx);
 

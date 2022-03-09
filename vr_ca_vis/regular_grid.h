@@ -60,6 +60,7 @@ private:
 	vec3 cell_extents;
 
 	const std::vector<T>* cells = NULL;
+	const std::vector<vec3>* cell_nodes = NULL;
 	size_t current_cell_index, cells_end;
 
 	// visibility filter
@@ -152,10 +153,10 @@ private:
 					break;
 				}
 
-				const auto& nodes = cells->at(current_cell_index).nodes;
+				const auto& c = cells->at(current_cell_index);
 
-				for (size_t i = 0; i < nodes.size(); ++i)
-					insert(current_cell_index, i, nodes[i]);
+				for (size_t i = c.nodes_start_index; i < c.nodes_end_index; ++i)
+					insert(current_cell_index, i - c.nodes_start_index, cell_nodes->at(i));
 
 				++current_cell_index;
 			}
@@ -259,7 +260,7 @@ public:
 
 		const cell& c = cells->at(cell_index);
 
-		return is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(c.nodes[node_index]);
+		return is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(cell_nodes->at(c.nodes_start_index + node_index));
 	}
 
 	void get_closest_index(const vec3& pos, size_t& cell_index, size_t& node_index) const
@@ -275,13 +276,13 @@ public:
 		return cell_extents;
 	}
 
-	//inserts node with index n_index in cell with index c_index into all overlapping regular grid cells
-	void insert(int c_index, int n_index, const vec3& p)
+	//inserts node with node_index in cell with index cell_index into all overlapping regular grid cells
+	void insert(int cell_index, int node_index, const vec3& p)
 	{
 		int gi = get_position_to_grid_index(p);
 
-		cell_grid[gi] = c_index + 1;
-		node_grid[gi] = n_index + 1;
+		cell_grid[gi] = cell_index + 1;
+		node_grid[gi] = node_index + 1;
 	}
 
 	void consider_path(const ivec3& ci, const vec3& q, std::priority_queue<search_entry>& qmin, knn_result& res) const
@@ -335,8 +336,8 @@ public:
 
 			const cell& c = cells->at(c_index);
 
-			if (is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(c.nodes[n_index])) {
-				res.consider(c_index, n_index, (c.nodes[n_index] - q).sqr_length());
+			if (is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(cell_nodes->at(c.nodes_start_index + n_index))) {
+				res.consider(c_index, n_index, (cell_nodes->at(c.nodes_start_index + n_index) - q).sqr_length());
 			}
 		}
 	}
@@ -428,11 +429,11 @@ public:
 					c_index -= 1;
 					n_index -= 1;
 
-					std::cout << "Grid[" << i << ", " << j << ", " << k << "]" << std::endl;
+					//std::cout << "Grid[" << i << ", " << j << ", " << k << "]" << std::endl;
 
-					std::cout << cells->at(c_index).nodes[n_index] << std::endl;
+					//std::cout << cells->at(c_index).nodes[n_index] << std::endl;
 
-					std::cout << "=============" << std::endl;
+					//std::cout << "=============" << std::endl;
 				}
 			}
 		}
@@ -450,7 +451,7 @@ public:
 			thread.join();
 	}
 
-	void build_from_vertices(const std::vector<T>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& _extents = ivec3(), bool print_grid = false)
+	void build_from_vertices(const std::vector<T>* _cells, size_t _cells_start, size_t _cells_end, const std::vector<vec3>* _cell_nodes, const ivec3& _extents = ivec3(), bool print_grid = false)
 	{
 		{
 			std::lock_guard<std::mutex> lock(mutex);
@@ -461,6 +462,8 @@ public:
 
 			current_cell_index = _cells_start;
 			cells_end = _cells_end;
+
+			cell_nodes = _cell_nodes;
 
 			if (cells == NULL)
 				return;

@@ -83,6 +83,8 @@ protected:
 
 	// cell data
 	std::vector<cell> cells;
+	std::vector<vec3> cell_centers;
+	std::vector<vec3> cell_nodes;
 
 	std::unordered_map<std::string, cell_type> cell_types;
 	//std::unordered_set<std::string> types;
@@ -226,7 +228,7 @@ public:
 
 				size_t previous_num_points = cells.size();
 
-				model_parser parser(file_name, extent, cell_types, cells /* , ids, group_indices, points */);
+				model_parser parser(file_name, extent, cell_types, cells, cell_centers, cell_nodes);
 				extent_scale = dvec3(1.0) / extent;
 
 				std::cout << "read " << file_name << " with " << cells.size() - previous_num_points << " cells" << std::endl;
@@ -821,7 +823,7 @@ public:
 		size_t start = time_step_start[time_step];
 		size_t end = (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
 
-		cells_ctr->set_cells(&cells, start, end, extent);
+		cells_ctr->set_cells(&cells, start, end, &cell_centers, &cell_nodes, extent);
 	}
 	std::string get_clipping_planes_stats()
 	{
@@ -970,9 +972,7 @@ public:
 		if (selected_cell_idx == SIZE_MAX || selected_node_idx == SIZE_MAX)
 			return;
 
-		const cell& c = cells[selected_cell_idx];
-
-
+		cells_ctr->toggle_cell_visibility(selected_cell_idx);
 	}
 	void vibrate(void* hid_kit)
 	{

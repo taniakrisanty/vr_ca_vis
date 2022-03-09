@@ -55,6 +55,7 @@ int visibility(in int visible, int index);
 void main()
 {
 	visible = visibility(1, visibility_index);
+	
 	if (visible > 0)
 	{
 	color_gs = group_color(color, group_index);
