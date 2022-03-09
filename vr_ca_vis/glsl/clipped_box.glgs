@@ -14,12 +14,16 @@ out vec4 color_fs;
 out vec3 position;
 flat out int side;
 
-const int MAX_CLIPPING_PLANES = 8;
-
-out float gl_ClipDistance[MAX_CLIPPING_PLANES];
+// clipping planes
+out float gl_ClipDistance[gl_MaxClipDistances];
 
 uniform int num_clipping_planes;
-uniform vec4 clipping_planes[MAX_CLIPPING_PLANES];
+uniform vec4 clipping_planes[gl_MaxClipDistances];
+
+// burn
+uniform bool burn;
+uniform vec3 burn_center;
+uniform float burn_distance;
 
 //***** begin interface of side.glsl ***********************************
 bool keep_this_side(in vec3 position, in vec3 normal, out int side);
@@ -53,32 +57,48 @@ void emit_face(in vec3 normal_in, in vec4 c0, in vec4 c1, in vec4 c2, in vec4 c3
 
 	// emit face
 	gl_Position = get_projection_matrix() * c0;
-	for (int i = 0; i < num_clipping_planes; ++i)
+	c0 = get_inverse_modelview_matrix() * c0;
+	if (!burn || distance(c0.xyz, burn_center) >= burn_distance)
 	{
-		gl_ClipDistance[i] = dot(get_inverse_modelview_matrix() * c0, clipping_planes[i]);
+		for (int i = 0; i < num_clipping_planes; ++i)
+		{
+			gl_ClipDistance[i] = dot(c0, clipping_planes[i]);
+		}
+		EmitVertex();
 	}
-	EmitVertex();
 	position = c1.xyz;
 	gl_Position = get_projection_matrix() * c1;
-	for (int i = 0; i < num_clipping_planes; ++i)
+	c1 = get_inverse_modelview_matrix() * c1;
+	if (!burn || distance(c1.xyz, burn_center) >= burn_distance)
 	{
-		gl_ClipDistance[i] = dot(get_inverse_modelview_matrix() * c1, clipping_planes[i]);
+		for (int i = 0; i < num_clipping_planes; ++i)
+		{
+			gl_ClipDistance[i] = dot(c1, clipping_planes[i]);
+		}
+		EmitVertex();
 	}
-	EmitVertex();
 	position = c2.xyz;
 	gl_Position = get_projection_matrix() * c2;
-	for (int i = 0; i < num_clipping_planes; ++i)
+	c2 = get_inverse_modelview_matrix() * c2;
+	if (!burn || distance(c2.xyz, burn_center) >= burn_distance)
 	{
-		gl_ClipDistance[i] = dot(get_inverse_modelview_matrix() * c2, clipping_planes[i]);
+		for (int i = 0; i < num_clipping_planes; ++i)
+		{
+			gl_ClipDistance[i] = dot(c2, clipping_planes[i]);
+		}
+		EmitVertex();
 	}
-	EmitVertex();
 	position = c3.xyz;
 	gl_Position = get_projection_matrix() * c3;
-	for (int i = 0; i < num_clipping_planes; ++i)
+	c3 = get_inverse_modelview_matrix() * c3;
+	if (!burn || distance(c3.xyz, burn_center) >= burn_distance)
 	{
-		gl_ClipDistance[i] = dot(get_inverse_modelview_matrix() * c3, clipping_planes[i]);
+		for (int i = 0; i < num_clipping_planes; ++i)
+		{
+			gl_ClipDistance[i] = dot(c3, clipping_planes[i]);
+		}
+		EmitVertex();
 	}
-	EmitVertex();
 	EndPrimitive();
 }
 

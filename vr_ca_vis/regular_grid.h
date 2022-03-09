@@ -66,7 +66,7 @@ private:
 	visibility_filter_enum visibility_filter = visibility_filter_enum::none;
 
 	const std::vector<int>* visibilities = NULL;
-	
+
 	// clipping plane
 	const std::vector<vec4>* clipping_planes = NULL;
 
@@ -181,7 +181,7 @@ public:
 			if (cell_grid) delete[] cell_grid;
 			if (node_grid) delete[] node_grid;
 			if (visited_statuses) delete[] visited_statuses;
-			
+
 			extents = e;
 
 			cell_grid = new size_t[count];
@@ -238,30 +238,24 @@ public:
 
 		if (build_grid)
 			return false;
-		
-		if (cell_grid != NULL && node_grid != NULL)
-		{
-			size_t c_index = cell_grid[index];
-			if (c_index == 0)
-				return false;
 
-			size_t n_index = node_grid[index];
-			if (n_index == 0)
-				return false;
+		if (cell_grid == NULL || node_grid != NULL)
+			return false;
 
-			c_index -= 1;
-			n_index -= 1;
+		size_t c_index = cell_grid[index];
+		if (c_index == 0)
+			return false;
 
-			const cell& c = cells->at(c_index);
+		size_t n_index = node_grid[index];
+		if (n_index == 0)
+			return false;
 
-			if (is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(c.nodes[n_index]))
-			{
-				cell_index = c_index;
-				node_index = n_index;
-				
-				return true;
-			}
-		}
+		cell_index = c_index - 1;
+		node_index = n_index - 1;
+
+		const cell& c = cells->at(c_index);
+
+		return is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(c.nodes[n_index]);
 	}
 
 	void get_closest_index(const vec3& pos, size_t& cell_index, size_t& node_index) const

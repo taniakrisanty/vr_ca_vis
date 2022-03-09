@@ -202,10 +202,6 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			//cells[prim_idx].node = position_at_trigger + q - hit_point_at_trigger;
 			//vec4 translation4(inv_scale_matrix * (q - hit_point_at_trigger).lift());
 			//vec3 translation(translation4 / translation4.w());
-
-			//size_t cell_index = prim_idx >> 8;
-
-			//group_translations[cells->at(cell_index).id] += translation;
 		}
 		post_redraw();
 		return true;
@@ -215,6 +211,8 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 }
 bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
 {
+	if (burn) return false;
+
 	vec4 point_upscaled4(inv_scale_matrix * point.lift());
 	vec3 point_upscaled(point_upscaled4 / point_upscaled4.w());
 
@@ -248,6 +246,8 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 }
 bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
+	if (burn) return false;
+
 	vec4 ray_origin_upscaled4(inv_scale_matrix * ray_start.lift());
 	vec3 ray_origin_upscaled(ray_origin_upscaled4 / ray_origin_upscaled4.w());
 
@@ -352,6 +352,7 @@ void cells_container::draw(cgv::render::context& ctx)
 		br.set_extent(ctx, extent);
 		//br.set_rotation_array(ctx, &rotation, cells.size());
 		br.set_clipping_planes(clipping_planes);
+		br.set_torch(burn, burn_center, burn_distance);
 		br.render(ctx, 0, nodes_count);
 		//if (prim_idx >= cells_start && prim_idx < cells_end)
 		//	cells->at(prim_idx).color = tmp_color;
@@ -407,11 +408,11 @@ void cells_container::create_gui()
 
 	size_t i = 0;
 	for (const auto& ct : cell_types) {
-		if (begin_tree_node(ct.first, color_points_maps[i])) {
+		if (begin_tree_node(ct.first, ct)) {
 			align("\a");
 			add_member_control(this, "show_cells", reinterpret_cast<bool&>(visibilities[i]), "check");
 			for (size_t j = i; j < group_colors.size(); ++j) {
-				add_member_control(this, std::string("C") + cgv::utils::to_string(j), group_colors[i]);
+				add_member_control(this, std::string("C") + cgv::utils::to_string(j), group_colors[j]);
 			}
 			align("\b");
 			//align("\a");
@@ -442,21 +443,17 @@ void cells_container::set_scale_matrix(const mat4& _scale_matrix)
 }
 void cells_container::set_cell_types(const std::unordered_map<std::string, cell_type>& _cell_types)
 {
-	cell_types.clear();
+	cell_types = _cell_types;
 
 	size_t i = 0;
 	for (const auto& ct : _cell_types) {
-		cell_types.emplace(ct);
-
 		add_color_point(i, 0.f, rgba(59.f / 255, 76.f / 255, 192.f / 255, 0.2f));
 		add_color_point(i, 1.f, rgba(180.f / 255, 4.f / 255, 38.f / 255, 0.2f));
 		
 		++i;
 	}
 
-	for (int i = 0; i < 63; ++i) {
-		visibilities.push_back(i % 2);
-	}
+	visibilities.assign(cell_types.size(), 1);
 }
 void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents)
 {
@@ -499,31 +496,28 @@ void cells_container::update_color_point(size_t index, float t, rgba color)
 
 	update_color_points_vector();
 }
-void cells_container::remove_color_point(size_t index, float t)
-{
-	if (color_points_maps[index].erase(t) > 0)
-	{
-		color_maps[index].clear();
-
-		for (const auto& cp : color_points_maps[index]) {
-			color_maps[index].add_color_point(cp.first, cp.second);
-			color_maps[index].add_opacity_point(cp.first, cp.second.alpha());
-		}
-	}
-
-	update_color_points_vector();
-}
+//void cells_container::remove_color_point(size_t index, float t)
+//{
+//	if (color_points_maps[index].erase(t) > 0)
+//	{
+//		color_maps[index].clear();
+//
+//		for (const auto& cp : color_points_maps[index]) {
+//			color_maps[index].add_color_point(cp.first, cp.second);
+//			color_maps[index].add_opacity_point(cp.first, cp.second.alpha());
+//		}
+//	}
+//
+//	update_color_points_vector();
+//}
 void cells_container::update_color_points_vector()
 {
 	group_colors.clear();
 
 	for (const auto& cm : color_maps) {
-		std::vector<rgba> i = cm.interpolate(size_t(21));
+		std::vector<rgba> i = cm.interpolate(size_t(30));
 		group_colors.insert(group_colors.end(), i.begin(), i.end());
 	}
-
-	//group_translations.assign(group_colors.size(), vec3(0));
-	//group_rotations.assign(group_colors.size(), vec4(0, 0, 0, 1));
 }
 void cells_container::create_clipping_plane(const vec3& origin, const vec3& direction)
 {
@@ -534,7 +528,7 @@ void cells_container::create_clipping_plane(const vec3& origin, const vec3& dire
 }
 void cells_container::copy_clipping_plane(size_t index)
 {
-	clipping_planes.emplace_back(clipping_planes[index]);
+	clipping_planes.push_back(clipping_planes[index]);
 }
 void cells_container::delete_clipping_plane(size_t index, size_t count)
 {
@@ -551,9 +545,23 @@ void cells_container::update_clipping_plane(size_t index, const vec3& origin, co
 
 	clipping_planes[index] = vec4(direction, -dot(scaled_origin, direction));
 }
+void cells_container::set_torch(bool _burn, const vec3& origin, float distance)
+{
+	burn = _burn;
+
+	if (burn) {
+		vec4 scaled_center4(inv_scale_matrix * origin.lift());
+		vec3 scaled_center(scaled_center4 / scaled_center4.w());
+
+		burn_center = scaled_center;
+		// TODO should distance be in cells local coordinate?
+		burn_distance = distance;
+	}
+}
 void cells_container::transmit_cells(cgv::render::context& ctx)
 {
 	std::vector<unsigned int> ids;
+	std::vector<unsigned int> types;
 	std::vector<vec3> positions;
 
 	for (size_t i = cells_start; i < cells_end; ++i) {
@@ -561,6 +569,7 @@ void cells_container::transmit_cells(cgv::render::context& ctx)
 
 		for (const auto& n : c.nodes) {
 			ids.push_back(c.id);
+			types.push_back(c.type);
 			positions.push_back(n);
 		}
 	}
@@ -579,9 +588,9 @@ void cells_container::transmit_cells(cgv::render::context& ctx)
 		colors.assign(nodes_count, rgba(1.f));
 
 		if (!vb_visibility_indices.is_created())
-			vb_visibility_indices.create(ctx, ids);
+			vb_visibility_indices.create(ctx, types);
 		else
-			vb_visibility_indices.replace(ctx, 0, &ids[0], nodes_count);
+			vb_visibility_indices.replace(ctx, 0, &types[0], nodes_count);
 
 		if (!vb_group_indices.is_created())
 			vb_group_indices.create(ctx, ids);
@@ -605,10 +614,6 @@ void cells_container::set_group_geometry(cgv::render::context& ctx, clipped_box_
 {
 	if (!group_colors.empty())
 		br.set_group_colors(ctx, group_colors);
-	//if (!group_translations.empty())
-	//	br.set_group_translations(ctx, group_translations);
-	//if (!group_rotations.empty())
-	//	br.set_group_rotations(ctx, group_rotations);
 	if (!visibilities.empty())
 		br.set_visibilities(ctx, visibilities);
 }

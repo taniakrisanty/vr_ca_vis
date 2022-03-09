@@ -75,8 +75,6 @@ protected:
 
 	// per group information
 	std::vector<rgba> group_colors;
-	//std::vector<vec3> group_translations;
-	//std::vector<vec4> group_rotations;
 
 	// visibility filter
 	visibility_filter_enum visibility_filter = visibility_filter_enum::by_id;
@@ -96,6 +94,11 @@ protected:
 	// clipping planes that are used by clipped_box geometry shader
 	// in the form of ax + by + cz + d = 0
 	std::vector<vec4> clipping_planes;
+
+	// torch that is used by clipped_box geometry shader
+	bool burn;
+	vec3 burn_center;
+	float burn_distance;
 
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
@@ -151,6 +154,9 @@ public:
 	void clear_clipping_planes();
 
 	void update_clipping_plane(size_t index, const vec3& origin, const vec3& direction);
+
+	// torch
+	void set_torch(bool _burn, const vec3& origin = vec3(), float distance = 0);
 private:
 	void transmit_cells(cgv::render::context& ctx);
 
@@ -160,7 +166,7 @@ private:
 	/// color map
 	void add_color_point(size_t index, float t, rgba color);
 	void update_color_point(size_t index, float t, rgba color);
-	void remove_color_point(size_t index, float t);
+	//void remove_color_point(size_t index, float t);
 
 	void update_color_points_vector();
 

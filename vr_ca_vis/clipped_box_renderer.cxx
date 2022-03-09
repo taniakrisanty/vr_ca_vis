@@ -15,9 +15,13 @@ clipped_box_render_style::clipped_box_render_style()
 }
 clipped_box_renderer::clipped_box_renderer()
 {
+	has_visibility_indices = false;
 	has_visibilities = false;
 
 	num_clipping_planes = 0;
+
+	burn = false;
+	burn_distance = 0;
 }
 bool clipped_box_renderer::validate_attributes(const cgv::render::context& ctx) const
 {
@@ -41,9 +45,15 @@ bool clipped_box_renderer::enable(cgv::render::context & ctx)
 	bool res = box_renderer::enable(ctx);
 	const clipped_box_render_style& brs = get_style<clipped_box_render_style>();
 	if (ref_prog().is_linked()) {
+		// visibility
 		ref_prog().set_uniform(ctx, "use_visibility", brs.use_visibility);
+		// clipping planes
 		ref_prog().set_uniform(ctx, "num_clipping_planes", num_clipping_planes);
 		ref_prog().set_uniform_array(ctx, "clipping_planes", clipping_planes, MAX_CLIPPING_PLANES);
+		// burn
+		ref_prog().set_uniform(ctx, "burn", burn);
+		ref_prog().set_uniform(ctx, "burn_center", burn_center);
+		ref_prog().set_uniform(ctx, "burn_distance", burn_distance);
 	}
 	else
 		res = false;
@@ -66,6 +76,12 @@ void clipped_box_renderer::set_visibilities_index_array(const cgv::render::conte
 }
 void clipped_box_renderer::set_clipping_planes(const std::vector<vec4>& _clipping_planes)
 {
-	num_clipping_planes = _clipping_planes.size() > MAX_CLIPPING_PLANES ? MAX_CLIPPING_PLANES : _clipping_planes.size();
+	num_clipping_planes = std::min(_clipping_planes.size(), MAX_CLIPPING_PLANES);// ? MAX_CLIPPING_PLANES : _clipping_planes.size();
 	std::copy(_clipping_planes.begin(), _clipping_planes.begin() + num_clipping_planes, clipping_planes);
+}
+void clipped_box_renderer::set_torch(bool _burn, const vec3& _burn_center, float _burn_distance)
+{
+	burn = _burn;
+	burn_center = _burn_center;
+	burn_distance = _burn_distance;
 }

@@ -23,13 +23,17 @@ struct clipped_box_render_style : public cgv::render::box_render_style
 class clipped_box_renderer : public cgv::render::box_renderer
 {
 public:
-	static const int MAX_CLIPPING_PLANES = 8;
+	static const size_t MAX_CLIPPING_PLANES = 8;
 protected:
 	bool has_visibility_indices;
 	bool has_visibilities;
 
 	int num_clipping_planes;
 	vec4 clipping_planes[MAX_CLIPPING_PLANES];
+
+	bool burn;
+	vec3 burn_center;
+	float burn_distance;
 
 	/// build clipped_box program
 	bool build_shader_program(cgv::render::context& ctx, cgv::render::shader_program& prog, const cgv::render::shader_define_map& defines);
@@ -56,4 +60,6 @@ public:
 	void set_visibilities(const cgv::render::context& ctx, const T* visibilities, size_t nr_elements) { has_visibilities = true; ref_prog().set_uniform_array(ctx, "visibilities", visibilities, nr_elements); }
 
 	void set_clipping_planes(const std::vector<vec4>& _clipping_planes);
+
+	void set_torch(bool _burn, const vec3& _burn_center, float _burn_distance);
 };

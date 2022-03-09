@@ -117,7 +117,7 @@ public:
 									double property;
 									cgv::utils::is_double(value_str, property);
 
-									properties.emplace_back(property);
+									properties.push_back(property);
 
 									break;
 								}
