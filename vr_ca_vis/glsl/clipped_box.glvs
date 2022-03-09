@@ -54,6 +54,9 @@ int visibility(in int visible, int index);
 
 void main()
 {
+	visible = visibility(1, visibility_index);
+	if (visible > 0)
+	{
 	color_gs = group_color(color, group_index);
 	// compute normal transformation matrix
 	NM = get_normal_matrix();
@@ -97,8 +100,7 @@ void main()
 	right_multiply_group_position_matrix_and_rigid(PM, group_index, q, t);
 	
 	PM = PM * S;
+	}
 
 	gl_Position = position;
-
-	visible = visibility(1, visibility_index);
 }

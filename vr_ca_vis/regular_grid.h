@@ -184,14 +184,18 @@ public:
 
 			extents = e;
 
-			cell_grid = new size_t[count];
-			node_grid = new size_t[count];
-			visited_statuses = new bool[count];
+			if (count > 0) {
+				cell_grid = new size_t[count];
+				node_grid = new size_t[count];
+				visited_statuses = new bool[count];
+			}
 		}
 
-		memset(cell_grid, 0, sizeof(size_t) * count);
-		memset(node_grid, 0, sizeof(size_t) * count);
-		memset(visited_statuses, false, sizeof(bool) * count);
+		if (count > 0) {
+			memset(cell_grid, 0, sizeof(size_t) * count);
+			memset(node_grid, 0, sizeof(size_t) * count);
+			memset(visited_statuses, false, sizeof(bool) * count);
+		}
 	}
 
 	int get_cell_index_to_grid_index(const ivec3& ci) const
@@ -229,9 +233,9 @@ public:
 		return get_cell_center(get_position_to_cell_index(pos, cell_extents));
 	}
 
-	bool get_closest_index(int index, size_t& cell_index, size_t& node_index) const
+	bool get_closest_index(int gi, size_t& cell_index, size_t& node_index) const
 	{
-		if (index < 0 || index >= extents.x() * extents.y() * extents.z()) // grid cell index is out of bounds
+		if (gi < 0 || gi >= extents.x() * extents.y() * extents.z()) // grid cell index is out of bounds
 			return false;
 
 		std::lock_guard<std::mutex> lock(mutex);
@@ -239,23 +243,23 @@ public:
 		if (build_grid)
 			return false;
 
-		if (cell_grid == NULL || node_grid != NULL)
+		if (cell_grid == NULL || node_grid == NULL)
 			return false;
 
-		size_t c_index = cell_grid[index];
+		size_t c_index = cell_grid[gi];
 		if (c_index == 0)
 			return false;
 
-		size_t n_index = node_grid[index];
+		size_t n_index = node_grid[gi];
 		if (n_index == 0)
 			return false;
 
 		cell_index = c_index - 1;
 		node_index = n_index - 1;
 
-		const cell& c = cells->at(c_index);
+		const cell& c = cells->at(cell_index);
 
-		return is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(c.nodes[n_index]);
+		return is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(c.nodes[node_index]);
 	}
 
 	void get_closest_index(const vec3& pos, size_t& cell_index, size_t& node_index) const
@@ -274,10 +278,10 @@ public:
 	//inserts node with index n_index in cell with index c_index into all overlapping regular grid cells
 	void insert(int c_index, int n_index, const vec3& p)
 	{
-		int index = get_position_to_grid_index(p);
+		int gi = get_position_to_grid_index(p);
 
-		cell_grid[index] = c_index + 1;
-		node_grid[index] = n_index + 1;
+		cell_grid[gi] = c_index + 1;
+		node_grid[gi] = n_index + 1;
 	}
 
 	void consider_path(const ivec3& ci, const vec3& q, std::priority_queue<search_entry>& qmin, knn_result& res) const
@@ -446,7 +450,7 @@ public:
 			thread.join();
 	}
 
-	void build_from_vertices(const std::vector<T>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& _extents, bool print_grid = false)
+	void build_from_vertices(const std::vector<T>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& _extents = ivec3(), bool print_grid = false)
 	{
 		{
 			std::lock_guard<std::mutex> lock(mutex);

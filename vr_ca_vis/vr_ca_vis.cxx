@@ -262,6 +262,8 @@ public:
 
 		if (read_xml_dir(dir_name) || read_gz_dir(dir_name) && read_xml_dir(dir_name))
 		{
+			//cells_ctr->unset_cells();
+
 			for (auto id : group_indices)
 			{
 				rgba col(0.f, 0.f, 0.f, 0.5f);
@@ -638,7 +640,7 @@ public:
 			case cgv::gui::EID_KEY:
 			{
 				// disable torch when interaction is detected
-				torch_grabbed = false;
+				//torch_grabbed = false;
 
 				cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
 				if (vrke.get_key() == vr::VR_MENU) {
@@ -649,41 +651,30 @@ public:
 				}
 
 				// stop animation when interaction is detected
-				animate = false;
+				//animate = false;
 
 				if (vrke.get_controller_index() == 1) { // only right controller
-					if (vrke.get_action() == cgv::gui::KA_PRESS) {
+					if (vrke.get_action() == cgv::gui::KA_RELEASE) {
 						switch (vrke.get_key()) {
-						case vr::VR_INPUT0_TOUCH:
-							torch_grabbed = true;
+						case vr::VR_DPAD_LEFT:
+							torch_grabbed = false;
 							return true;
-						}
-					} else if (vrke.get_action() == cgv::gui::KA_RELEASE) {
-						switch (vrke.get_key()) {
 						case vr::VR_INPUT0_TOUCH:
 							li_cell_visible = false;
 							return true;
-						case vr::VR_GRIP:
+						case vr::VR_INPUT1_TOUCH:
+							toggle_cell_visibility();
 							return true;
 						}
-					} else {
+					}
+					else {
 						switch (vrke.get_key()) {
 						case vr::VR_DPAD_LEFT: // put current clipping plane permanently, temporary use this when using only one controller
+							torch_grabbed = !clipping_plane_grabbed;
 							set_clipping_plane();
 							return true;
 						case vr::VR_DPAD_RIGHT: // remove clipping plane
-							if (temp_clipping_plane_idx == -1) {
-								reset_clipping_plane();
-							}
-							else {
-								clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
-
-								cells_ctr->delete_clipping_plane(temp_clipping_plane_idx);
-							}
-
-							temp_clipping_plane_idx = -1;
-
-							clipping_plane_grabbed = false;
+							release_clipping_plane();
 							return true;
 						case vr::VR_INPUT0_TOUCH:
 							li_cell_visible = !clipping_plane_grabbed;
@@ -830,14 +821,6 @@ public:
 		size_t start = time_step_start[time_step];
 		size_t end = (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
 
-		//visible_points.insert(visible_points.end(), points.begin() + start, points.begin() + end);
-		//visible_types.insert(visible_types.end(), group_indices.begin() + start, group_indices.begin() + end);
-
-		//for (size_t i = 0; i < visible_types.size(); ++i)
-		//{
-		//	visible_colors.push_back(group_colors[group_indices[i]]);
-		//}
-
 		cells_ctr->set_cells(&cells, start, end, extent);
 	}
 	std::string get_clipping_planes_stats()
@@ -909,24 +892,43 @@ public:
 
 		clipping_plane_grabbed = false;
 	}
-	void reset_clipping_plane()
+	//void reset_clipping_plane()
+	//{
+	//	if (clipping_plane_grabbed) { // we are grabbing a (temporary) clipping plane, duplicate it first, then clear all installed clipping plane objects
+	//		size_t num_clipping_planes = clipping_planes_ctr->get_num_clipping_planes();
+
+	//		clipping_planes_ctr->copy_clipping_plane(temp_clipping_plane_idx);
+	//		clipping_planes_ctr->delete_clipping_plane(0, num_clipping_planes);
+
+	//		cells_ctr->copy_clipping_plane(temp_clipping_plane_idx);
+	//		cells_ctr->delete_clipping_plane(0, num_clipping_planes);
+
+	//		temp_clipping_plane_idx = 0;
+	//	}
+	//	else { // we are not grabbing a (temporary) clipping plane, clear all installed clipping plane objects
+	//		clipping_planes_ctr->clear_clipping_planes();
+
+	//		cells_ctr->clear_clipping_planes();
+	//	}
+	//}
+	void release_clipping_plane()
 	{
-		if (temp_clipping_plane_idx == -1) { // we are not grabbing a (temporary) clipping plane, clear all installed clipping plane objects
-			clipping_planes_ctr->clear_clipping_planes();
+		if (temp_clipping_plane_idx == -1) {
+			if (!clipping_plane_grabbed) { // we are not grabbing a (temporary) clipping plane, clear all installed clipping plane objects
+				clipping_planes_ctr->clear_clipping_planes();
 
-			cells_ctr->clear_clipping_planes();
+				cells_ctr->clear_clipping_planes();
+			}
 		}
-		else { // we are grabbing a (temporary) clipping plane, duplicate it first, then clear all installed clipping plane objects
-			size_t num_clipping_planes = clipping_planes_ctr->get_num_clipping_planes();
+		else {
+			clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
 
-			clipping_planes_ctr->copy_clipping_plane(temp_clipping_plane_idx);
-			clipping_planes_ctr->delete_clipping_plane(0, num_clipping_planes);
-
-			cells_ctr->copy_clipping_plane(temp_clipping_plane_idx);
-			cells_ctr->delete_clipping_plane(0, num_clipping_planes);
-
-			temp_clipping_plane_idx = 0;
+			cells_ctr->delete_clipping_plane(temp_clipping_plane_idx);
 		}
+
+		temp_clipping_plane_idx = -1;
+
+		clipping_plane_grabbed = false;
 	}
 	void compute_burn()
 	{
@@ -963,6 +965,15 @@ public:
 			cells_ctr->set_torch(false);
 		}
 	}
+	void toggle_cell_visibility()
+	{
+		if (selected_cell_idx == SIZE_MAX || selected_node_idx == SIZE_MAX)
+			return;
+
+		const cell& c = cells[selected_cell_idx];
+
+
+	}
 	void vibrate(void* hid_kit)
 	{
 		if (hid_kit) {
@@ -973,8 +984,8 @@ public:
 	}
 
 #pragma region cells_container_listener
-	// listener for cell grab event inside box
-	void on_cell_grabbed(size_t cell_index, size_t node_index)
+	// listener for cell point at and grab event
+	void on_cell_pointed_at(size_t cell_index, size_t node_index)
 	{
 		selected_cell_idx = cell_index;
 		selected_node_idx = node_index;
@@ -1008,7 +1019,7 @@ public:
 		if (clipping_plane_grabbed || clipping_planes_ctr->get_num_clipping_planes() == clipped_box_renderer::MAX_CLIPPING_PLANES)
 			return;
 
-		//clipping_plane_grabbed = true;
+		clipping_plane_grabbed = true;
 
 		vibrate(hid_kit);
 	}

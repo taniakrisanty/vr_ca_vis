@@ -20,7 +20,7 @@
 class cells_container_listener
 {
 public:
-	virtual void on_cell_grabbed(size_t cell_index, size_t node_index) = 0;
+	virtual void on_cell_pointed_at(size_t cell_index, size_t node_index) = 0;
 };
 
 class cells_container :
@@ -100,10 +100,14 @@ protected:
 	vec3 burn_center;
 	float burn_distance;
 
+	vec3 unscaled_burn_center;
+
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
 	// index of focused primitive
 	int prim_idx = -1;
+	const unsigned int cell_bitwise_shift = 10;
+	const unsigned int node_bitwise_and = 0x3FF;
 	// state of object
 	state_enum state = state_enum::idle;
 	/// return color modified based on state
@@ -146,17 +150,18 @@ public:
 	void set_scale_matrix(const mat4& _scale_matrix);
 	void set_cell_types(const std::unordered_map<std::string, cell_type>& _cell_types);
 	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents);
+	void unset_cells();
 
 	/// clipping planes
 	void create_clipping_plane(const vec3& origin, const vec3& direction);
-	void copy_clipping_plane(size_t index);
+	//void copy_clipping_plane(size_t index);
 	void delete_clipping_plane(size_t index, size_t count = 1);
 	void clear_clipping_planes();
 
 	void update_clipping_plane(size_t index, const vec3& origin, const vec3& direction);
 
 	// torch
-	void set_torch(bool _burn, const vec3& origin = vec3(), float distance = 0);
+	void set_torch(bool _burn, const vec3& _unscaled_burn_center = vec3(), float _burn_distance = 0);
 private:
 	void transmit_cells(cgv::render::context& ctx);
 
@@ -170,7 +175,7 @@ private:
 
 	void update_color_points_vector();
 
-	void grab_cell(size_t cell_index, size_t node_index) const;
+	void point_at_cell(size_t cell_index, size_t node_index) const;
 };
 
 typedef cgv::data::ref_ptr<cells_container> cells_container_ptr;

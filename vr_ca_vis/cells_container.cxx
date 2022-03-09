@@ -43,7 +43,7 @@ cells_container::cells_container(cells_container_listener* _listener, const std:
 
 	scale_matrix.identity();
 	
-	grid.set_visibility_filter(visibility_filter_enum::by_id);
+	grid.set_visibility_filter(visibility_filter_enum::by_type);
 	grid.set_visibilities(&visibilities);
 	
 	grid.set_clipping_planes(&clipping_planes);
@@ -130,10 +130,10 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 		if (pressed) {
 			state = state_enum::grabbed;
 			on_set(&state);
-			drag_begin(request, false, original_config);
+			//drag_begin(request, false, original_config);
 		}
 		else {
-			drag_end(request, original_config);
+			//drag_end(request, original_config);
 			state = state_enum::close;
 			on_set(&state);
 		}
@@ -147,10 +147,11 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			query_point_at_grab = prox_info.query_point;
 			prim_idx = int(prox_info.primitive_index);
 
-			size_t cell_index = prim_idx >> 8;
-			size_t node_index = prim_idx & 0xFF;
+			size_t cell_index = prim_idx >> cell_bitwise_shift;
+			size_t node_index = prim_idx & node_bitwise_and;
 
 			position_at_grab = cells->at(cell_index).nodes[node_index];
+			point_at_cell(cell_index, node_index);
 		}
 		else if (state == state_enum::grabbed) {
 			debug_point = prox_info.hit_point;
@@ -158,7 +159,7 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			//vec4 translation4(inv_scale_matrix * (prox_info.query_point - query_point_at_grab).lift());
 			//vec3 translation(translation4 / translation4.w());
 
-			//size_t cell_index = prim_idx >> 8;
+			//size_t cell_index = prim_idx >> 10;
 
 			//group_translations[cells->at(cell_index).id] += translation;
 		}
@@ -170,10 +171,10 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 		if (pressed) {
 			state = state_enum::triggered;
 			on_set(&state);
-			drag_begin(request, true, original_config);
+			//drag_begin(request, true, original_config);
 		}
 		else {
-			drag_end(request, original_config);
+			//drag_end(request, original_config);
 			state = state_enum::pointed;
 			on_set(&state);
 		}
@@ -187,11 +188,11 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			hit_point_at_trigger = inter_info.hit_point;
 			prim_idx = int(inter_info.primitive_index);
 			
-			size_t cell_index = prim_idx >> 8;
-			size_t node_index = prim_idx & 0xFF;
+			size_t cell_index = prim_idx >> cell_bitwise_shift;
+			size_t node_index = prim_idx & node_bitwise_and;
 			
 			position_at_trigger = cells->at(cell_index).nodes[node_index];
-			grab_cell(cell_index, node_index);
+			point_at_cell(cell_index, node_index);
 		}
 		else if (state == state_enum::triggered) {
 			// if we still have an intersection point, use as debug point
@@ -206,7 +207,7 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 		post_redraw();
 		return true;
 	}
-	grab_cell(SIZE_MAX, SIZE_MAX);
+	point_at_cell(SIZE_MAX, SIZE_MAX);
 	return false;
 }
 bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
@@ -224,7 +225,7 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 	{
 		min_dist = sqrt(res.sqr_distance);
 
-		primitive_idx = (res.cell_index << 8) | res.node_index;
+		primitive_idx = (res.cell_index << cell_bitwise_shift) | res.node_index;
 
 		vec4 position_downscaled4(scale_matrix * cells->at(res.cell_index).nodes[res.node_index].lift());
 		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
@@ -257,39 +258,38 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 	for (int i = 0; ; ++i, trav++)
 	{
 		int index = grid.get_cell_index_to_grid_index(*trav);
-
 		if (index < 0)
 			break;
 
 		size_t cell_index, node_index;
-		if (grid.get_closest_index(index, cell_index, node_index))
-		{
-			vec4 position_downscaled4(scale_matrix * cells->at(cell_index).nodes[node_index].lift());
-				vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
+		if (!grid.get_closest_index(index, cell_index, node_index))
+			continue;
 
-				vec4 extent_downscaled4(scale_matrix * extent.lift());
-				vec3 extent_downscaled(extent_downscaled4 / extent_downscaled4.w());
+		vec4 position_downscaled4(scale_matrix * cells->at(cell_index).nodes[node_index].lift());
+		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
 
-				vec3 n;
-				vec2 res;
-				cgv::math::ray_box_intersection(ray_start - position_downscaled, ray_direction, 0.5f * extent_downscaled, res, n);
-				float param;
-			if (res[0] < 0) {
-				if (res[1] < 0)
-					break;
-				param = res[1];
-			}
-			else
-				param = res[0];
+		vec4 extent_downscaled4(scale_matrix * extent.lift());
+		vec3 extent_downscaled(extent_downscaled4 / extent_downscaled4.w());
 
-			primitive_idx = (cell_index << 8) | node_index;
-			hit_param = param;
-			hit_normal = n;
-
-			std::cout << "cells_container::compute_intersection query " << ray_start << " = " << position_downscaled << " | hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
-
+		vec3 n;
+		vec2 res;
+		if (cgv::math::ray_box_intersection(ray_start - position_downscaled, ray_direction, 0.5f * extent_downscaled, res, n) == 0)
 			break;
+		float param;
+		if (res[0] < 0) {
+			if (res[1] < 0)
+				break;
+			param = res[1];
 		}
+		else
+			param = res[0];
+
+		primitive_idx = (cell_index << cell_bitwise_shift) | node_index;
+		hit_param = param;
+		hit_normal = n;
+
+		std::cout << "cells_container::compute_intersection query " << ray_start << " = " << position_downscaled << " | hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
+		break;
 	}
 
 	return hit_param < std::numeric_limits<float>::max();
@@ -468,6 +468,12 @@ void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_s
 
 	grid.build_from_vertices(cells, cells_start, cells_end, extents);
 }
+void cells_container::unset_cells()
+{
+	grid.cancel_build_from_vertices();
+
+	grid.build_from_vertices(NULL, 0, 0);
+}
 void cells_container::add_color_point(size_t index, float t, rgba color)
 {
 	if (color_points_maps.size() <= index)
@@ -526,10 +532,10 @@ void cells_container::create_clipping_plane(const vec3& origin, const vec3& dire
 
 	clipping_planes.emplace_back(direction, -dot(scaled_origin, direction));
 }
-void cells_container::copy_clipping_plane(size_t index)
-{
-	clipping_planes.push_back(clipping_planes[index]);
-}
+//void cells_container::copy_clipping_plane(size_t index)
+//{
+//	clipping_planes.push_back(clipping_planes[index]);
+//}
 void cells_container::delete_clipping_plane(size_t index, size_t count)
 {
 	clipping_planes.erase(clipping_planes.begin() + index, clipping_planes.begin() + index + count);
@@ -545,17 +551,20 @@ void cells_container::update_clipping_plane(size_t index, const vec3& origin, co
 
 	clipping_planes[index] = vec4(direction, -dot(scaled_origin, direction));
 }
-void cells_container::set_torch(bool _burn, const vec3& origin, float distance)
+void cells_container::set_torch(bool _burn, const vec3& _unscaled_burn_center, float _burn_distance)
 {
 	burn = _burn;
 
 	if (burn) {
-		vec4 scaled_center4(inv_scale_matrix * origin.lift());
-		vec3 scaled_center(scaled_center4 / scaled_center4.w());
+		if (unscaled_burn_center != _unscaled_burn_center) {
+			unscaled_burn_center = _unscaled_burn_center;
 
-		burn_center = scaled_center;
+			vec4 scaled_center4(inv_scale_matrix * unscaled_burn_center.lift());
+			burn_center = scaled_center4 / scaled_center4.w();
+		}
+
 		// TODO should distance be in cells local coordinate?
-		burn_distance = distance;
+		burn_distance = _burn_distance;
 	}
 }
 void cells_container::transmit_cells(cgv::render::context& ctx)
@@ -626,8 +635,8 @@ void cells_container::set_geometry(cgv::render::context& ctx, clipped_box_render
 		br.set_color_array<rgba>(ctx, vb_colors, 0, nodes_count);
 	}
 }
-void cells_container::grab_cell(size_t cell_index, size_t node_index) const
+void cells_container::point_at_cell(size_t cell_index, size_t node_index) const
 {
 	if (listener)
-		listener->on_cell_grabbed(cell_index, node_index);
+		listener->on_cell_pointed_at(cell_index, node_index);
 }
