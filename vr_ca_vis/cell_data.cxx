@@ -31,6 +31,11 @@ void cell::set_nodes(size_t start_index, size_t end_index)
 	nodes_end_index = end_index;
 }
 
+std::unordered_map<std::string, cell_type> cell::types;
+
+std::vector<cgv::render::render_types::vec3> cell::centers;
+std::vector<cgv::render::render_types::vec3> cell::nodes;
+
 //cgv::glutil::color_map create_color_map()
 //{
 //	cgv::glutil::color_map cm;

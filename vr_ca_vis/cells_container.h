@@ -68,8 +68,6 @@ protected:
 	// cells start offset set by time_step_start
 	size_t cells_start, cells_end;
 	const std::vector<cell>* cells = NULL;
-	const std::vector<vec3>* cell_centers = NULL;
-	const std::vector<vec3>* cell_nodes = NULL;
 
 	// color map
 	std::vector<cgv::glutil::color_map> color_maps;
@@ -82,6 +80,11 @@ protected:
 	visibility_filter_enum visibility_filter = visibility_filter_enum::by_id;
 
 	std::vector<int> visibilities;
+
+	std::vector<int> show_toggles;
+
+	//std::vector<int> show_all_toggles;
+	//std::vector<int> hide_all_toggles;
 
 	bool cells_out_of_date = true;
 
@@ -152,7 +155,7 @@ public:
 
 	void set_scale_matrix(const mat4& _scale_matrix);
 	void set_cell_types(const std::unordered_map<std::string, cell_type>& _cell_types);
-	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const std::vector<vec3>* _cell_centers, const std::vector<vec3>* _cell_nodes, const ivec3& extents);
+	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents);
 	void unset_cells();
 
 	/// clipping planes

@@ -16,7 +16,7 @@ public:
 	model_parser() = delete;
 	model_parser(const model_parser&) = delete;
 
-	model_parser(const std::string& file_name, ivec3& extent, std::unordered_map<std::string, cell_type>& cell_types, std::vector<cell>& cells, std::vector<vec3>& cell_centers, std::vector<vec3>& cell_nodes)
+	model_parser(const std::string& file_name, ivec3& extent, std::vector<cell>& cells)
 	{
 		// Set lattice extent to default
 		extent.set(100, 100, 100);
@@ -78,7 +78,7 @@ public:
 						type.add_property(property_node->first_attribute("symbol")->value());
 					}
 
-					cell_types.emplace(name, type);
+					cell::types.emplace(name, type);
 				}
 			}
 
@@ -90,11 +90,11 @@ public:
 				{
 					std::string type(population_node->first_attribute("type")->value());
 
-					std::unordered_map<std::string, cell_type>::const_iterator t = cell_types.find(type);
-					if (t == cell_types.end())
+					std::unordered_map<std::string, cell_type>::const_iterator t = cell::types.find(type);
+					if (t == cell::types.end())
 						continue;
 
-					std::ptrdiff_t type_index = std::distance<std::unordered_map<std::string, cell_type>::const_iterator>(cell_types.begin(), t);
+					std::ptrdiff_t type_index = std::distance<std::unordered_map<std::string, cell_type>::const_iterator>(cell::types.begin(), t);
 
 					for (rapidxml::xml_node<>* cell_node = population_node->first_node("Cell"); cell_node; cell_node = cell_node->next_sibling())
 					{
@@ -156,12 +156,12 @@ public:
 						}
 
 						// set cell center
-						cell.set_center(cell_centers.size());
+						cell.set_center(cell::centers.size());
 
-						cell_centers.push_back(center);
+						cell::centers.push_back(center);
 
 						// set cell nodes
-						size_t start_index = cell_nodes.size();
+						size_t start_index = cell::nodes.size();
 
 						rapidxml::xml_node<>* nodes_node = cell_node->first_node("Nodes");
 						if (nodes_node != NULL)
@@ -199,11 +199,11 @@ public:
 								if (!cgv::utils::is_integer(node_str_vector[0], x) || !cgv::utils::is_integer(node_str_vector[1], y) || !cgv::utils::is_integer(node_str_vector[2], z))
 									continue;
 
-								cell_nodes.emplace_back(x, y, z);
+								cell::nodes.emplace_back(x, y, z);
 							}
 						}
 
-						cell.set_nodes(start_index, cell_nodes.size());
+						cell.set_nodes(start_index, cell::nodes.size());
 
 						cells.emplace_back(cell);
 					}

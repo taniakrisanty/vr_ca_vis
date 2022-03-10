@@ -83,10 +83,8 @@ protected:
 
 	// cell data
 	std::vector<cell> cells;
-	std::vector<vec3> cell_centers;
-	std::vector<vec3> cell_nodes;
 
-	std::unordered_map<std::string, cell_type> cell_types;
+	//std::unordered_map<std::string, cell_type> cell_types;
 	//std::unordered_set<std::string> types;
 	//std::vector<uint32_t> ids;
 	//std::vector<vec3> points;
@@ -192,7 +190,7 @@ protected:
 public:
 	bool read_file(const std::string& file_name)
 	{
-		//if (!read(file_name, points, group_indices, attr_values))
+		//if (!read(file_name, cells))
 		//	return false;
 
 		//construct_group_information(nr_groups);
@@ -204,6 +202,17 @@ public:
 	{
 		//return write(file_name, points, group_indices, attr_values);
 		return false;
+	}
+	void reset()
+	{
+		cells_ctr->unset_cells();
+
+		cells.clear();
+
+		cell::types.clear();
+
+		cell::centers.clear();
+		cell::nodes.clear();
 	}
 	bool read_xml_dir(const std::string& dir_name)
 	{
@@ -228,7 +237,7 @@ public:
 
 				size_t previous_num_points = cells.size();
 
-				model_parser parser(file_name, extent, cell_types, cells, cell_centers, cell_nodes);
+				model_parser parser(file_name, extent, cells);
 				extent_scale = dvec3(1.0) / extent;
 
 				std::cout << "read " << file_name << " with " << cells.size() - previous_num_points << " cells" << std::endl;
@@ -254,6 +263,8 @@ public:
 	}
 	bool read_data_dir_ascii(const std::string& dir_name)
 	{
+		reset();
+
 		std::string fn = dir_name + ".cae";
 		if (cgv::utils::file::exists(fn))
 			if (read_file(fn))
@@ -264,8 +275,6 @@ public:
 
 		if (read_xml_dir(dir_name) || read_gz_dir(dir_name) && read_xml_dir(dir_name))
 		{
-			//cells_ctr->unset_cells();
-
 			for (auto id : group_indices)
 			{
 				rgba col(0.f, 0.f, 0.f, 0.5f);
@@ -292,7 +301,7 @@ public:
 			// concatenate
 			write_file(fn);
 
-			cells_ctr->set_cell_types(cell_types);
+			cells_ctr->set_cell_types(cell::types);
 			return true;
 		}
 		else
@@ -823,7 +832,7 @@ public:
 		size_t start = time_step_start[time_step];
 		size_t end = (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
 
-		cells_ctr->set_cells(&cells, start, end, &cell_centers, &cell_nodes, extent);
+		cells_ctr->set_cells(&cells, start, end, extent);
 	}
 	std::string get_clipping_planes_stats()
 	{
@@ -1000,12 +1009,12 @@ public:
 			return;
 
 		if (li_cell_stats == -1) {
-			li_cell_stats = scene_ptr->add_label(" id " + std::to_string(c.id) + " | type " + std::next(cell_types.begin(), c.type)->first + " ", stats_bgclr);
+			li_cell_stats = scene_ptr->add_label(" id " + std::to_string(c.id) + " | type " + std::next(cell::types.begin(), c.type)->first + " ", stats_bgclr);
 			scene_ptr->place_label(li_cell_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::right_controller, label_alignment::top);
 			scene_ptr->fix_label_size(li_cell_stats);
 		}
 		else {
-			scene_ptr->update_label_text(li_cell_stats, " id " + std::to_string(c.id) + " | type " + std::next(cell_types.begin(), c.type)->first + " ");
+			scene_ptr->update_label_text(li_cell_stats, " id " + std::to_string(c.id) + " | type " + std::next(cell::types.begin(), c.type)->first + " ");
 		}
 	}
 #pragma endregion cells_container_listener

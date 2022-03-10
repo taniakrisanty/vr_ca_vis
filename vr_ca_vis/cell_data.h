@@ -1,7 +1,8 @@
 #pragma once
 
 #include <cgv/render/render_types.h>
-#include <cgv_glutil/color_map.h>
+
+#include <unordered_map>
 
 //struct cell : public cgv::render::render_types
 //{
@@ -36,6 +37,11 @@ struct cell_type
 
 struct cell : public cgv::render::render_types
 {
+	static std::unordered_map<std::string, cell_type> types;
+
+	static std::vector<vec3> centers;
+	static std::vector<vec3> nodes;
+
 	unsigned int id;					// CellPopulations > Population > Cell id
 	unsigned int type;					// CellTypes > CellType name & class
 
