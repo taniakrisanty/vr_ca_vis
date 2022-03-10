@@ -1,6 +1,6 @@
 files:clipped_box
 vertex_file:group.glsl
-vertex_file:clipped_box_group.glsl
+vertex_file:visibility_group.glsl
 vertex_file:quaternion.glsl
 vertex_file:view.glsl
 geometry_file:group.glsl

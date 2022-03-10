@@ -99,7 +99,7 @@ public:
 					for (rapidxml::xml_node<>* cell_node = population_node->first_node("Cell"); cell_node; cell_node = cell_node->next_sibling())
 					{
 						int id;
-						if (!cgv::utils::is_integer(std::string(cell_node->first_attribute("id")->value()), id) || id == 0)
+						if (!cgv::utils::is_integer(std::string(cell_node->first_attribute("id")->value()), id))
 							continue;
 
 						std::vector<float> properties;

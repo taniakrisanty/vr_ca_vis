@@ -11,7 +11,6 @@
 #include <thread>
 
 #include "grid_utils.h"
-#include "visibility_utils.h"
 
 #include <cgv/render/drawable.h>
 
@@ -62,9 +61,7 @@ private:
 	const std::vector<T>* cells = NULL;
 	size_t current_cell_index, cells_end;
 
-	// visibility filter
-	visibility_filter_enum visibility_filter = visibility_filter_enum::none;
-
+	// visibility filter by id
 	const std::vector<int>* visibilities = NULL;
 
 	// clipping plane
@@ -152,7 +149,7 @@ private:
 					break;
 				}
 
-				const auto& c = cells->at(current_cell_index);
+				const auto& c = (*cells)[current_cell_index];
 
 				for (size_t i = c.nodes_start_index; i < c.nodes_end_index; ++i)
 					insert(current_cell_index, i - c.nodes_start_index, cell::nodes[i]);
@@ -257,9 +254,9 @@ public:
 		cell_index = c_index - 1;
 		node_index = n_index - 1;
 
-		const cell& c = cells->at(cell_index);
+		const cell& c = (*cells)[cell_index];
 
-		return is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(cell::nodes[c.nodes_start_index + node_index]);
+		return is_cell_visible(c.id) && !is_cell_clipped(cell::nodes[c.nodes_start_index + node_index]);
 	}
 
 	void get_closest_index(const vec3& pos, size_t& cell_index, size_t& node_index) const
@@ -333,9 +330,9 @@ public:
 			c_index -= 1;
 			n_index -= 1;
 
-			const cell& c = cells->at(c_index);
+			const cell& c = (*cells)[c_index];
 
-			if (is_cell_visible(visibilities, visibility_filter, c.id, c.type) && !is_cell_clipped(cell::nodes[c.nodes_start_index + n_index])) {
+			if (is_cell_visible(c.id) && !is_cell_clipped(cell::nodes[c.nodes_start_index + n_index])) {
 				res.consider(c_index, n_index, (cell::nodes[c.nodes_start_index + n_index] - q).sqr_length());
 			}
 		}
@@ -378,11 +375,6 @@ public:
 		return result_entry();
 	}
 
-	void set_visibility_filter(visibility_filter_enum _visibility_filter)
-	{
-		visibility_filter = _visibility_filter;
-	}
-
 	void set_visibilities(const std::vector<int>* _visibilities)
 	{
 		visibilities = _visibilities;
@@ -391,6 +383,12 @@ public:
 	void set_clipping_planes(const std::vector<vec4>* _clipping_planes)
 	{
 		clipping_planes = _clipping_planes;
+	}
+
+	bool is_cell_visible(unsigned int id) const
+	{
+		// ignore if cell is invisible
+		return (visibilities == NULL || (*visibilities)[id] > 0);
 	}
 
 	bool is_cell_clipped(const vec3& node) const
@@ -430,7 +428,7 @@ public:
 
 					std::cout << "Grid[" << i << ", " << j << ", " << k << "]" << std::endl;
 
-					const cell& c = cells->at(cell_index);
+					const cell& c = (*cells)[cell_index];
 
 					std::cout << cell::nodes[c.nodes_start_index + node_index] << std::endl;
 

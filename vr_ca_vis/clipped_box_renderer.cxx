@@ -31,7 +31,7 @@ bool clipped_box_renderer::validate_attributes(const cgv::render::context& ctx) 
 		return false;
 	const clipped_box_render_style& brs = get_style<clipped_box_render_style>();
 	if (!has_visibilities && brs.use_visibility) {
-		ctx.error("clipped_box_renderer::enable() visibilities not set");
+		ctx.error("clipped_box_renderer::validate_attributes() visibilities not set");
 		res = false;
 	}
 	return res;
@@ -85,3 +85,32 @@ void clipped_box_renderer::set_torch(bool _burn, const vec3& _burn_center, float
 	burn_center = _burn_center;
 	burn_distance = _burn_distance;
 }
+
+//#include <cgv/gui/provider.h>
+//
+//struct clipped_box_render_style_gui_creator : public cgv::gui::gui_creator
+//{
+//	/// attempt to create a gui and return whether this was successful
+//	bool create(cgv::gui::provider * p, const std::string& label,
+//		void* value_ptr, const std::string& value_type,
+//		const std::string& gui_type, const std::string& options, bool*)
+//	{
+//		if (value_type != cgv::type::info::type_name<clipped_box_render_style>::get_name())
+//			return false;
+//		cgv::render::clipped_box_render_style* brs_ptr = reinterpret_cast<cgv::render::clipped_box_render_style*>(value_ptr);
+//
+//		cgv::base::base* b = dynamic_cast<cgv::base::base*>(p);
+//		p->add_member_control(b, "default_extent.x", brs_ptr->default_extent[0], "value_slider", "min=0.001;max=1000;log=true;ticks=true");
+//		p->add_member_control(b, "default_extent.y", brs_ptr->default_extent[1], "value_slider", "min=0.001;max=1000;log=true;ticks=true");
+//		p->add_member_control(b, "default_extent.z", brs_ptr->default_extent[2], "value_slider", "min=0.001;max=1000;log=true;ticks=true");
+//		p->add_member_control(b, "relative_anchor.x", brs_ptr->relative_anchor[0], "value_slider", "min=-1;max=1;ticks=true");
+//		p->add_member_control(b, "relative_anchor.y", brs_ptr->relative_anchor[1], "value_slider", "min=-1;max=1;ticks=true");
+//		p->add_member_control(b, "relative_anchor.z", brs_ptr->relative_anchor[2], "value_slider", "min=-1;max=1;ticks=true");
+//		p->add_member_control(b, "rounding", brs_ptr->rounding, "toggle");
+//		p->add_member_control(b, "default_radius", brs_ptr->default_radius, "value_slider", "min=0.0;max=10;step=0.0001;log=true;ticks=true");
+//		p->add_gui("surface_render_style", *static_cast<cgv::render::surface_render_style*>(brs_ptr));
+//		return true;
+//	}
+//};
+//		
+//cgv::gui::gui_creator_registration<box_render_style_gui_creator> box_rs_gc_reg("box_render_style_gui_creator");

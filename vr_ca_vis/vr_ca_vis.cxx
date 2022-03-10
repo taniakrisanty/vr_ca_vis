@@ -397,14 +397,14 @@ public:
 
 		torch_grabbed = false;
 
+		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 1.f));
+		append_child(clipping_planes_b);
+
 		cells_ctr = new cells_container(this, "Cells");
 		append_child(cells_ctr);
 
 		clipping_planes_ctr = new clipping_planes_container(this, "Clipping Planes");
 		append_child(clipping_planes_ctr);
-
-		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 1.f));
-		append_child(clipping_planes_b);
 
 		li_clipping_plane_stats = li_cell_stats = -1;
 		li_clipping_plane_visible = li_cell_visible = false;
@@ -580,7 +580,7 @@ public:
 			scene_ptr->hide_label(li_clipping_plane_stats);
 
 		if (li_cell_stats != -1) {
-			if (li_cell_visible && selected_cell_idx < SIZE_MAX && selected_node_idx < SIZE_MAX)
+			if (li_cell_visible && selected_cell_idx < SIZE_MAX)
 				scene_ptr->show_label(li_cell_stats);
 			else
 				scene_ptr->hide_label(li_cell_stats);
@@ -681,8 +681,9 @@ public:
 					else {
 						switch (vrke.get_key()) {
 						case vr::VR_DPAD_LEFT: // put current clipping plane permanently, temporary use this when using only one controller
-							torch_grabbed = !clipping_plane_grabbed;
 							set_clipping_plane();
+							torch_grabbed = !clipping_plane_grabbed;
+							if (torch_grabbed) li_cell_visible = false;
 							return true;
 						case vr::VR_DPAD_RIGHT: // remove clipping plane
 							release_clipping_plane();
@@ -808,12 +809,12 @@ public:
 			align("\b");
 			end_tree_node(surf_rs);
 		}
-		if (begin_tree_node("Box Rendering", box_style, false)) {
-			align("\a");
-			add_gui("box_style", box_style);
-			align("\b");
-			end_tree_node(box_style);
-		}
+		//if (begin_tree_node("Box Rendering", box_style, false)) {
+		//	align("\a");
+		//	add_gui("box_style", box_style);
+		//	align("\b");
+		//	end_tree_node(box_style);
+		//}
 		if (begin_tree_node("Cells", cells_ctr, false)) {
 			align("\a");
 			inline_object_gui(cells_ctr);
@@ -978,28 +979,14 @@ public:
 	}
 	void toggle_cell_visibility()
 	{
-		if (selected_cell_idx == SIZE_MAX || selected_node_idx == SIZE_MAX)
+		if (selected_cell_idx == SIZE_MAX)
 			return;
 
 		cells_ctr->toggle_cell_visibility(selected_cell_idx);
 	}
-	void vibrate(void* hid_kit)
+	void update_cell_stats()
 	{
-		if (hid_kit) {
-			vr::vr_kit* kit_ptr = vr::get_vr_kit(hid_kit);
-			if (kit_ptr)
-				kit_ptr->set_vibration(1, 0, 50000);
-		}
-	}
-
-#pragma region cells_container_listener
-	// listener for cell point at and grab event
-	void on_cell_pointed_at(size_t cell_index, size_t node_index)
-	{
-		selected_cell_idx = cell_index;
-		selected_node_idx = node_index;
-
-		if (selected_cell_idx == SIZE_MAX || selected_node_idx == SIZE_MAX)
+		if (selected_cell_idx == SIZE_MAX)
 			return;
 
 		const cell& c = cells[selected_cell_idx];
@@ -1016,6 +1003,32 @@ public:
 		else {
 			scene_ptr->update_label_text(li_cell_stats, " id " + std::to_string(c.id) + " | type " + std::next(cell::types.begin(), c.type)->first + " ");
 		}
+	}
+	void vibrate(void* hid_kit)
+	{
+		if (hid_kit) {
+			vr::vr_kit* kit_ptr = vr::get_vr_kit(hid_kit);
+			if (kit_ptr)
+				kit_ptr->set_vibration(1, 0, 50000);
+		}
+	}
+
+#pragma region cells_container_listener
+	// listener for cell center point at and grab event
+	void on_cell_center_pointed_at(size_t center_index)
+	{
+		selected_cell_idx = center_index;
+		selected_node_idx = SIZE_MAX;
+
+		update_cell_stats();
+	}
+	// listener for cell point at and grab event
+	void on_cell_pointed_at(size_t cell_index, size_t node_index)
+	{
+		selected_cell_idx = cell_index;
+		selected_node_idx = node_index;
+
+		update_cell_stats();
 	}
 #pragma endregion cells_container_listener
 

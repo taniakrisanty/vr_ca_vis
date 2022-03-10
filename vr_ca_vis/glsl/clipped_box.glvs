@@ -38,6 +38,10 @@ void right_multiply_group_normal_matrix_and_rotation(inout mat3 NM, int group_in
 void right_multiply_group_position_matrix_and_rigid(inout mat4 PM, int group_index, vec4 rotation, vec3 translation);
 //***** end interface of group.glsl ***********************************
 
+//***** begin interface of visibility_group.glsl ***********************************
+int visibility(in int visible, int index);
+//***** end interface of visibility_group.glsl ***********************************
+
 //***** begin interface of view.glsl ***********************************
 mat4 get_modelview_matrix();
 mat4 get_projection_matrix();
@@ -47,10 +51,6 @@ mat4 get_inverse_modelview_projection_matrix();
 mat3 get_normal_matrix();
 mat3 get_inverse_normal_matrix();
 //***** end interface of view.glsl ***********************************
-
-//***** begin interface of clipped_box_group.glsl ***********************************
-int visibility(in int visible, int index);
-//***** end interface of clipped_box_group.glsl ***********************************
 
 void main()
 {

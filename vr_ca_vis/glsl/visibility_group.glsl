@@ -2,9 +2,9 @@
 
 /*
 The following interface is implemented in this shader:
-//***** begin interface of group.glsl ***********************************
+//***** begin interface of visibility_group.glsl ***********************************
 int visibility(in int visible, int index);
-//***** end interface of group.glsl ***********************************
+//***** end interface of visibility_group.glsl ***********************************
 */
 
 //layout(std430, binding = 0) buffer visibility_ssbo

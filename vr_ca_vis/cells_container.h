@@ -15,11 +15,13 @@
 
 #include "cell_data.h"
 #include "clipped_box_renderer.h"
+#include "control_sphere_renderer.h"
 #include "regular_grid.h"
 
 class cells_container_listener
 {
 public:
+	virtual void on_cell_center_pointed_at(size_t center_index) = 0;
 	virtual void on_cell_pointed_at(size_t cell_index, size_t node_index) = 0;
 };
 
@@ -32,6 +34,7 @@ class cells_container :
 	public cgv::gui::provider
 {
 	clipped_box_render_style brs;
+	control_sphere_render_style crs;
 	cgv::render::sphere_render_style srs;
 	vec3 debug_point;
 	vec3 query_point_at_grab, position_at_grab;
@@ -74,27 +77,31 @@ protected:
 	std::vector<std::map<float, rgba>> color_points_maps;
 
 	// per group information
+	std::vector<rgba> default_colors;
+
 	std::vector<rgba> group_colors;
 
-	// visibility filter
-	visibility_filter_enum visibility_filter = visibility_filter_enum::by_id;
-
+	// visibility filter by id
 	std::vector<int> visibilities;
 
-	std::vector<int> show_toggles;
+	std::vector<int> show_all_checks;
+	std::vector<int> hide_all_checks;
 
-	//std::vector<int> show_all_toggles;
-	//std::vector<int> hide_all_toggles;
+	std::vector<int> show_checks;
 
 	bool cells_out_of_date = true;
 
 	// vertex buffer
+	size_t cells_count;
 	size_t nodes_count;
-
-	cgv::render::vertex_buffer vb_visibility_indices;
-	cgv::render::vertex_buffer vb_group_indices;
+	
+	// nodes geometry
+	cgv::render::vertex_buffer vb_node_indices;
 	cgv::render::vertex_buffer vb_nodes;
 	cgv::render::vertex_buffer vb_colors;
+	
+	// centers geometry
+	cgv::render::vertex_buffer vb_center_indices;
 	cgv::render::vertex_buffer vb_centers;
 
 	// clipping planes that are used by clipped_box geometry shader
@@ -112,8 +119,10 @@ protected:
 	cgv::nui::hid_identifier hid_id;
 	// index of focused primitive
 	int prim_idx = -1;
-	const unsigned int cell_bitwise_shift = 10;
-	const unsigned int node_bitwise_and = 0x3FF;
+	// assuming that size_t in this particular system is at least 32-bit 
+	const unsigned int cell_sign_bit = 0x40000000;
+	const unsigned int cell_bitwise_shift = 15;
+	const unsigned int cell_bitwise_and = 0x7FFF;
 	// state of object
 	state_enum state = state_enum::idle;
 	/// return color modified based on state
@@ -174,8 +183,11 @@ public:
 private:
 	void transmit_cells(cgv::render::context& ctx);
 
-	void set_group_geometry(cgv::render::context& ctx, clipped_box_renderer& br);
-	void set_geometry(cgv::render::context& ctx, clipped_box_renderer& br);
+	void set_nodes_group_geometry(cgv::render::context& ctx, clipped_box_renderer& br);
+	void set_nodes_geometry(cgv::render::context& ctx, clipped_box_renderer& br);
+
+	void set_centers_group_geometry(cgv::render::context& ctx, control_sphere_renderer& br);
+	void set_centers_geometry(cgv::render::context& ctx, control_sphere_renderer& br);
 
 	/// color map
 	void add_color_point(size_t index, float t, rgba color);
@@ -184,6 +196,7 @@ private:
 
 	void update_color_points_vector();
 
+	void point_at_cell_center(size_t center_index) const;
 	void point_at_cell(size_t cell_index, size_t node_index) const;
 };
 
