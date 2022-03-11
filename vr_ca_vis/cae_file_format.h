@@ -8,8 +8,6 @@
 #include <cgv/media/axis_aligned_box.h>
 #include "endian.h"
 
-#include "simulation_data.h"
-
 namespace cae {
 
 enum CoordinateType

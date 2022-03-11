@@ -25,10 +25,8 @@
 #include "cells_container.h"
 #include "clipping_planes_bag.h"
 #include "clipping_planes_container.h"
-#include "logger_parser.h"
 #include "model_parser.h"
 #include "gzip_inflater.h"
-#include "simulation_data.h"
 #include <functional>
 #include <cgv/utils/dir.h>
 
