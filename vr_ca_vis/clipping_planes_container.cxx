@@ -533,9 +533,9 @@ size_t clipping_planes_container::get_num_clipping_planes() const
 //}
 void clipping_planes_container::end_drag_clipping_plane(size_t index)
 {
-	vec3 origin(origins[index]);
-
 	// TODO check drag state
+
+	//vec3 origin(origins[index]);
 
 	//if (origin.x() < 0.f || origin.x() > 1.f || origin.y() < 0.f || origin.y() > 1.f || origin.z() < 0.f || origin.z() > 1.f)
 	//{

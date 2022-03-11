@@ -93,44 +93,13 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 	if (!(dis_info.hid_id == hid_id))
 		return false;
 	bool pressed;
-	// hid independent check if grabbing is activated or deactivated
-	if (is_grab_change(e, pressed)) {
-		if (pressed) {
-			state = state_enum::grabbed;
-			on_set(&state);
-			//drag_begin(request, false, original_config);
-		}
-		else {
-			//drag_end(request, original_config);
-			state = state_enum::close;
-			on_set(&state);
-		}
-		return true;
-	}
-	// check if event is for grabbing
-	if (is_grabbing(e, dis_info)) {
-		const auto& prox_info = get_proximity_info(dis_info);
-		if (state == state_enum::close) {
-			debug_point = prox_info.hit_point;
-			query_point_at_grab = prox_info.query_point;
-			position_at_grab = position;
-		}
-		else if (state == state_enum::grabbed) {
-			debug_point = prox_info.hit_point;
-			//position = position_at_grab + prox_info.query_point - query_point_at_grab;
-		}
-		post_redraw();
-		return true;
-	}
 	// hid independent check if object is triggered during pointing
 	if (is_trigger_change(e, pressed)) {
 		if (pressed) {
 			state = state_enum::triggered;
 			on_set(&state);
-			//drag_begin(request, true, original_config);
 		}
 		else {
-			//drag_end(request, original_config);
 			state = state_enum::pointed;
 			on_set(&state);
 		}

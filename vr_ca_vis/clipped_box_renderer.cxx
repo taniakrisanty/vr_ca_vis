@@ -76,7 +76,7 @@ void clipped_box_renderer::set_visibilities_index_array(const cgv::render::conte
 }
 void clipped_box_renderer::set_clipping_planes(const std::vector<vec4>& _clipping_planes)
 {
-	num_clipping_planes = std::min(_clipping_planes.size(), MAX_CLIPPING_PLANES);// ? MAX_CLIPPING_PLANES : _clipping_planes.size();
+	num_clipping_planes = std::min(_clipping_planes.size(), MAX_CLIPPING_PLANES);
 	std::copy(_clipping_planes.begin(), _clipping_planes.begin() + num_clipping_planes, clipping_planes);
 }
 void clipped_box_renderer::set_torch(bool _burn, const vec3& _burn_center, float _burn_distance)

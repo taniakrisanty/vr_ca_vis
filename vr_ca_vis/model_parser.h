@@ -1,6 +1,5 @@
 #pragma once
 
-//#include <cgv/utils/file.h>
 #include <cgv/render/render_types.h>
 
 #include <fstream>

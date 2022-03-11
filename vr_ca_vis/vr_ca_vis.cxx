@@ -66,11 +66,20 @@ public:
 		triggered
 	};
 
+	enum class tool_enum {
+		none,
+		clipping_plane,
+		gun,
+		torch
+	};
+
 protected:
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
 	// state of object
 	state_enum state = state_enum::idle;
+	// active tool 
+	tool_enum tool = tool_enum::none;
 
 	cells_container_ptr cells_ctr;
 	clipping_planes_bag_ptr clipping_planes_b;
@@ -86,9 +95,9 @@ protected:
 	//std::unordered_set<std::string> types;
 	//std::vector<uint32_t> ids;
 	//std::vector<vec3> points;
-	std::vector<uint32_t> group_indices;
-	std::vector<float> attr_values;
-	std::vector<rgba8> colors;
+	//std::vector<uint32_t> group_indices;
+	//std::vector<float> attr_values;
+	//std::vector<rgba8> colors;
 
 	// clipping plane
 	bool clipping_plane_grabbed;
@@ -137,9 +146,9 @@ protected:
 	float opacity;
 	float trigger[2];
 	float time_delta;
-	cgv::media::ColorScale clr_scale;
+	//cgv::media::ColorScale clr_scale;
 	// render objects
-	std::vector<unsigned> indices;
+	//std::vector<unsigned> indices;
 	cgv::render::view* view_ptr;
 	cgv::render::sphere_render_style sphere_style;
 	cgv::render::sphere_renderer s_renderer;
@@ -167,23 +176,23 @@ protected:
 	//	}
 	//}
 	// update colors from attribute values
-	void update_colors()
-	{
-		if (colors.size() != cells.size())
-			colors.resize(cells.size());
+	//void update_colors()
+	//{
+	//	if (colors.size() != cells.size())
+	//		colors.resize(cells.size());
 
-		float offset = 0.0;
-		float scale = 1.0f;
-		if (((format.flags & cae::FF_ATTRIBUTE_RANGES) != 0) && attribute_ranges.size() == nr_attributes) {
-			offset = attribute_ranges[selected_attr][0];
-			scale = 1.0f / (attribute_ranges[selected_attr][1] - attribute_ranges[selected_attr][0]);
-		}
-		for (size_t i = 0; i < colors.size(); ++i) {
-			float v = scale * (attr_values[i * nr_attributes + selected_attr] - offset);
-			//float v = scale * (data.cells[i * nr_attributes + selected_attr].get_attr() - offset);
-			colors[i] = cgv::media::color_scale(v, clr_scale);
-		}
-	}
+	//	float offset = 0.0;
+	//	float scale = 1.0f;
+	//	if (((format.flags & cae::FF_ATTRIBUTE_RANGES) != 0) && attribute_ranges.size() == nr_attributes) {
+	//		offset = attribute_ranges[selected_attr][0];
+	//		scale = 1.0f / (attribute_ranges[selected_attr][1] - attribute_ranges[selected_attr][0]);
+	//	}
+	//	for (size_t i = 0; i < colors.size(); ++i) {
+	//		float v = scale * (attr_values[i * nr_attributes + selected_attr] - offset);
+	//		//float v = scale * (data.cells[i * nr_attributes + selected_attr].get_attr() - offset);
+	//		colors[i] = cgv::media::color_scale(v, clr_scale);
+	//	}
+	//}
 
 public:
 	bool read_file(const std::string& file_name)
@@ -233,12 +242,12 @@ public:
 					times.push_back(float(time));
 				}
 
-				size_t previous_num_points = cells.size();
+				size_t previous_cell_count = cells.size();
 
 				model_parser parser(file_name, extent, cells);
 				extent_scale = dvec3(1.0) / extent;
 
-				std::cout << "read " << file_name << " with " << cells.size() - previous_num_points << " cells" << std::endl;
+				std::cout << "read " << file_name << " with " << cells.size() - previous_cell_count << " cells" << std::endl;
 			}
 		}
 
@@ -297,7 +306,7 @@ public:
 			//	<< cells.size() << " points, " << times.size() << " time steps, " << group_colors.size() << " ids, and "
 			//	<< nr_attributes << " attributes" << std::endl;
 			// concatenate
-			write_file(fn);
+			//write_file(fn);
 
 			cells_ctr->set_cell_types(cell::types);
 			return true;
@@ -319,7 +328,7 @@ public:
 	{
 		//if (!read_time_step(file_name, ti, data.points, group_indices, attr_values))
 		//	return false;
-		update_colors();
+		//update_colors();
 		return true;
 	}
 	void step()
@@ -371,7 +380,7 @@ public:
 		scale = 1.0f;
 		trigger[0] = trigger[1] = 0.0f; // TODO check
 		time_delta = 0.0;
-		clr_scale = cgv::media::ColorScale::CS_TEMPERATURE;
+		//clr_scale = cgv::media::ColorScale::CS_TEMPERATURE;
 		sphere_style.radius = 0.5f;
 		sphere_style.use_group_color = true;
 		box_style.map_color_to_material = cgv::render::CM_COLOR;
@@ -424,16 +433,16 @@ public:
 			on_set(&time_step);
 			post_recreate_gui();
 		}
-		if (member_ptr == &opacity) {
-			//if (use_boxes ? box_style.use_group_color : sphere_style.use_group_color)
-			//	for (auto& c : group_colors) {
-			//		c.alpha() = opacity;
-			//		update_member(&c);
-			//	}
-			//else
-			//	for (auto& c : colors)
-			//		c.alpha() = cgv::type::uint8_type(255 * opacity);
-		}
+		//if (member_ptr == &opacity) {
+		//	if (use_boxes ? box_style.use_group_color : sphere_style.use_group_color)
+		//		for (auto& c : group_colors) {
+		//			c.alpha() = opacity;
+		//			update_member(&c);
+		//		}
+		//	else
+		//		for (auto& c : colors)
+		//			c.alpha() = cgv::type::uint8_type(255 * opacity);
+		//}
 		update_member(member_ptr);
 		post_redraw();
 	}
@@ -553,7 +562,7 @@ public:
 		if (!scene_ptr)
 			return;
 
-		// TODO: draw infinite clipping plane (as a disc) only when outside of wireframe box
+		// draw infinite clipping plane (as a disc) only when outside of wireframe box
 		if (clipping_plane_grabbed && temp_clipping_plane_idx == -1 && scene_ptr->is_coordsystem_valid(coordinate_system::right_controller))
 		{
 			ctx.push_modelview_matrix();

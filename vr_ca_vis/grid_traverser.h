@@ -2,10 +2,7 @@
 
 #include <cgv/render/render_types.h>
 
-typedef cgv::math::fvec<float, 3> vec3;
-typedef cgv::math::fvec<int, 3> ivec3;
-
-class grid_traverser
+class grid_traverser : cgv::render::render_types
 {
 	//ray origin and direction
 	vec3 origin, direction;

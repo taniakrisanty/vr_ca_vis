@@ -22,7 +22,6 @@ class clipping_planes_bag :
 	public cgv::base::node,
 	public cgv::render::drawable,
 	public cgv::nui::focusable,
-	public cgv::nui::grabable,
 	public cgv::nui::pointable,
 	public cgv::gui::provider
 {
