@@ -60,7 +60,7 @@ void clipping_planes_container::on_set(void* member_ptr)
 		}
 	}
 	if (clipping_plane_index < SIZE_MAX && listener)
-		listener->container_on_clipping_plane_updated(clipping_plane_index, origins[clipping_plane_index], directions[clipping_plane_index]);
+		listener->on_clipping_plane_updated(clipping_plane_index, origins[clipping_plane_index], directions[clipping_plane_index]);
 
 	post_redraw();
 }
@@ -549,9 +549,7 @@ void clipping_planes_container::end_drag_clipping_plane(size_t index)
 	//else
 	{
 		if (listener)
-			listener->container_on_clipping_plane_updated(index, origins[index], directions[index]);
-
-		// TODO GUI not responding pas tarik cp2
+			listener->on_clipping_plane_updated(index, origins[index], directions[index]);
 	}
 }
 void clipping_planes_container::update_rotation(size_t index)

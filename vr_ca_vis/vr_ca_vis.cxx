@@ -682,6 +682,11 @@ public:
 							return true;
 						case vr::VR_INPUT1_TOUCH:
 							toggle_cell_visibility();
+							//tool = static_cast<tool_enum>((static_cast<int>(tool) + 1) % (static_cast<int>(tool_enum::torch) + 1));
+							//if (tool != tool_enum::clipping_plane)
+							//{
+							//	clipping_plane_grabbed = false;
+							//}
 							return true;
 						}
 					}
@@ -1028,7 +1033,7 @@ public:
 
 #pragma region clipping_planes_bag_listener
 	// listener for clipping plane grab event inside bag
-	void bag_on_clipping_plane_grabbed(void* hid_kit)
+	void on_clipping_plane_grabbed(void* hid_kit)
 	{
 		// ignore if user is already holding a clipping plane
 		// or no clipping plane left (the maximum is 8)
@@ -1042,12 +1047,12 @@ public:
 #pragma endregion clipping_planes_bag_listener
 
 #pragma region clipping_planes_container_listener
-	// listener for existing clipping plane drag event inside box
-	void container_on_clipping_plane_updated(size_t index, const vec3& origin, const vec3& direction)
+	// listener for installed clipping plane drag event inside box
+	void on_clipping_plane_updated(size_t index, const vec3& origin, const vec3& direction)
 	{
 		cells_ctr->update_clipping_plane(index, origin, direction);
 	}
-	void container_on_clipping_plane_deleted(size_t index)
+	void on_clipping_plane_deleted(size_t index)
 	{
 		cells_ctr->delete_clipping_plane(index);
 	}

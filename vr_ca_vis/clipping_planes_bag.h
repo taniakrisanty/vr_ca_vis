@@ -6,7 +6,6 @@
 #include <cgv/render/drawable.h>
 #include <cg_nui/focusable.h>
 #include <cg_nui/pointable.h>
-#include <cg_nui/grabable.h>
 #include <cgv/gui/provider.h>
 #include <cgv_gl/box_renderer.h>
 #include <cgv_gl/sphere_renderer.h>
@@ -15,7 +14,7 @@
 class clipping_planes_bag_listener
 {
 public:
-	virtual void bag_on_clipping_plane_grabbed(void* kit_ptr) = 0;
+	virtual void on_clipping_plane_grabbed(void* kit_ptr) = 0;
 };
 
 class clipping_planes_bag :
@@ -70,7 +69,6 @@ public:
 	void stream_help(std::ostream& os);
 	bool handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request);
 
-	bool compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx);
 	bool compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx);
 
 	bool init(cgv::render::context& ctx);

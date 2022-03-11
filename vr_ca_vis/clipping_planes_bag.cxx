@@ -127,27 +127,6 @@ bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispa
 	}
 	return false;
 }
-bool clipping_planes_bag::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
-{
-	// point, prj_point, and prj_normal are in table coordinate
-	// position is in head coordinate
-
-	vec4 position_in_table4(inv_model_transform * head_transform * position.lift());
-	vec3 position_in_table(position_in_table4 / position_in_table4.w());
-
-	vec3 p = point - position_in_table;
-	rotation.inverse_rotate(p);
-	for (int i = 0; i < 3; ++i)
-		p[i] = std::max(-0.5f * extent[i], std::min(0.5f * extent[i], p[i]));
-	rotation.rotate(p);
-	prj_point = p + position_in_table;
-
-#ifdef DEBUG
-	std::cout << "clipping_planes_bag::compute_closest_point query " << point << " = " << position_in_table << std::endl;
-#endif
-	
-	return true;
-}
 bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
 	// point, prj_point, and prj_normal are in table coordinate
@@ -282,5 +261,5 @@ void clipping_planes_bag::set_head_transform(const mat4& _head_transform)
 void clipping_planes_bag::grab_clipping_plane(void* hid_kit) const
 {
 	if (listener)
-		listener->bag_on_clipping_plane_grabbed(hid_kit);
+		listener->on_clipping_plane_grabbed(hid_kit);
 }

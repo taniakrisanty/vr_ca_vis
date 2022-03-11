@@ -14,8 +14,8 @@
 class clipping_planes_container_listener
 {
 public:
-	virtual void container_on_clipping_plane_updated(size_t index, const cgv::render::render_types::vec3& origin, const cgv::render::render_types::vec3& direction) = 0;
-	virtual void container_on_clipping_plane_deleted(size_t index) = 0;
+	virtual void on_clipping_plane_updated(size_t index, const cgv::render::render_types::vec3& origin, const cgv::render::render_types::vec3& direction) = 0;
+	virtual void on_clipping_plane_deleted(size_t index) = 0;
 };
 
 class clipping_planes_container :
