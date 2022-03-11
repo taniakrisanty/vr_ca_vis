@@ -111,9 +111,9 @@ protected:
 	uint32_t selected_attr;
 
 	// per group information
-	std::vector<rgba> group_colors;
-	std::vector<vec3> group_translations;
-	std::vector<vec4> group_rotations;
+	//std::vector<rgba> group_colors;
+	//std::vector<vec3> group_translations;
+	//std::vector<vec4> group_rotations;
 
 	// scaling factor for dataset
 	double scale;
@@ -157,17 +157,17 @@ protected:
 	/// background color of statistics label
 	rgba stats_bgclr;
 
-	void construct_group_information(unsigned nr_groups)
-	{
-		group_colors.resize(nr_groups);
-		group_translations.resize(nr_groups, vec3(0, 0, 0));
-		group_rotations.resize(nr_groups, vec4(0, 0, 0, 1));
-		// define colors from hls
-		for (unsigned i = 0; i < nr_groups; ++i) {
-			float hue = float(i) / nr_groups;
-			group_colors[i] = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f);
-		}
-	}
+	//void construct_group_information(unsigned nr_groups)
+	//{
+	//	group_colors.resize(nr_groups);
+	//	group_translations.resize(nr_groups, vec3(0, 0, 0));
+	//	group_rotations.resize(nr_groups, vec4(0, 0, 0, 1));
+	//	// define colors from hls
+	//	for (unsigned i = 0; i < nr_groups; ++i) {
+	//		float hue = float(i) / nr_groups;
+	//		group_colors[i] = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f);
+	//	}
+	//}
 	// update colors from attribute values
 	void update_colors()
 	{
@@ -275,29 +275,29 @@ public:
 
 		if (read_xml_dir(dir_name) || read_gz_dir(dir_name) && read_xml_dir(dir_name))
 		{
-			for (auto id : group_indices)
-			{
-				rgba col(0.f, 0.f, 0.f, 0.5f);
-				colors.push_back(col);
-				// cells of the same type should have the same color
-				while (id >= int(group_colors.size())) {
-					group_colors.push_back(rgba(1, 1, 1, 0.5f));
-					group_translations.push_back(vec3(0, 0, 0));
-					group_rotations.push_back(vec4(0, 0, 0, 1));
-				}
-			}
+			//for (auto id : group_indices)
+			//{
+			//	rgba col(0.f, 0.f, 0.f, 0.5f);
+			//	colors.push_back(col);
+			//	// cells of the same type should have the same color
+			//	while (id >= int(group_colors.size())) {
+			//		group_colors.push_back(rgba(1, 1, 1, 0.5f));
+			//		group_translations.push_back(vec3(0, 0, 0));
+			//		group_rotations.push_back(vec4(0, 0, 0, 1));
+			//	}
+			//}
 
-			// define colors from hls
-			for (unsigned i = 0; i < group_colors.size(); ++i) {
-				float hue = float(i) / group_colors.size();
-				group_colors[i] = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f);
-			}
-			nr_points = cells.size();
-			nr_groups = uint32_t(group_colors.size());
-			nr_time_steps = uint32_t(times.size());
-			std::cout << "read " << file_name << " with "
-				<< cells.size() << " points, " << times.size() << " time steps, " << group_colors.size() << " ids, and "
-				<< nr_attributes << " attributes" << std::endl;
+			//// define colors from hls
+			//for (unsigned i = 0; i < group_colors.size(); ++i) {
+			//	float hue = float(i) / group_colors.size();
+			//	group_colors[i] = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f);
+			//}
+			//nr_points = cells.size();
+			//nr_groups = uint32_t(group_colors.size());
+			//nr_time_steps = uint32_t(times.size());
+			//std::cout << "read " << file_name << " with "
+			//	<< cells.size() << " points, " << times.size() << " time steps, " << group_colors.size() << " ids, and "
+			//	<< nr_attributes << " attributes" << std::endl;
 			// concatenate
 			write_file(fn);
 
@@ -313,7 +313,7 @@ public:
 	{
 		if (!read_header(file_name + ".cae"))
 			return false;
-		construct_group_information(nr_groups);
+		//construct_group_information(nr_groups);
 		ooc_file_name = file_name;
 		return true;
 	}
@@ -427,14 +427,14 @@ public:
 			post_recreate_gui();
 		}
 		if (member_ptr == &opacity) {
-			if (use_boxes ? box_style.use_group_color : sphere_style.use_group_color)
-				for (auto& c : group_colors) {
-					c.alpha() = opacity;
-					update_member(&c);
-				}
-			else
-				for (auto& c : colors)
-					c.alpha() = cgv::type::uint8_type(255 * opacity);
+			//if (use_boxes ? box_style.use_group_color : sphere_style.use_group_color)
+			//	for (auto& c : group_colors) {
+			//		c.alpha() = opacity;
+			//		update_member(&c);
+			//	}
+			//else
+			//	for (auto& c : colors)
+			//		c.alpha() = cgv::type::uint8_type(255 * opacity);
 		}
 		update_member(member_ptr);
 		post_redraw();
@@ -1009,14 +1009,6 @@ public:
 	}
 
 #pragma region cells_container_listener
-	// listener for cell center point at and grab event
-	void on_cell_center_pointed_at(size_t center_index)
-	{
-		selected_cell_idx = center_index;
-		selected_node_idx = SIZE_MAX;
-
-		update_cell_stats();
-	}
 	// listener for cell point at and grab event
 	void on_cell_pointed_at(size_t cell_index, size_t node_index)
 	{

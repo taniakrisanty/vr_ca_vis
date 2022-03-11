@@ -225,7 +225,7 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			if (prim_idx & cell_sign_bit) {
 				size_t center_index = prim_idx & cell_bitwise_and;
 
-				point_at_cell_center(center_index);
+				point_at_cell(center_index);
 			}
 			else {
 				size_t cell_index = (prim_idx >> cell_bitwise_shift) & cell_bitwise_and;
@@ -272,7 +272,7 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			if (prim_idx & cell_sign_bit) {
 				size_t center_index = prim_idx & cell_bitwise_and;
 
-				point_at_cell_center(center_index);
+				point_at_cell(center_index);
 			}
 			else {
 				size_t cell_index = (prim_idx >> cell_bitwise_shift) & cell_bitwise_and;
@@ -865,11 +865,6 @@ void cells_container::set_centers_geometry(cgv::render::context& ctx, control_sp
 		br.set_position_array<vec3>(ctx, vb_centers, 0, cells_count);
 		br.set_color_array<rgba>(ctx, vb_colors, 0, cells_count);
 	}
-}
-void cells_container::point_at_cell_center(size_t center_index) const
-{
-	if (listener)
-		listener->on_cell_center_pointed_at(center_index);
 }
 void cells_container::point_at_cell(size_t cell_index, size_t node_index) const
 {

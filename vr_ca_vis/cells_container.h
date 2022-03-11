@@ -21,7 +21,6 @@
 class cells_container_listener
 {
 public:
-	virtual void on_cell_center_pointed_at(size_t center_index) = 0;
 	virtual void on_cell_pointed_at(size_t cell_index, size_t node_index) = 0;
 };
 
@@ -195,8 +194,7 @@ private:
 
 	void interpolate_colors();
 
-	void point_at_cell_center(size_t center_index) const;
-	void point_at_cell(size_t cell_index, size_t node_index) const;
+	void point_at_cell(size_t cell_index, size_t node_index = SIZE_MAX) const;
 };
 
 typedef cgv::data::ref_ptr<cells_container> cells_container_ptr;
