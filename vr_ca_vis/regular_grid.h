@@ -1,9 +1,4 @@
-// This source code is property of the Computer Graphics and Visualization 
-// chair of the TU Dresden. Do not distribute! 
-// Copyright (C) CGV TU Dresden - All Rights Reserved
-
 #pragma once
-
 
 #include <chrono>
 #include <mutex>
@@ -48,8 +43,6 @@ private:
 
 	bool build_grid = false;
 
-	// TODO change into size_t* if nodes do not overlap
-	//std::vector<size_t>* grid = NULL;
 	size_t* cell_grid = NULL;
 	size_t* node_grid = NULL;
 
@@ -122,7 +115,9 @@ private:
 
 	void build_from_vertices_impl(bool print_grid = false)
 	{
+#ifdef DEBUG
 		auto start = std::chrono::high_resolution_clock::now();
+#endif
 
 		while (true)
 		{
@@ -131,17 +126,21 @@ private:
 
 				if (!build_grid)
 				{
+#ifdef DEBUG
 					std::cout << "regular_grid::build_from_vertices cancelled at index " << current_cell_index << std::endl;
+#endif
 					break;
 				}
 
 				if (current_cell_index == cells_end)
 				{
+#ifdef DEBUG
 					auto stop = std::chrono::high_resolution_clock::now();
 
 					auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
 					std::cout << "regular_grid::build_from_vertices finished in " << duration.count() << " microseconds" << std::endl;
+#endif
 
 					build_grid = false;
 
@@ -464,18 +463,6 @@ public:
 
 			if (cells == NULL)
 				return;
-
-			//auto start = std::chrono::high_resolution_clock::now();
-
-			//size_t index = 0;
-			//for (std::vector<T>::const_iterator vit = cells->begin(), vend = cells->end(); vit != vend; ++vit)
-			//	insert(index++, vit->node);
-
-			//auto stop = std::chrono::high_resolution_clock::now();
-
-			//auto duration = std::chrono::duration_cast<std::chrono::microseconds > (stop - start);
-
-			//std::cout << "build_from_vertices finished in " << duration.count() << " microseconds" << std::endl;
 
 			build_grid = true;
 		}
