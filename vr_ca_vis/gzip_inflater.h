@@ -1,13 +1,5 @@
 #pragma once
 
-//#include <cstdio>
-//#include <string> 
-//#include <cstring>
-//#include <cstdlib>
-//#include <fstream>
-//#include <zlib.h>
-//#include <zconf.h>
-
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
