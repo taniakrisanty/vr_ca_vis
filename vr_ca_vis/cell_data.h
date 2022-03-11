@@ -41,6 +41,7 @@ struct cell : public cgv::render::render_types
 
 	static std::vector<vec3> centers;
 	static std::vector<vec3> nodes;
+	static std::vector<float> properties;
 
 	unsigned int id;					// CellPopulations > Population > Cell id
 	unsigned int type;					// CellTypes > CellType name & class
@@ -50,14 +51,18 @@ struct cell : public cgv::render::render_types
 	size_t nodes_start_index;			// CellPopulations > Population > Cell > Nodes
 	size_t nodes_end_index;				// CellPopulations > Population > Cell > Nodes
 
+	size_t properties_start_index;		// CellPopulations > Population > Cell > PropertyData symbol-ref
+	size_t properties_end_index;		// CellPopulations > Population > Cell > PropertyData symbol-ref
+
 	//std::vector<float> properties;		// CellPopulations > Population > Cell > PropertyData symbol-ref
 
 	//rgba color;
 
 //public:
-	cell(unsigned int id, unsigned int type, const std::vector<float>& properties);
+	cell(unsigned int id, unsigned int type);
 	void set_center(size_t index);
 	void set_nodes(size_t start_index, size_t end_index);
+	void set_properties(size_t start_index, size_t end_index);
 };
 
 //cgv::glutil::color_map create_color_map()

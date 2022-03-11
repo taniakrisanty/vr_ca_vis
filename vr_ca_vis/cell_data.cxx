@@ -11,11 +11,8 @@ void cell_type::add_property(const std::string& property)
 	properties.push_back(property);
 }
 
-cell::cell(unsigned int _id, unsigned int _type, const std::vector<float>& _properties) : id(_id), type(_type)//, properties(_properties)
+cell::cell(unsigned int _id, unsigned int _type) : id(_id), type(_type)
 {
-	//float t = (float)(id - 1) / (60.0f - 1.0f);
-	//color = cm.interpolate_color(t);
-
 	center_index = SIZE_MAX;
 
 	nodes_start_index = SIZE_MAX;
@@ -30,11 +27,17 @@ void cell::set_nodes(size_t start_index, size_t end_index)
 	nodes_start_index = start_index;
 	nodes_end_index = end_index;
 }
+void cell::set_properties(size_t start_index, size_t end_index)
+{
+	properties_start_index = start_index;
+	properties_end_index = end_index;
+}
 
 std::unordered_map<std::string, cell_type> cell::types;
 
 std::vector<cgv::render::render_types::vec3> cell::centers;
 std::vector<cgv::render::render_types::vec3> cell::nodes;
+std::vector<float> cell::properties;
 
 //cgv::glutil::color_map create_color_map()
 //{

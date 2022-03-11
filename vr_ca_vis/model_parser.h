@@ -102,7 +102,10 @@ public:
 						if (!cgv::utils::is_integer(std::string(cell_node->first_attribute("id")->value()), id))
 							continue;
 
-						std::vector<float> properties;
+						cell cell(id, type_index);
+
+						// set cell properties
+						size_t start_index = cell::properties.size();
 
 						for (const auto& property_symbol : t->second.properties)
 						{
@@ -117,7 +120,7 @@ public:
 									double property;
 									cgv::utils::is_double(value_str, property);
 
-									properties.push_back(property);
+									cell::properties.push_back(property);
 
 									break;
 								}
@@ -126,7 +129,7 @@ public:
 							}
 						}
 
-						cell cell(id, type_index, properties);
+						cell.set_properties(start_index, cell::properties.size());
 
 						vec3 center;
 
@@ -161,7 +164,7 @@ public:
 						cell::centers.push_back(center);
 
 						// set cell nodes
-						size_t start_index = cell::nodes.size();
+						start_index = cell::nodes.size();
 
 						rapidxml::xml_node<>* nodes_node = cell_node->first_node("Nodes");
 						if (nodes_node != NULL)
@@ -205,7 +208,7 @@ public:
 
 						cell.set_nodes(start_index, cell::nodes.size());
 
-						cells.emplace_back(cell);
+						cells.push_back(cell);
 					}
 				}
 			}
