@@ -74,7 +74,7 @@ protected:
 
 	// color map
 	std::vector<cgv::glutil::color_map> color_maps;
-	std::vector<std::map<float, rgba>> color_points_maps;
+	std::vector<std::map<unsigned int, rgba>> color_points_maps;
 
 	// per group information
 	std::vector<rgba> default_colors;
@@ -120,7 +120,7 @@ protected:
 	// index of focused primitive
 	int prim_idx = -1;
 	// assuming that size_t in this particular system is at least 32-bit 
-	const unsigned int cell_sign_bit = 0x40000000;
+	const unsigned int cell_sign_bit = 0x40000000; // sign bit is the second bit
 	const unsigned int cell_bitwise_shift = 15;
 	const unsigned int cell_bitwise_and = 0x7FFF;
 	// state of object
@@ -190,11 +190,11 @@ private:
 	void set_centers_geometry(cgv::render::context& ctx, control_sphere_renderer& br);
 
 	/// color map
-	void add_color_point(size_t index, float t, rgba color);
-	void update_color_point(size_t index, float t, rgba color);
+	void add_color_points(rgba color0, rgba color1);
+	void update_color_point(size_t index, rgba color0, rgba color1);
 	//void remove_color_point(size_t index, float t);
 
-	void update_color_points_vector();
+	void interpolate_colors();
 
 	void point_at_cell_center(size_t center_index) const;
 	void point_at_cell(size_t cell_index, size_t node_index) const;

@@ -97,7 +97,7 @@ void clipped_box_renderer::set_torch(bool _burn, const vec3& _burn_center, float
 //	{
 //		if (value_type != cgv::type::info::type_name<clipped_box_render_style>::get_name())
 //			return false;
-//		cgv::render::clipped_box_render_style* brs_ptr = reinterpret_cast<cgv::render::clipped_box_render_style*>(value_ptr);
+//		clipped_box_render_style* brs_ptr = reinterpret_cast<clipped_box_render_style*>(value_ptr);
 //
 //		cgv::base::base* b = dynamic_cast<cgv::base::base*>(p);
 //		p->add_member_control(b, "default_extent.x", brs_ptr->default_extent[0], "value_slider", "min=0.001;max=1000;log=true;ticks=true");
@@ -108,9 +108,9 @@ void clipped_box_renderer::set_torch(bool _burn, const vec3& _burn_center, float
 //		p->add_member_control(b, "relative_anchor.z", brs_ptr->relative_anchor[2], "value_slider", "min=-1;max=1;ticks=true");
 //		p->add_member_control(b, "rounding", brs_ptr->rounding, "toggle");
 //		p->add_member_control(b, "default_radius", brs_ptr->default_radius, "value_slider", "min=0.0;max=10;step=0.0001;log=true;ticks=true");
-//		p->add_gui("surface_render_style", *static_cast<cgv::render::surface_render_style*>(brs_ptr));
+//		p->add_gui("box_render_style", *static_cast<cgv::render::box_render_style*>(brs_ptr));
 //		return true;
 //	}
 //};
 //		
-//cgv::gui::gui_creator_registration<box_render_style_gui_creator> box_rs_gc_reg("box_render_style_gui_creator");
+//cgv::gui::gui_creator_registration<clipped_box_render_style_gui_creator> clipped_box_rs_gc_reg("clipped_box_render_style_gui_creator");

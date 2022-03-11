@@ -815,12 +815,7 @@ public:
 		//	align("\b");
 		//	end_tree_node(box_style);
 		//}
-		if (begin_tree_node("Cells", cells_ctr, false)) {
-			align("\a");
-			inline_object_gui(cells_ctr);
-			align("\b");
-			end_tree_node(cells_ctr);
-		}
+		inline_object_gui(cells_ctr);
 		if (begin_tree_node("Clipping Planes", clipping_planes_ctr, false)) {
 			align("\a");
 			inline_object_gui(clipping_planes_ctr);

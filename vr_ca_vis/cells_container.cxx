@@ -59,6 +59,17 @@ void cells_container::on_set(void* member_ptr)
 
 	bool found = false;
 
+	// group colors
+	if (!found) {
+		for (size_t i = 0; i < group_colors.size(); ++i) {
+			if (member_ptr == &group_colors[i]) {
+				found = true;
+				break;
+			}
+		}
+	}
+
+	// show all & hide all checks
 	if (!found) {
 		for (size_t type_index = 0; type_index < cell_types.size(); ++type_index) {
 			if (member_ptr == &show_all_checks[type_index]) {
@@ -106,6 +117,7 @@ void cells_container::on_set(void* member_ptr)
 		}
 	}
 
+	// show checks
 	if (!found) {
 		for (size_t i = 0; i < show_checks.size(); ++i) {
 			if (member_ptr == &show_checks[i]) {
@@ -130,11 +142,13 @@ void cells_container::on_set(void* member_ptr)
 		}
 	}
 
+	// color maps
 	if (!found) {
 		for (size_t i = 0; i < color_points_maps.size(); ++i) {
 			for (size_t j = 0; j < color_points_maps[i].size(); ++j) {
-				if (member_ptr == &color_points_maps[i][float(j)]) {
-					update_color_point(i, float(j), color_points_maps[i][float(j)]);
+				if (member_ptr == &color_points_maps[i][j]) {
+					update_color_point(i, color_points_maps[i][0], color_points_maps[i][1]);
+					interpolate_colors();
 					found = true;
 					break;
 				}
@@ -570,33 +584,39 @@ void cells_container::draw(cgv::render::context& ctx)
 }
 void cells_container::create_gui()
 {
-	if (begin_tree_node("Cell Rendering", brs, false)) {
+	if (begin_tree_node("Cells", cells)) {
 		align("\a");
-		add_gui("box_style", brs);
-		align("\b");
-		end_tree_node(brs);
-	}
+		add_member_control(this, "culling_mode", brs.culling_mode, "dropdown", "enums='off,backface,frontface'");
 
-	size_t type_index = 0, cell_index = cells_start;
-	for (const auto& ct : cell_types) {
-		if (begin_tree_node(ct.first, show_all_checks[type_index])) {
-			align("\a");
-			add_member_control(this, "show_all", reinterpret_cast<bool&>(show_all_checks[type_index]), "check");
-			add_member_control(this, "hide_all", reinterpret_cast<bool&>(hide_all_checks[type_index]), "check");
+		size_t type_index = 0, cell_index = cells_start;
+		for (const auto& ct : cell_types) {
+			if (begin_tree_node(ct.first, ct)) {
+				align("\a");
+				add_member_control(this, "show_all", reinterpret_cast<bool&>(show_all_checks[type_index]), "check");
+				add_member_control(this, "hide_all", reinterpret_cast<bool&>(hide_all_checks[type_index]), "check");
 
-			for (; cell_index < cells_end; ++cell_index) {
-				const auto& c = (*cells)[cell_index];
+				std::map<unsigned int, rgba>& cm = color_points_maps[type_index];
 
-				if (c.type != type_index)
-					break;
+				for (size_t i = 0; i < cm.size(); ++i)
+					add_member_control(this, "color", cm[i]);
 
-				add_member_control(this, " cell_" + std::to_string(c.id), reinterpret_cast<bool&>(show_checks[cell_index]), "check");
+				for (; cell_index < cells_end; ++cell_index) {
+					const auto& c = (*cells)[cell_index];
+
+					if (c.type != type_index)
+						break;
+
+					add_member_control(this, " cell_" + std::to_string(c.id), reinterpret_cast<bool&>(show_checks[cell_index]), "check");
+					add_member_control(this, "color", group_colors[cell_index - cells_start]);
+				}
+
+				align("\b");
+				end_tree_node(ct);
 			}
-
-			align("\b");
-			end_tree_node(ct.first);
+			++type_index;
 		}
-		++type_index;
+		align("\b");
+		end_tree_node(cells);
 	}
 }
 void cells_container::set_scale_matrix(const mat4& _scale_matrix)
@@ -618,15 +638,11 @@ void cells_container::set_cell_types(const std::unordered_map<std::string, cell_
 {
 	cell_types = _cell_types;
 
-	size_t i = 0;
-	for (const auto& ct : _cell_types) {
-		add_color_point(i, 0.f, rgba(59.f / 255, 76.f / 255, 192.f / 255, 0.2f));
-		add_color_point(i, 1.f, rgba(180.f / 255, 4.f / 255, 38.f / 255, 0.2f));
-		
-		++i;
-	}
+	color_points_maps.clear();
+	color_maps.clear();
 
-	//visibilities.assign(cell_types.size(), 1);
+	for (size_t i = 0; i < cell_types.size(); ++i)
+		add_color_points(rgba(59.f / 255, 76.f / 255, 192.f / 255, 1.f), rgba(180.f / 255, 4.f / 255, 38.f / 255, 1.f));
 
 	show_all_checks.resize(cell_types.size(), 1);
 	hide_all_checks.resize(cell_types.size(), 0);
@@ -647,6 +663,8 @@ void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_s
 	visibilities.resize(cells_end - cells_start, 1);
 
 	show_checks.resize(cells_end - cells_start, 1);
+
+	interpolate_colors();
 }
 void cells_container::unset_cells()
 {
@@ -654,33 +672,55 @@ void cells_container::unset_cells()
 
 	grid.build_from_vertices(NULL, 0, 0);
 }
-void cells_container::add_color_point(size_t index, float t, rgba color)
+void cells_container::add_color_points(rgba color0, rgba color1)
 {
-	if (color_points_maps.size() <= index)
-		color_points_maps.emplace_back();
+	color_points_maps.push_back({{ 0, color0 }, { 1, color1 }});
+	
+	color_maps.emplace_back();
 
-	color_points_maps[index].emplace(t, color);
-
-	if (color_maps.size() <= index)
-		color_maps.emplace_back();
-
-	color_maps[index].add_color_point(t, color);
-	color_maps[index].add_opacity_point(t, color.alpha());
-
-	update_color_points_vector();
+	for (const auto& cp : color_points_maps.back()) {
+		color_maps.back().add_color_point(float(cp.first), cp.second);
+		color_maps.back().add_opacity_point(float(cp.first), cp.second.alpha());
+	}
 }
-void cells_container::update_color_point(size_t index, float t, rgba color)
+void cells_container::update_color_point(size_t index, rgba color0, rgba color1)
 {
-	color_points_maps[index][t] = color;
-
 	color_maps[index].clear();
 
 	for (const auto& cp : color_points_maps[index]) {
-		color_maps[index].add_color_point(cp.first, cp.second);
-		color_maps[index].add_opacity_point(cp.first, cp.second.alpha());
+		color_maps[index].add_color_point(float(cp.first), cp.second);
+		color_maps[index].add_opacity_point(float(cp.first), cp.second.alpha());
+	}
+}
+void cells_container::interpolate_colors()
+{
+	group_colors.clear();
+
+	size_t type_index = 0, cell_index = cells_start;
+	for (const auto& ct : cell_types) {
+		size_t cell_count = 0;
+		for (; cell_index < cells_end; ++cell_index) {
+			const auto& c = (*cells)[cell_index];
+
+			if (c.type != type_index)
+				break;
+
+			cell_count += 1;
+		}
+
+		if (cell_count < 2) {
+			group_colors.push_back(color_points_maps[type_index][0]);
+		}
+		else {
+			std::vector<rgba> colors = color_maps[type_index].interpolate(cell_count);
+			group_colors.insert(group_colors.end(), colors.begin(), colors.end());
+		}
+
+		++type_index;
 	}
 
-	update_color_points_vector();
+	for (size_t i = 0; i < group_colors.size(); ++i)
+		update_member(&group_colors[i]);
 }
 //void cells_container::remove_color_point(size_t index, float t)
 //{
@@ -696,15 +736,15 @@ void cells_container::update_color_point(size_t index, float t, rgba color)
 //
 //	update_color_points_vector();
 //}
-void cells_container::update_color_points_vector()
-{
-	group_colors.clear();
-
-	for (const auto& cm : color_maps) {
-		std::vector<rgba> i = cm.interpolate(size_t(30));
-		group_colors.insert(group_colors.end(), i.begin(), i.end());
-	}
-}
+//void cells_container::update_color_points_vector()
+//{
+//	group_colors.clear();
+//
+//	for (const auto& cm : color_maps) {
+//		std::vector<rgba> i = cm.interpolate(size_t(30));
+//		group_colors.insert(group_colors.end(), i.begin(), i.end());
+//	}
+//}
 void cells_container::create_clipping_plane(const vec3& origin, const vec3& direction)
 {
 	vec4 scaled_origin4(inv_scale_matrix * origin.lift());
