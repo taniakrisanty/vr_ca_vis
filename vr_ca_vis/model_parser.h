@@ -1,8 +1,7 @@
 #pragma once
 
-#include <cgv/utils/file.h>
+//#include <cgv/utils/file.h>
 #include <cgv/render/render_types.h>
-#include <cgv_glutil/color_map.h>
 
 #include <fstream>
 #include <unordered_map>
