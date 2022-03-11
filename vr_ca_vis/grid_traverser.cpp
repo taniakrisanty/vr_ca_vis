@@ -1,13 +1,8 @@
-﻿// This source code is property of the Computer Graphics and Visualization 
-// chair of the TU Dresden. Do not distribute! 
-// Copyright (C) CGV TU Dresden - All Rights Reserved
-
-#include "grid_traverser.h"
+﻿#include "grid_traverser.h"
 #include "grid_utils.h"
-#include <cfloat>
 
 grid_traverser::grid_traverser()
-{ }
+{}
 
 grid_traverser::grid_traverser(const vec3& _origin, const vec3& _direction, const vec3& _cell_extents)
 	: origin(_origin), direction(_direction), cell_extents(_cell_extents)
