@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include <array>
-
 #include <cgv/render/drawable.h>
 
 typedef cgv::render::drawable::vec3 vec3;
