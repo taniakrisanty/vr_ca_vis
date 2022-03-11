@@ -93,19 +93,16 @@ public:
 	void set_model_transform(const mat4& _model_transform);
 
 	void create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
-	void copy_clipping_plane(size_t index, const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
 	void delete_clipping_plane(size_t index, size_t count = 1);
 	void clear_clipping_planes();
 
 	size_t get_num_clipping_planes() const;
-	//const std::vector<vec3>* get_clipping_plane_origins() const;
-	//const std::vector<vec3>* get_clipping_plane_directions() const;
 private:
 	void draw_clipping_plane(size_t index, cgv::render::context& ctx);
 	void construct_clipping_plane(size_t index, std::vector<vec3>& polygon) const;
 	float signed_distance_from_clipping_plane(size_t index, const vec3& p) const;
 
-	void end_drag_clipping_plane(size_t index);
+	void end_drag_clipping_plane(size_t index, vec3 p);
 
 	void update_rotation(size_t index);
 };

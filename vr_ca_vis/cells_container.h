@@ -93,7 +93,7 @@ protected:
 	// vertex buffer
 	size_t cells_count;
 	size_t nodes_count;
-	
+
 	// nodes geometry
 	cgv::render::vertex_buffer vb_node_indices;
 	cgv::render::vertex_buffer vb_nodes;
@@ -190,7 +190,6 @@ private:
 	/// color map
 	void add_color_points(rgba color0, rgba color1);
 	void update_color_point(size_t index, rgba color0, rgba color1);
-	//void remove_color_point(size_t index, float t);
 
 	void interpolate_colors();
 

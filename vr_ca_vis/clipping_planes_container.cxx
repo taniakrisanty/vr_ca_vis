@@ -130,8 +130,7 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 		}
 		else if (state == state_enum::grabbed) {
 			debug_point = prox_info.hit_point;
-			origins[prim_idx] = position_at_grab + prox_info.query_point - query_point_at_grab;
-			end_drag_clipping_plane(prim_idx);
+			end_drag_clipping_plane(prim_idx, position_at_grab + prox_info.query_point - query_point_at_grab);
 			post_recreate_gui();
 		}
 		post_redraw();
@@ -166,8 +165,7 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 				debug_point = inter_info.hit_point;
 			// to be save even without new intersection, find closest point on ray to hit point at trigger
 			vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
-			origins[prim_idx] = position_at_trigger + q - hit_point_at_trigger;
-			end_drag_clipping_plane(prim_idx);
+			end_drag_clipping_plane(prim_idx, position_at_trigger + q - hit_point_at_trigger);
 			post_recreate_gui();
 		}
 		post_redraw();
@@ -459,7 +457,7 @@ void clipping_planes_container::create_gui()
 {
 	for (size_t i = 0; i < origins.size(); ++i)
 	{
-		if (begin_tree_node("Clipping Plane " + std::to_string(i + 1), origins[i])) {
+		if (begin_tree_node("clipping plane " + std::to_string(i + 1), origins[i])) {
 			align("\a");
 			add_member_control(this, "color", colors[i]);
 			add_decorator("origin", "heading", "level=3");
@@ -498,13 +496,6 @@ void clipping_planes_container::create_clipping_plane(const vec3& origin, const 
 
 	update_rotation(rotations.size() - 1);
 }
-void clipping_planes_container::copy_clipping_plane(size_t index, const rgba& color)
-{
-	origins.emplace_back(origins[index]);
-	directions.emplace_back(directions[index]);
-	rotations.emplace_back(rotations[index]);
-	colors.emplace_back(color);
-}
 void clipping_planes_container::delete_clipping_plane(size_t index, size_t count)
 {
 	origins.erase(origins.begin() + index, origins.begin() + index + count);
@@ -523,33 +514,16 @@ size_t clipping_planes_container::get_num_clipping_planes() const
 {
 	return origins.size();
 }
-//const std::vector<cgv::render::render_types::vec3>* clipping_planes_container::get_clipping_plane_origins() const
-//{
-//	return &origins;
-//}
-//const std::vector<cgv::render::render_types::vec3>* clipping_planes_container::get_clipping_plane_directions() const
-//{
-//	return &directions;
-//}
-void clipping_planes_container::end_drag_clipping_plane(size_t index)
+void clipping_planes_container::end_drag_clipping_plane(size_t index, vec3 p)
 {
-	// TODO check drag state
+	for (size_t i = 0; i < 3; ++i)
+		p[i] = std::max(0.f, std::min(p[i], 1.f));
 
-	//vec3 origin(origins[index]);
+	if (origins[index] != p) {
+		origins[index] = p;
 
-	//if (origin.x() < 0.f || origin.x() > 1.f || origin.y() < 0.f || origin.y() > 1.f || origin.z() < 0.f || origin.z() > 1.f)
-	//{
-	//	prim_idx = -1;
-
-	//	delete_clipping_plane(index);
-
-	//	if (listener)
-	//		listener->container_on_clipping_plane_deleted(index);
-	//}
-	//else
-	{
 		if (listener)
-			listener->on_clipping_plane_updated(index, origins[index], directions[index]);
+			listener->on_clipping_plane_updated(index, p, directions[index]);
 	}
 }
 void clipping_planes_container::update_rotation(size_t index)
