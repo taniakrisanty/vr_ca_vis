@@ -8,8 +8,6 @@
 
 #include "grid_traverser.h"
 
-//#define DEBUG
-
 cells_container::rgb cells_container::get_modified_color(const rgb& color) const
 {
 	rgb mod_col(color);
@@ -361,7 +359,9 @@ bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, 
 		rotation.rotate(p);
 		prj_point = p + position_downscaled;
 
-		//std::cout << "cells_container::compute_closest_point query " << point << " = " << position_downscaled << std::endl;
+#ifdef DEBUG
+		std::cout << "cells_container::compute_closest_point query " << point << " = " << position_downscaled << std::endl;
+#endif
 	}
 	else {
 		prj_normal = n;
@@ -460,7 +460,9 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 			hit_normal = n;
 		}
 
-		//std::cout << "cells_container::compute_intersection query " << ray_start << " = " << position_downscaled << " | hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
+#ifdef DEBUG
+		std::cout << "cells_container::compute_intersection query " << ray_start << " = " << position_downscaled << " | hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
+#endif
 		break;
 	}
 
@@ -606,7 +608,7 @@ void cells_container::create_gui()
 					if (c.type != type_index)
 						break;
 
-					add_member_control(this, " cell_" + std::to_string(c.id), reinterpret_cast<bool&>(show_checks[cell_index]), "check");
+					add_member_control(this, " cell_" + std::to_string(c.id), reinterpret_cast<bool&>(show_checks[cell_index - cells_start]), "check");
 					add_member_control(this, "color", group_colors[cell_index - cells_start]);
 				}
 
@@ -722,29 +724,6 @@ void cells_container::interpolate_colors()
 	for (size_t i = 0; i < group_colors.size(); ++i)
 		update_member(&group_colors[i]);
 }
-//void cells_container::remove_color_point(size_t index, float t)
-//{
-//	if (color_points_maps[index].erase(t) > 0)
-//	{
-//		color_maps[index].clear();
-//
-//		for (const auto& cp : color_points_maps[index]) {
-//			color_maps[index].add_color_point(cp.first, cp.second);
-//			color_maps[index].add_opacity_point(cp.first, cp.second.alpha());
-//		}
-//	}
-//
-//	update_color_points_vector();
-//}
-//void cells_container::update_color_points_vector()
-//{
-//	group_colors.clear();
-//
-//	for (const auto& cm : color_maps) {
-//		std::vector<rgba> i = cm.interpolate(size_t(30));
-//		group_colors.insert(group_colors.end(), i.begin(), i.end());
-//	}
-//}
 void cells_container::create_clipping_plane(const vec3& origin, const vec3& direction)
 {
 	vec4 scaled_origin4(inv_scale_matrix * origin.lift());
@@ -752,10 +731,6 @@ void cells_container::create_clipping_plane(const vec3& origin, const vec3& dire
 
 	clipping_planes.emplace_back(direction, -dot(scaled_origin, direction));
 }
-//void cells_container::copy_clipping_plane(size_t index)
-//{
-//	clipping_planes.push_back(clipping_planes[index]);
-//}
 void cells_container::delete_clipping_plane(size_t index, size_t count)
 {
 	clipping_planes.erase(clipping_planes.begin() + index, clipping_planes.begin() + index + count);

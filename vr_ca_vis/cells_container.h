@@ -169,7 +169,6 @@ public:
 
 	/// clipping planes
 	void create_clipping_plane(const vec3& origin, const vec3& direction);
-	//void copy_clipping_plane(size_t index);
 	void delete_clipping_plane(size_t index, size_t count = 1);
 	void clear_clipping_planes();
 

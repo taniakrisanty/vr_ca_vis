@@ -4,8 +4,6 @@
 #include <cgv/math/proximity.h>
 #include <cgv/math/intersection.h>
 
-//#define DEBUG
-
 cgv::render::shader_program clipping_planes_container::prog;
 
 clipping_planes_container::rgb clipping_planes_container::get_modified_color(const rgb& color) const
@@ -198,7 +196,9 @@ bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& p
 	}
 
 	if (min_dist < std::numeric_limits<float>::max()) {
+#ifdef DEBUG
 		std::cout << "clipping_planes_container::compute_closest_point query " << point << " = " << origins[primitive_idx] << std::endl;
+#endif
 		return true;
 	}
 	else {
@@ -235,7 +235,9 @@ bool clipping_planes_container::compute_intersection(const vec3& ray_start, cons
 	}
 
 	if (hit_param < std::numeric_limits<float>::max()) {
+#ifdef DEBUG
 		std::cout << "clipping_planes_container::compute_intersection query " << ray_start << " = " << origins[primitive_idx] << " | hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
+#endif
 		return true;
 	}
 	else {
