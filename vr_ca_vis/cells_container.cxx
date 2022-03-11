@@ -509,8 +509,6 @@ void cells_container::draw(cgv::render::context& ctx)
 		glGetIntegerv(GL_BLEND_SRC_ALPHA, &blend_src);
 		glGetIntegerv(GL_BLEND_DST_ALPHA, &blend_dst);
 
-		glDisable(GL_DEPTH_TEST);
-
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -520,18 +518,11 @@ void cells_container::draw(cgv::render::context& ctx)
 		set_nodes_group_geometry(ctx, br);
 		set_nodes_geometry(ctx, br);
 
-		//rgb tmp_color;
-		//if (prim_idx >= cells_start && prim_idx < cells_end) {
-		//	tmp_color = (*cells)[prim_idx].color;
-		//	(*cells)[prim_idx].color = get_modified_color((*cells)[prim_idx].color);
-		//}
 		br.set_extent(ctx, extent);
 		//br.set_rotation_array(ctx, &rotation, cells.size());
 		br.set_clipping_planes(clipping_planes);
 		br.set_torch(burn, burn_center, burn_distance);
 		br.render(ctx, 0, nodes_count);
-		//if (prim_idx >= cells_start && prim_idx < cells_end)
-		//	(*cells)[prim_idx].color = tmp_color;
 
 		for (size_t i = 0; i < clipping_planes.size(); ++i)
 			glDisable(GL_CLIP_DISTANCE0 + i);
@@ -543,8 +534,6 @@ void cells_container::draw(cgv::render::context& ctx)
 			glDisable(GL_BLEND);
 
 		glBlendFunc(blend_src, blend_dst);
-
-		glEnable(GL_DEPTH_TEST);
 
 		ctx.pop_modelview_matrix();
 	}
