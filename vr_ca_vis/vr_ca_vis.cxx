@@ -273,9 +273,9 @@ public:
 		reset();
 
 		std::string fn = dir_name + ".cae";
-		if (cgv::utils::file::exists(fn))
-			if (read_file(fn))
-				return true;
+		//if (cgv::utils::file::exists(fn))
+		//	if (read_file(fn))
+		//		return true;
 
 		//attr_names.push_back("b");
 		//nr_attributes = uint32_t(attr_names.size());
@@ -682,11 +682,6 @@ public:
 							return true;
 						case vr::VR_INPUT1_TOUCH:
 							toggle_cell_visibility();
-							//tool = static_cast<tool_enum>((static_cast<int>(tool) + 1) % (static_cast<int>(tool_enum::torch) + 1));
-							//if (tool != tool_enum::clipping_plane)
-							//{
-							//	clipping_plane_grabbed = false;
-							//}
 							return true;
 						}
 					}
@@ -702,6 +697,13 @@ public:
 							return true;
 						case vr::VR_INPUT0_TOUCH:
 							li_cell_visible = !clipping_plane_grabbed;
+							return true;
+						case vr::VR_INPUT1_TOUCH: // change tool
+							tool = static_cast<tool_enum>((static_cast<int>(tool) + 1) % (static_cast<int>(tool_enum::torch) + 1));
+							//if (tool != tool_enum::clipping_plane)
+							//	release_clipping_plane();
+							//if (tool != tool_enum::torch)
+							//	torch_grabbed = false;
 							return true;
 						}
 					}
@@ -837,6 +839,9 @@ public:
 	}
 	void compute_visible_points()
 	{
+		if (time_step_start.empty())
+			return;
+
 		size_t start = time_step_start[time_step];
 		size_t end = (time_step + 1 == time_step_start.size() ? cells.size() : time_step_start[time_step + 1]);
 
@@ -1035,6 +1040,9 @@ public:
 	// listener for clipping plane grab event inside bag
 	void on_clipping_plane_grabbed(void* hid_kit)
 	{
+		// automatically enable clipping plane mode
+		tool = tool_enum::clipping_plane;
+
 		// ignore if user is already holding a clipping plane
 		// or no clipping plane left (the maximum is 8)
 		if (clipping_plane_grabbed || clipping_planes_ctr->get_num_clipping_planes() == clipped_box_renderer::MAX_CLIPPING_PLANES)

@@ -41,6 +41,9 @@ cells_container::cells_container(cells_container_listener* _listener, const std:
 
 	show_gui = true;
 
+	cells_start = 0;
+	cells_end = 0;
+
 	scale_matrix.identity();
 	
 	grid.set_visibilities(&visibilities);

@@ -185,28 +185,28 @@ void clipping_planes_bag::clear(cgv::render::context& ctx)
 void clipping_planes_bag::draw(cgv::render::context& ctx)
 {
 	// show clipping planes bag
-	ctx.push_modelview_matrix();
-	ctx.mul_modelview_matrix(inv_model_transform * head_transform);
+	//ctx.push_modelview_matrix();
+	//ctx.mul_modelview_matrix(inv_model_transform * head_transform);
 
-	auto& br = cgv::render::ref_box_renderer(ctx);
-	br.set_render_style(brs);
-	if (brs.rounding)
-		br.set_prog(prog);
-	br.set_position(ctx, position);
-	br.set_color_array(ctx, &color, 1);
-	br.set_secondary_color(ctx, get_modified_color(color));
-	br.set_extent(ctx, extent);
-	//br.set_rotation_array(ctx, &rotation, 1);
-	br.render(ctx, 0, 1);
+	//auto& br = cgv::render::ref_box_renderer(ctx);
+	//br.set_render_style(brs);
+	//if (brs.rounding)
+	//	br.set_prog(prog);
+	//br.set_position(ctx, position);
+	//br.set_color_array(ctx, &color, 1);
+	//br.set_secondary_color(ctx, get_modified_color(color));
+	//br.set_extent(ctx, extent);
+	////br.set_rotation_array(ctx, &rotation, 1);
+	//br.render(ctx, 0, 1);
 
-	//auto& sfr = cgv::render::ref_surfel_renderer(ctx);
-	//sfr.set_reference_point_size(1.0f);
-	//sfr.set_render_style(surf_rs);
-	//sfr.set_position(ctx, position);
-	//sfr.set_normal(ctx, vec3(0, 0, 1));
-	//sfr.render(ctx, 0, 1);
+	////auto& sfr = cgv::render::ref_surfel_renderer(ctx);
+	////sfr.set_reference_point_size(1.0f);
+	////sfr.set_render_style(surf_rs);
+	////sfr.set_position(ctx, position);
+	////sfr.set_normal(ctx, vec3(0, 0, 1));
+	////sfr.render(ctx, 0, 1);
 
-	ctx.pop_modelview_matrix();
+	//ctx.pop_modelview_matrix();
 
 	// show points
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);

@@ -44,7 +44,7 @@ void clipping_planes_container::on_set(void* member_ptr)
 	size_t clipping_plane_index = SIZE_MAX;
 	if (clipping_plane_index == SIZE_MAX) {
 		for (size_t i = 0; i < origins.size(); ++i) {
-			if (member_ptr == &origins[i]) {
+			if (member_ptr >= &origins[i] && member_ptr < &origins[i] + 1) {
 				clipping_plane_index = i;
 				break;
 			}
