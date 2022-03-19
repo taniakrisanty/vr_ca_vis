@@ -902,7 +902,8 @@ public:
 			//shader_clipping_planes.emplace_back(control_direction, -dot(scaled_origin, control_direction));
 		}
 
-		post_recreate_gui();
+		// probable fix for unresponsive GUI after moving clipping planes around
+		//post_recreate_gui();
 	}
 	void set_clipping_plane()
 	{
