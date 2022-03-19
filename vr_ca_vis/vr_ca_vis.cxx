@@ -622,7 +622,7 @@ public:
 
 		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
 
-		clipping_planes_ctr->set_model_transform(get_inverse_model_transform());
+		//clipping_planes_ctr->set_model_transform(get_model_transform());
 
 		clipping_planes_b->set_inverse_model_transform(get_inverse_model_transform());
 
@@ -902,8 +902,7 @@ public:
 			//shader_clipping_planes.emplace_back(control_direction, -dot(scaled_origin, control_direction));
 		}
 
-		// probable fix for unresponsive GUI after moving clipping planes around
-		//post_recreate_gui();
+		post_recreate_gui();
 	}
 	void set_clipping_plane()
 	{
