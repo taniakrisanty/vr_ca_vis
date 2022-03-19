@@ -478,15 +478,6 @@ void clipping_planes_container::create_gui()
 	//	end_tree_node(srs);
 	//}
 }
-void clipping_planes_container::set_model_transform(const mat4& _model_transform)
-{
-	if (model_transform != _model_transform) {
-		model_transform = _model_transform;
-
-		for (size_t i = 0; i < directions.size(); ++i)
-			update_rotation(i);
-	}
-}
 void clipping_planes_container::create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color)
 {
 	origins.emplace_back(origin);
@@ -535,15 +526,4 @@ void clipping_planes_container::update_rotation(size_t index)
 	rotation_matrix.set_col(1, normalize(cross(rotation_matrix.col(2), rotation_matrix.col(0))));
 
 	rotations[index] = quat(rotation_matrix);
-
-	//vec4 d4(model_transform * directions[index].lift());
-	//vec3 d(d4 / d4.w());
-
-	//mat3 rotation_matrix;
-
-	//rotation_matrix.set_col(2, d);
-	//rotation_matrix.set_col(0, normalize(cross(vec3(0.f, 1.f, 0.f), rotation_matrix.col(2))));
-	//rotation_matrix.set_col(1, normalize(cross(rotation_matrix.col(2), rotation_matrix.col(0))));
-
-	//rotations[index] = quat(rotation_matrix);
 }
