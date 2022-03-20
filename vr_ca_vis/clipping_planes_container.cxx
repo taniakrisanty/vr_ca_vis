@@ -131,7 +131,6 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 		else if (state == state_enum::grabbed) {
 			debug_point = prox_info.hit_point;
 			end_drag_clipping_plane(prim_idx, position_at_grab + prox_info.query_point - query_point_at_grab);
-			post_recreate_gui();
 		}
 		post_redraw();
 		return true;
@@ -166,7 +165,6 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 			// to be save even without new intersection, find closest point on ray to hit point at trigger
 			vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
 			end_drag_clipping_plane(prim_idx, position_at_trigger + q - hit_point_at_trigger);
-			post_recreate_gui();
 		}
 		post_redraw();
 		return true;
@@ -486,6 +484,9 @@ void clipping_planes_container::create_clipping_plane(const vec3& origin, const 
 	rotations.emplace_back();
 
 	update_rotation(rotations.size() - 1);
+
+	post_recreate_gui();
+	post_redraw();
 }
 void clipping_planes_container::delete_clipping_plane(size_t index, size_t count)
 {
@@ -493,6 +494,9 @@ void clipping_planes_container::delete_clipping_plane(size_t index, size_t count
 	directions.erase(directions.begin() + index, directions.begin() + index + count);
 	rotations.erase(rotations.begin() + index, rotations.begin() + index + count);
 	colors.erase(colors.begin() + index, colors.begin() + index + count);
+
+	post_recreate_gui();
+	post_redraw();
 }
 void clipping_planes_container::clear_clipping_planes()
 {
@@ -500,6 +504,9 @@ void clipping_planes_container::clear_clipping_planes()
 	directions.clear();
 	rotations.clear();
 	colors.clear();
+
+	post_recreate_gui();
+	post_redraw();
 }
 size_t clipping_planes_container::get_num_clipping_planes() const
 {
@@ -508,13 +515,12 @@ size_t clipping_planes_container::get_num_clipping_planes() const
 void clipping_planes_container::end_drag_clipping_plane(size_t index, vec3 p)
 {
 	for (size_t i = 0; i < 3; ++i)
-		p[i] = std::max(0.f, std::min(p[i], 1.f));
+		p[i] = std::max(0.f, std::min(p[i], 1.f)); 
 
 	if (origins[index] != p) {
 		origins[index] = p;
 
-		if (listener)
-			listener->on_clipping_plane_updated(index, p, directions[index]);
+		on_set(origins[index]);
 	}
 }
 void clipping_planes_container::update_rotation(size_t index)

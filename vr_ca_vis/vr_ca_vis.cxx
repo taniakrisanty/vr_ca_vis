@@ -28,6 +28,7 @@
 #include "model_parser.h"
 #include "gzip_inflater.h"
 #include <functional>
+#include <limits>
 #include <cgv/utils/dir.h>
 
 #include <vr/vr_state.h>
@@ -99,9 +100,12 @@ protected:
 	//std::vector<float> attr_values;
 	//std::vector<rgba8> colors;
 
+	vec3 control_origin = vec3(std::numeric_limits<float>::max());
+	vec3 control_direction = vec3(std::numeric_limits<float>::max());
+
 	// clipping plane
 	bool clipping_plane_grabbed;
-	// index of temporary clipping plane in clipping planes container
+	// index of temporary clipping plane i n clipping planes container
 	int temp_clipping_plane_idx = -1;
 
 	// burn
@@ -858,51 +862,50 @@ public:
 	}
 	void compute_clipping_planes()
 	{
-		if (temp_clipping_plane_idx > -1)
+		bool control_changed = true, create_clipping_plane = false;
+
+		if (get_view_ptr() && get_view_ptr()->get_current_vr_state())
+		{
+			vec3 direction = -reinterpret_cast<const vec3&>(get_view_ptr()->get_current_vr_state()->controller[1].pose[6]);
+			// control_origin have to be transformed to local space of the cells
+			vec3 co = reinterpret_cast<const vec3&>(get_view_ptr()->get_current_vr_state()->controller[1].pose[9]);
+
+			vec4 origin4(get_inverse_model_transform() * co.lift());
+			vec3 origin(origin4 / origin4.w());
+
+			if (control_direction != direction || control_origin != origin)
+			{
+				control_direction = direction;
+				control_origin = origin;
+
+				// TODO: check if plane actually intersects the box, otherwise draw the infinite cutting plane
+				create_clipping_plane = control_origin.x() >= 0.f && control_origin.x() <= 1.f &&
+					control_origin.y() >= 0.f && control_origin.y() <= 1.f &&
+					control_origin.z() >= 0.f && control_origin.z() <= 1.f;
+			}
+			else
+			{
+				control_changed = false;
+			}
+		}
+
+		if (control_changed && temp_clipping_plane_idx > -1)
 		{
 			clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
 
 			cells_ctr->delete_clipping_plane(temp_clipping_plane_idx);
+
+			temp_clipping_plane_idx = -1;
 		}
 
-		temp_clipping_plane_idx = -1;
-
-		if (get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(coordinate_system::right_controller))
+		if (create_clipping_plane)
 		{
-			const vr_view_interactor* vr_view_ptr = get_view_ptr();
-			if (!vr_view_ptr)
-				return;
-
-			const vr::vr_kit_state* state_ptr = vr_view_ptr->get_current_vr_state();
-			if (!state_ptr)
-				return;
-
-			vec3 control_direction = -reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[6]);
-			// control_origin have to be transformed to local space of the cells
-			vec3 control_origin = reinterpret_cast<const vec3&>(state_ptr->controller[1].pose[9]);
-
-			vec4 origin4(get_inverse_model_transform() * control_origin.lift());
-			vec3 origin(origin4 / origin4.w());
-
-			// TODO: check if plane actually intersects the box, otherwise draw the infinite cutting plane
-			if (origin.x() < 0.f || origin.x() > 1.f || origin.y() < 0.f || origin.y() > 1.f || origin.z() < 0.f || origin.z() > 1.f)
-				return;
-
 			temp_clipping_plane_idx = clipping_planes_ctr->get_num_clipping_planes();
 
-			clipping_planes_ctr->create_clipping_plane(origin, control_direction);
+			clipping_planes_ctr->create_clipping_plane(control_origin, control_direction);
 
-			cells_ctr->create_clipping_plane(origin, control_direction);
-
-			//mat4 mat = inv(cgv::math::scale4<double>(extent_scale));
-
-			//vec4 scaled_origin4(mat * origin4);
-			//vec3 scaled_origin(scaled_origin4 / scaled_origin4.w());
-
-			//shader_clipping_planes.emplace_back(control_direction, -dot(scaled_origin, control_direction));
+			cells_ctr->create_clipping_plane(control_origin, control_direction);
 		}
-
-		post_recreate_gui();
 	}
 	void set_clipping_plane()
 	{
