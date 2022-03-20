@@ -11,15 +11,11 @@ class grid_traverser : cgv::render::render_types
 	//current cell index
 	ivec3 current;
 
-	/* you can additional attributes for incremental calculation here */
 	double step_x, step_y, step_z;
 	double t_max_x, t_max_y, t_max_z;
 	double t_delta_x, t_delta_y, t_delta_z;
 
 public:
-	//default constructor
-	grid_traverser();
-
 	//constructs a grid traverser for a given ray with origin o, and ray direction d for a grid with cell extents ce
 	grid_traverser(const vec3& o, const vec3&d, const vec3& ce);
 

@@ -1,9 +1,6 @@
 ﻿#include "grid_traverser.h"
 #include "grid_utils.h"
 
-grid_traverser::grid_traverser()
-{}
-
 grid_traverser::grid_traverser(const vec3& _origin, const vec3& _direction, const vec3& _cell_extents)
 	: origin(_origin), direction(_direction), cell_extents(_cell_extents)
 {

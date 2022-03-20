@@ -13,7 +13,7 @@ typedef cgv::render::drawable::ivec3 ivec3;
 inline ivec3 get_position_to_cell_index(const vec3& pos, const vec3& cell_extents) 
 {
 	ivec3 idx;
-	for(int d = 0; d < 3; ++d)
+	for (int d = 0; d < 3; ++d)
 	{
 		idx[d] = int(pos[d] / cell_extents[d]);
 			if (pos[d] < 0)
