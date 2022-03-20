@@ -61,7 +61,7 @@ type(vr_scene):draw_ceiling=false
 // one out of empty,skybox,procedural
 type(vr_scene):environment_mode=skybox
 // one out of none,boxes,terrain
-type(vr_scene):ground_mode=boxes
+type(vr_scene):ground_mode=none
 // placement of terrain
 type(vr_scene):terrain_y_offset=0
 type(vr_scene):terrain_scale=0.1
