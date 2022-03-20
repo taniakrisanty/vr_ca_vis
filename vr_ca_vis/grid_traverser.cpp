@@ -69,12 +69,12 @@ void grid_traverser::operator++(int)
 	{
 		if (t_max_x < t_max_z)
 		{
-        	current[0] += step_x;
+        	current[0] += int(step_x);
         	t_max_x += t_delta_x;
       	}
 		else
 		{
-        	current[2] += step_z;
+        	current[2] += int(step_z);
         	t_max_z += t_delta_z;
 		}
     }
@@ -82,12 +82,12 @@ void grid_traverser::operator++(int)
 	{
       	if (t_max_y < t_max_z)
 		{
-        	current[1] += step_y;
+        	current[1] += int(step_y);
         	t_max_y += t_delta_y;
       	}
 		else
 		{
-        	current[2] += step_z;
+        	current[2] += int(step_z);
         	t_max_z += t_delta_z;
       	}
     }
