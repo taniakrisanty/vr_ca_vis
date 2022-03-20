@@ -129,7 +129,7 @@ public:
 
 						cell.set_properties(start_index, cell::properties.size());
 
-						vec3 center;
+						vec3 center(0.f);
 
 						rapidxml::xml_node<>* center_node = cell_node->first_node("Center");
 						if (center_node != NULL)

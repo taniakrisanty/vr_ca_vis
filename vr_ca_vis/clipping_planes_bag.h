@@ -9,7 +9,6 @@
 #include <cgv/gui/provider.h>
 #include <cgv_gl/box_renderer.h>
 #include <cgv_gl/sphere_renderer.h>
-#include <cgv_gl/surfel_renderer.h>
 
 class clipping_planes_bag_listener
 {
@@ -26,7 +25,6 @@ class clipping_planes_bag :
 {
 	cgv::render::box_render_style brs;
 	cgv::render::sphere_render_style srs;
-	cgv::render::surfel_render_style surf_rs;
 	vec3 debug_point;
 	vec3 query_point_at_grab, position_at_grab;
 	vec3 hit_point_at_trigger, position_at_trigger;
