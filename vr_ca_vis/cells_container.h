@@ -81,6 +81,7 @@ protected:
 	std::vector<rgba> default_colors;
 
 	std::vector<rgba> group_colors;
+	std::vector<bool> group_colors_overrides;
 
 	// visibility filter by id
 	std::vector<int> visibilities;
@@ -93,8 +94,8 @@ protected:
 	bool cells_out_of_date = true;
 
 	// vertex buffer
-	size_t cells_count;
-	size_t nodes_count;
+	size_t cells_count = 0;
+	size_t nodes_count = 0;
 
 	// nodes geometry
 	cgv::render::vertex_buffer vb_node_indices;
@@ -193,7 +194,7 @@ private:
 	void add_color_points(rgba color0, rgba color1);
 	void update_color_point(size_t index, rgba color0, rgba color1);
 
-	void interpolate_colors();
+	void interpolate_colors(bool force = false);
 
 	void point_at_cell(size_t cell_index, size_t node_index = SIZE_MAX) const;
 };

@@ -61,7 +61,14 @@ void cells_container::on_set(void* member_ptr)
 	update_member(member_ptr);
 
 	// group colors
-	bool found = member_ptr >= &group_colors[0] && member_ptr < &group_colors[0] + group_colors.size();
+	bool found = false;
+	if (!found) {
+		if (member_ptr >= &group_colors[0] && member_ptr < &group_colors[0] + group_colors.size()) {
+			size_t index = static_cast<rgba*>(member_ptr) - &group_colors[0];
+			group_colors_overrides[index] = true;
+			found = true;
+		}
+	}
 
 	// show all & hide all checks
 	if (!found) {
@@ -146,7 +153,7 @@ void cells_container::on_set(void* member_ptr)
 			for (size_t j = 0; j < color_points_maps[i].size(); ++j) {
 				if (member_ptr == &color_points_maps[i][j]) {
 					update_color_point(i, color_points_maps[i][0], color_points_maps[i][1]);
-					interpolate_colors();
+					interpolate_colors(true);
 					found = true;
 					break;
 				}
@@ -543,7 +550,7 @@ void cells_container::draw(cgv::render::context& ctx)
 		cr.set_position_array(ctx, cone_positions);
 		cr.set_color_array(ctx, cone_colors);
 
-		cr.render(ctx, 0, 2);
+		//cr.render(ctx, 0, 2);
 
 		ctx.pop_modelview_matrix();
 	}
@@ -734,35 +741,43 @@ void cells_container::update_color_point(size_t index, rgba color0, rgba color1)
 		color_maps[index].add_opacity_point(float(cp.first), cp.second.alpha());
 	}
 }
-void cells_container::interpolate_colors()
+void cells_container::interpolate_colors(bool force)
 {
-	group_colors.clear();
+	if (force || group_colors.size() != cells_end - cells_start || group_colors_overrides.size() != cells_end - cells_start) {
+		group_colors.resize(cells_end - cells_start);
+		group_colors_overrides.resize(cells_end - cells_start);
 
-	size_t type_index = 0, cell_index = cells_start;
-	for (const auto& ct : cell_types) {
-		size_t cell_count = 0;
-		for (; cell_index < cells_end; ++cell_index) {
-			const auto& c = (*cells)[cell_index];
+		size_t type_index = 0, cell_index = cells_start;
+		for (const auto& ct : cell_types) {
+			size_t cell_count = 0;
+			for (; cell_index < cells_end; ++cell_index) {
+				const auto& c = (*cells)[cell_index];
 
-			if (c.type != type_index)
-				break;
+				if (c.type != type_index)
+					break;
 
-			cell_count += 1;
+				cell_count += 1;
+			}
+
+			if (cell_count == 1) {
+				if (!group_colors_overrides[cell_index - cells_start - cell_count]) {
+					group_colors[cell_index - cells_start - cell_count] = color_points_maps[type_index][0];
+					update_member(&group_colors[cell_index - cells_start - cell_count]);
+				}
+			}
+			else {
+				std::vector<rgba> colors = color_maps[type_index].interpolate(cell_count);
+				for (size_t color_index = 0; color_index < colors.size(); ++color_index) {
+					if (!group_colors_overrides[cell_index - cells_start - cell_count + color_index]) {
+						group_colors[cell_index - cells_start - cell_count + color_index] = colors[color_index];
+						update_member(&group_colors[cell_index - cells_start - cell_count + color_index]);
+					}
+				}
+			}
+
+			++type_index;
 		}
-
-		if (cell_count < 2) {
-			group_colors.push_back(color_points_maps[type_index][0]);
-		}
-		else {
-			std::vector<rgba> colors = color_maps[type_index].interpolate(cell_count);
-			group_colors.insert(group_colors.end(), colors.begin(), colors.end());
-		}
-
-		++type_index;
 	}
-
-	for (size_t i = 0; i < group_colors.size(); ++i)
-		update_member(&group_colors[i]);
 }
 void cells_container::create_clipping_plane(const vec3& origin, const vec3& direction)
 {
