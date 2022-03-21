@@ -170,7 +170,7 @@ public:
 	{
 		vec3 e(_extents[0] / cell_extents[0], _extents[1] / cell_extents[1], _extents[2] / cell_extents[2]);
 
-		size_t count = e.x() * e.y() * e.z();
+		size_t count = int(e.x() * e.y() * e.z());
 
 		if (e != extents)
 		{
@@ -202,7 +202,7 @@ public:
 			return -1;
 
 		// TODO check
-		return ci.x() + ci.y() * extents.x() + ci.z() * extents.y() * extents.z();
+		return ci.x() + ci.y() * int(extents.x()) + ci.z() * int(extents.y() * extents.z());
 	}
 
 	//converts a position to a grid index
@@ -344,7 +344,7 @@ public:
 
 			if (!build_grid && cell_grid != NULL && node_grid != NULL && visited_statuses != NULL)
 			{
-				memset(visited_statuses, false, sizeof(bool) * extents.x() * extents.y() * extents.z());
+				memset(visited_statuses, false, sizeof(bool) * int(extents.x() * extents.y() * extents.z()));
 
 				ivec3 ci = get_position_to_cell_index(q, cell_extents);
 

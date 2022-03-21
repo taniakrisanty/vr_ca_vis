@@ -43,22 +43,16 @@ void clipping_planes_container::on_set(void* member_ptr)
 
 	size_t clipping_plane_index = SIZE_MAX;
 	if (clipping_plane_index == SIZE_MAX) {
-		for (size_t i = 0; i < origins.size(); ++i) {
-			if (member_ptr >= &origins[i] && member_ptr < &origins[i] + 1) {
-				clipping_plane_index = i;
-				break;
-			}
-		}
+		if (member_ptr >= &origins[0] && member_ptr < &origins[0] + origins.size())
+			clipping_plane_index = static_cast<vec3*>(member_ptr) - &origins[0];
 	}
 	if (clipping_plane_index == SIZE_MAX) {
-		for (size_t i = 0; i < directions.size(); ++i) {
-			if (member_ptr == &directions[i]) {
-				clipping_plane_index = i;
-				update_rotation(i);
-				break;
-			}
+		if (member_ptr >= &directions[0] && member_ptr < &directions[0] + directions.size()) {
+			clipping_plane_index = static_cast<vec3*>(member_ptr) - &directions[0];
+			update_rotation(clipping_plane_index);
 		}
 	}
+
 	if (clipping_plane_index < SIZE_MAX && listener)
 		listener->on_clipping_plane_updated(clipping_plane_index, origins[clipping_plane_index], directions[clipping_plane_index]);
 
@@ -267,7 +261,7 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 		//glEnable(GL_BLEND);
 		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-		for (int i = 0; i < origins.size(); ++i)
+		for (size_t i = 0; i < origins.size(); ++i)
 		{
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -486,7 +480,7 @@ void clipping_planes_container::create_clipping_plane(const vec3& origin, const 
 	update_rotation(rotations.size() - 1);
 
 	post_recreate_gui();
-	post_redraw();
+	//post_redraw();
 }
 void clipping_planes_container::delete_clipping_plane(size_t index, size_t count)
 {
@@ -496,7 +490,7 @@ void clipping_planes_container::delete_clipping_plane(size_t index, size_t count
 	colors.erase(colors.begin() + index, colors.begin() + index + count);
 
 	post_recreate_gui();
-	post_redraw();
+	//post_redraw();
 }
 void clipping_planes_container::clear_clipping_planes()
 {
@@ -506,7 +500,7 @@ void clipping_planes_container::clear_clipping_planes()
 	colors.clear();
 
 	post_recreate_gui();
-	post_redraw();
+	//post_redraw();
 }
 size_t clipping_planes_container::get_num_clipping_planes() const
 {

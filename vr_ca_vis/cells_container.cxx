@@ -4,7 +4,6 @@
 #include <cgv/math/proximity.h>
 #include <cgv/math/intersection.h>
 #include <cgv/math/ftransform.h>
-#include <cgv_gl/line_renderer.h>
 
 #include "grid_traverser.h"
 
@@ -36,8 +35,11 @@ cells_container::cells_container(cells_container_listener* _listener, const std:
 	brs.use_group_color = true;
 	brs.use_visibility = true;
 
-	crs.use_group_color = true;
-	crs.use_visibility = true;
+	csrs.use_group_color = true;
+	csrs.use_visibility = true;
+
+	crs.radius = 0.005f;
+	crs.rounded_caps = true;
 
 	show_gui = true;
 
@@ -58,88 +60,83 @@ void cells_container::on_set(void* member_ptr)
 {
 	update_member(member_ptr);
 
-	bool found = false;
-
 	// group colors
-	if (!found) {
-		for (size_t i = 0; i < group_colors.size(); ++i) {
-			if (member_ptr == &group_colors[i]) {
-				found = true;
-				break;
-			}
-		}
-	}
+	bool found = member_ptr >= &group_colors[0] && member_ptr < &group_colors[0] + group_colors.size();
 
 	// show all & hide all checks
 	if (!found) {
-		for (size_t type_index = 0; type_index < cell_types.size(); ++type_index) {
-			if (member_ptr == &show_all_checks[type_index]) {
-				if (show_all_checks[type_index] == 1) {
-					hide_all_checks[type_index] = 0;
-					update_member(&hide_all_checks[type_index]);
-				}
+		if (member_ptr >= &show_all_checks[0] && member_ptr < &show_all_checks[0] + show_all_checks.size()) {
+			size_t index = static_cast<int*>(member_ptr) - &show_all_checks[0];
 
-				for (size_t cell_index = cells_start; cell_index < cells_end; ++cell_index) {
-					const cell& c = (*cells)[cell_index];
-
-					if (c.type < type_index)
-						continue;
-
-					if (c.type > type_index)
-						break;
-
-					visibilities[cell_index - cells_start] = show_checks[cell_index - cells_start] | show_all_checks[type_index];
-				}
-
-				found = true;
-				break;
+			if (show_all_checks[index] == 1 && hide_all_checks[index] == 1) {
+				hide_all_checks[index] = 0;
+				update_member(&hide_all_checks[index]);
+				post_recreate_gui();
 			}
-			else if (member_ptr == &hide_all_checks[type_index]) {
-				if (hide_all_checks[type_index] == 1) {
-					show_all_checks[type_index] = 0;
-					update_member(&show_all_checks[type_index]);
-				}
 
-				for (size_t cell_index = cells_start; cell_index < cells_end; ++cell_index) {
-					const cell& c = (*cells)[cell_index];
+			for (size_t cell_index = cells_start; cell_index < cells_end; ++cell_index) {
+				const cell& c = (*cells)[cell_index];
 
-					if (c.type < type_index)
-						continue;
+				if (c.type < index)
+					continue;
 
-					if (c.type > type_index)
-						break;
+				if (c.type > index)
+					break;
 
-					visibilities[cell_index - cells_start] = show_checks[cell_index - cells_start] & (hide_all_checks[type_index] == 0);
-				}
-
-				found = true;
-				break;
+				visibilities[cell_index - cells_start] = show_checks[cell_index - cells_start] | show_all_checks[index];
 			}
+
+			found = true;
+		}
+	}
+
+	if (!found) {
+		if (member_ptr >= &hide_all_checks[0] && member_ptr < &hide_all_checks[0] + hide_all_checks.size()) {
+			size_t index = static_cast<int*>(member_ptr) - &hide_all_checks[0];
+
+			if (hide_all_checks[index] == 1 && show_all_checks[index] == 1) {
+				show_all_checks[index] = 0;
+				update_member(&show_all_checks[index]);
+			}
+			post_recreate_gui();
+
+			for (size_t cell_index = cells_start; cell_index < cells_end; ++cell_index) {
+				const cell& c = (*cells)[cell_index];
+
+				if (c.type < index)
+					continue;
+
+				if (c.type > index)
+					break;
+
+				visibilities[cell_index - cells_start] = show_checks[cell_index - cells_start] & (hide_all_checks[index] == 0);
+			}
+
+			found = true;
 		}
 	}
 
 	// show checks
 	if (!found) {
-		for (size_t i = 0; i < show_checks.size(); ++i) {
-			if (member_ptr == &show_checks[i]) {
-				const cell& c = (*cells)[i];
-				
-				if (show_checks[i] == 1) {
-					hide_all_checks[c.type] = 0;
-					update_member(&hide_all_checks[c.type]);
+		if (member_ptr >= &show_checks[0] && member_ptr < &show_checks[0] + show_checks.size()) {
+			size_t index = static_cast<int*>(member_ptr) - &show_checks[0];
 
-					visibilities[i] = 1;
-				}
-				else if (show_checks[i] == 0) {
-					show_all_checks[c.type] = 1;
-					update_member(&show_all_checks[c.type]);
+			const cell& c = (*cells)[index];
 
-					visibilities[i] = 0;
-				}
-	
-				found = true;
-				break;
+			if (show_checks[index] == 1) {
+				hide_all_checks[c.type] = 0;
+				update_member(&hide_all_checks[c.type]);
+
+				visibilities[index] = 1;
 			}
+			else if (show_checks[index] == 0) {
+				show_all_checks[c.type] = 1;
+				update_member(&show_all_checks[c.type]);
+
+				visibilities[index] = 0;
+			}
+
+			found = true;
 		}
 	}
 
@@ -475,16 +472,16 @@ bool cells_container::init(cgv::render::context& ctx)
 {
 	ref_clipped_box_renderer(ctx, 1);
 	ref_control_sphere_renderer(ctx, 1);
+	cgv::render::ref_cone_renderer(ctx, 1);
 	cgv::render::ref_sphere_renderer(ctx, 1);
-	cgv::render::ref_line_renderer(ctx, 1);
 	return true;
 }
 void cells_container::clear(cgv::render::context& ctx)
 {
 	ref_clipped_box_renderer(ctx, -1);
 	ref_control_sphere_renderer(ctx, -1);
+	cgv::render::ref_cone_renderer(ctx, -1);
 	cgv::render::ref_sphere_renderer(ctx, -1);
-	cgv::render::ref_line_renderer(ctx, -1);
 }
 void cells_container::init_frame(cgv::render::context& ctx)
 {
@@ -495,6 +492,62 @@ void cells_container::init_frame(cgv::render::context& ctx)
 }
 void cells_container::draw(cgv::render::context& ctx)
 {
+	// show cell centers
+	if (cells_count > 0)
+	{
+		ctx.push_modelview_matrix();
+		ctx.mul_modelview_matrix(scale_matrix);
+
+		auto& csr = ref_control_sphere_renderer(ctx);
+		csr.set_render_style(csrs);
+
+		set_centers_group_geometry(ctx, csr);
+		set_centers_geometry(ctx, csr);
+
+		csr.render(ctx, 0, cells_count);
+
+		ctx.pop_modelview_matrix();
+	}
+
+	// show labels
+	if (cells_count > 0)
+	{
+		ctx.push_modelview_matrix();
+		ctx.mul_modelview_matrix(scale_matrix);
+
+		crs.radius_scale = 0.25f * std::max(inv_scale_matrix.x(), std::max(inv_scale_matrix.y(), inv_scale_matrix.z()));
+
+		auto& cr = cgv::render::ref_cone_renderer(ctx);
+		cr.set_render_style(crs);
+
+		std::vector<vec3> cone_positions;
+		std::vector<rgb> cone_colors;
+
+		cone_positions.resize(2 * cells_count);
+		cone_colors.resize(2 * cells_count);
+
+		size_t nodes_start_index = (*cells)[cells_start].nodes_start_index;
+		size_t nodes_end_index = (*cells)[cells_end - 1].nodes_end_index;
+
+		for (size_t i = cells_start; i < cells_end; ++i) {
+			const auto& center = cell::centers[i - cells_start];
+
+			cone_positions[2 * (i - cells_start)] = center;
+			cone_positions[2 * (i - cells_start) + 1] = vec3(center.x(), inv_scale_matrix[5], center.z());
+
+			rgb color = rgb(1, 1, 1);
+			cone_colors.push_back(color);
+			cone_colors.push_back(color);
+		}
+
+		cr.set_position_array(ctx, cone_positions);
+		cr.set_color_array(ctx, cone_colors);
+
+		cr.render(ctx, 0, 2);
+
+		ctx.pop_modelview_matrix();
+	}
+
 	// show nodes
 	if (nodes_count > 0)
 	{
@@ -541,23 +594,6 @@ void cells_container::draw(cgv::render::context& ctx)
 		ctx.pop_modelview_matrix();
 	}
 
-	// show centers
-	if (cells_count > 0)
-	{
-		ctx.push_modelview_matrix();
-		ctx.mul_modelview_matrix(scale_matrix);
-
-		auto& cr = ref_control_sphere_renderer(ctx);
-		cr.set_render_style(crs);
-
-		set_centers_group_geometry(ctx, cr);
-		set_centers_geometry(ctx, cr);
-
-		cr.render(ctx, 0, cells_count);
-
-		ctx.pop_modelview_matrix();
-	}
-
 	// show points
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
@@ -578,6 +614,13 @@ void cells_container::draw(cgv::render::context& ctx)
 }
 void cells_container::create_gui()
 {
+	if (begin_tree_node("cones", crs)) {
+		align("\a");
+		add_gui("cone_style", crs);
+		align("\b");
+		end_tree_node(crs);
+	}
+
 	if (begin_tree_node("Cells", cells)) {
 		align("\a");
 		add_member_control(this, "culling_mode", brs.culling_mode, "dropdown", "enums='off,backface,frontface'");
@@ -589,19 +632,24 @@ void cells_container::create_gui()
 				add_member_control(this, "show_all", reinterpret_cast<bool&>(show_all_checks[type_index]), "check");
 				add_member_control(this, "hide_all", reinterpret_cast<bool&>(hide_all_checks[type_index]), "check");
 
-				std::map<unsigned int, rgba>& cm = color_points_maps[type_index];
+				if (hide_all_checks[type_index] == 0) {
+					std::map<unsigned int, rgba>& cm = color_points_maps[type_index];
 
-				for (size_t i = 0; i < cm.size(); ++i)
-					add_member_control(this, "color", cm[i]);
+					for (size_t i = 0; i < cm.size(); ++i)
+						add_member_control(this, "color", cm[i]);
 
-				for (; cell_index < cells_end; ++cell_index) {
-					const auto& c = (*cells)[cell_index];
+					for (; cell_index < cells_end; ++cell_index) {
+						const auto& c = (*cells)[cell_index];
 
-					if (c.type != type_index)
-						break;
+						if (c.type < type_index)
+							continue;
 
-					add_member_control(this, " cell_" + std::to_string(c.id), reinterpret_cast<bool&>(show_checks[cell_index - cells_start]), "check");
-					add_member_control(this, "color", group_colors[cell_index - cells_start]);
+						if (c.type > type_index)
+							break;
+
+						add_member_control(this, " cell_" + std::to_string(c.id), reinterpret_cast<bool&>(show_checks[cell_index - cells_start]), "check");
+						add_member_control(this, "color", group_colors[cell_index - cells_start]);
+					}
 				}
 
 				align("\b");
@@ -842,20 +890,20 @@ void cells_container::set_nodes_geometry(cgv::render::context& ctx, clipped_box_
 		br.set_color_array<rgba>(ctx, vb_colors, 0, nodes_count);
 	}
 }
-void cells_container::set_centers_group_geometry(cgv::render::context& ctx, control_sphere_renderer& br)
+void cells_container::set_centers_group_geometry(cgv::render::context& ctx, control_sphere_renderer& csr)
 {
 	if (!group_colors.empty())
-		br.set_group_colors(ctx, group_colors);
+		csr.set_group_colors(ctx, group_colors);
 	if (!visibilities.empty())
-		br.set_visibilities(ctx, visibilities);
+		csr.set_visibilities(ctx, visibilities);
 }
-void cells_container::set_centers_geometry(cgv::render::context& ctx, control_sphere_renderer& br)
+void cells_container::set_centers_geometry(cgv::render::context& ctx, control_sphere_renderer& csr)
 {
 	if (cells_count > 0) {
-		br.set_visibilities_index_array<unsigned int>(ctx, vb_center_indices, 0, cells_count);
-		br.set_group_index_array<unsigned int>(ctx, vb_center_indices, 0, cells_count);
-		br.set_position_array<vec3>(ctx, vb_centers, 0, cells_count);
-		br.set_color_array<rgba>(ctx, vb_colors, 0, cells_count);
+		csr.set_visibilities_index_array<unsigned int>(ctx, vb_center_indices, 0, cells_count);
+		csr.set_group_index_array<unsigned int>(ctx, vb_center_indices, 0, cells_count);
+		csr.set_position_array<vec3>(ctx, vb_centers, 0, cells_count);
+		csr.set_color_array<rgba>(ctx, vb_colors, 0, cells_count);
 	}
 }
 void cells_container::point_at_cell(size_t cell_index, size_t node_index) const

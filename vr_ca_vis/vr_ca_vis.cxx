@@ -100,6 +100,7 @@ protected:
 	//std::vector<float> attr_values;
 	//std::vector<rgba8> colors;
 
+	// position and direction of the right controller
 	vec3 control_origin = vec3(std::numeric_limits<float>::max());
 	vec3 control_direction = vec3(std::numeric_limits<float>::max());
 
@@ -545,7 +546,7 @@ public:
 	void draw_box(cgv::render::context& ctx)
 	{
 		ctx.ref_default_shader_program().enable(ctx);
-		ctx.set_color(rgb(1.0f, 0.0f, 1.0f));
+		ctx.set_color(rgb(0.5f, 0.5f, 0.5f));
 		glLineWidth(2.0f);
 		box3 B(vec3(0.0f), vec3(1.0f));
 		ctx.tesselate_box(B, false, true);
@@ -653,7 +654,7 @@ public:
 	bool focus_change(cgv::nui::focus_change_action action, cgv::nui::refocus_action rfa, const cgv::nui::focus_demand& demand, const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info)
 	{
 		return false;
-	}
+	} 
 	bool handle(cgv::gui::event& e)
 	{
 		// check if vr event flag is not set and don't process events in this case
@@ -725,7 +726,7 @@ public:
 								time_step = 0;
 
 							on_set(&time_step);
-							return true;
+							return true; 
 						}
 					}
 					else {

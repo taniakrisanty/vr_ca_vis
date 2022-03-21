@@ -118,7 +118,7 @@ public:
 									double property;
 									cgv::utils::is_double(value_str, property);
 
-									cell::properties.push_back(property);
+									cell::properties.push_back(float(property));
 
 									break;
 								}

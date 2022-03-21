@@ -9,6 +9,7 @@
 #include <cg_nui/grabable.h>
 #include <cgv/gui/provider.h>
 #include <cgv_gl/sphere_renderer.h>
+#include <cgv_gl/cone_renderer.h>
 #include <cgv_glutil/color_map.h>
 
 #include <unordered_map>
@@ -33,8 +34,9 @@ class cells_container :
 	public cgv::gui::provider
 {
 	clipped_box_render_style brs;
-	control_sphere_render_style crs;
+	control_sphere_render_style csrs;
 	cgv::render::sphere_render_style srs;
+	cgv::render::cone_render_style crs;
 	vec3 debug_point;
 	vec3 query_point_at_grab, position_at_grab;
 	vec3 hit_point_at_trigger, position_at_trigger;
