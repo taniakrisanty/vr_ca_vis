@@ -42,11 +42,11 @@ void clipping_planes_container::on_set(void* member_ptr)
 	update_member(member_ptr);
 
 	size_t clipping_plane_index = SIZE_MAX;
-	if (clipping_plane_index == SIZE_MAX) {
+	if (clipping_plane_index == SIZE_MAX && !origins.empty()) {
 		if (member_ptr >= &origins[0] && member_ptr < &origins[0] + origins.size())
 			clipping_plane_index = static_cast<vec3*>(member_ptr) - &origins[0];
 	}
-	if (clipping_plane_index == SIZE_MAX) {
+	if (clipping_plane_index == SIZE_MAX && !directions.empty()) {
 		if (member_ptr >= &directions[0] && member_ptr < &directions[0] + directions.size()) {
 			clipping_plane_index = static_cast<vec3*>(member_ptr) - &directions[0];
 			update_rotation(clipping_plane_index);
@@ -480,7 +480,6 @@ void clipping_planes_container::create_clipping_plane(const vec3& origin, const 
 	update_rotation(rotations.size() - 1);
 
 	post_recreate_gui();
-	//post_redraw();
 }
 void clipping_planes_container::delete_clipping_plane(size_t index, size_t count)
 {
@@ -490,7 +489,6 @@ void clipping_planes_container::delete_clipping_plane(size_t index, size_t count
 	colors.erase(colors.begin() + index, colors.begin() + index + count);
 
 	post_recreate_gui();
-	//post_redraw();
 }
 void clipping_planes_container::clear_clipping_planes()
 {
@@ -500,7 +498,6 @@ void clipping_planes_container::clear_clipping_planes()
 	colors.clear();
 
 	post_recreate_gui();
-	//post_redraw();
 }
 size_t clipping_planes_container::get_num_clipping_planes() const
 {

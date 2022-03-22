@@ -62,7 +62,7 @@ void cells_container::on_set(void* member_ptr)
 
 	// group colors
 	bool found = false;
-	if (!found) {
+	if (!found && !group_colors.empty()) {
 		if (member_ptr >= &group_colors[0] && member_ptr < &group_colors[0] + group_colors.size()) {
 			size_t index = static_cast<rgba*>(member_ptr) - &group_colors[0];
 			group_colors_overrides[index] = true;
@@ -71,7 +71,7 @@ void cells_container::on_set(void* member_ptr)
 	}
 
 	// show all & hide all checks
-	if (!found) {
+	if (!found && !show_all_checks.empty()) {
 		if (member_ptr >= &show_all_checks[0] && member_ptr < &show_all_checks[0] + show_all_checks.size()) {
 			size_t index = static_cast<int*>(member_ptr) - &show_all_checks[0];
 
@@ -97,7 +97,7 @@ void cells_container::on_set(void* member_ptr)
 		}
 	}
 
-	if (!found) {
+	if (!found && !hide_all_checks.empty()) {
 		if (member_ptr >= &hide_all_checks[0] && member_ptr < &hide_all_checks[0] + hide_all_checks.size()) {
 			size_t index = static_cast<int*>(member_ptr) - &hide_all_checks[0];
 
@@ -124,7 +124,7 @@ void cells_container::on_set(void* member_ptr)
 	}
 
 	// show checks
-	if (!found) {
+	if (!found && !show_checks.empty()) {
 		if (member_ptr >= &show_checks[0] && member_ptr < &show_checks[0] + show_checks.size()) {
 			size_t index = static_cast<int*>(member_ptr) - &show_checks[0];
 
@@ -517,43 +517,43 @@ void cells_container::draw(cgv::render::context& ctx)
 	}
 
 	// show labels
-	if (cells_count > 0)
-	{
-		ctx.push_modelview_matrix();
-		ctx.mul_modelview_matrix(scale_matrix);
+	//if (cells_count > 0)
+	//{
+	//	ctx.push_modelview_matrix();
+	//	ctx.mul_modelview_matrix(scale_matrix);
 
-		crs.radius_scale = 0.25f * std::max(inv_scale_matrix.x(), std::max(inv_scale_matrix.y(), inv_scale_matrix.z()));
+	//	crs.radius_scale = 0.25f * std::max(inv_scale_matrix.x(), std::max(inv_scale_matrix.y(), inv_scale_matrix.z()));
 
-		auto& cr = cgv::render::ref_cone_renderer(ctx);
-		cr.set_render_style(crs);
+	//	auto& cr = cgv::render::ref_cone_renderer(ctx);
+	//	cr.set_render_style(crs);
 
-		std::vector<vec3> cone_positions;
-		std::vector<rgb> cone_colors;
+	//	std::vector<vec3> cone_positions;
+	//	std::vector<rgb> cone_colors;
 
-		cone_positions.resize(2 * cells_count);
-		cone_colors.resize(2 * cells_count);
+	//	cone_positions.resize(2 * cells_count);
+	//	cone_colors.resize(2 * cells_count);
 
-		size_t nodes_start_index = (*cells)[cells_start].nodes_start_index;
-		size_t nodes_end_index = (*cells)[cells_end - 1].nodes_end_index;
+	//	size_t nodes_start_index = (*cells)[cells_start].nodes_start_index;
+	//	size_t nodes_end_index = (*cells)[cells_end - 1].nodes_end_index;
 
-		for (size_t i = cells_start; i < cells_end; ++i) {
-			const auto& center = cell::centers[i - cells_start];
+	//	for (size_t i = cells_start; i < cells_end; ++i) {
+	//		const auto& center = cell::centers[i - cells_start];
 
-			cone_positions[2 * (i - cells_start)] = center;
-			cone_positions[2 * (i - cells_start) + 1] = vec3(center.x(), inv_scale_matrix[5], center.z());
+	//		cone_positions[2 * (i - cells_start)] = center;
+	//		cone_positions[2 * (i - cells_start) + 1] = vec3(center.x(), inv_scale_matrix[5], center.z());
 
-			rgb color = rgb(1, 1, 1);
-			cone_colors.push_back(color);
-			cone_colors.push_back(color);
-		}
+	//		rgb color = rgb(1, 1, 1);
+	//		cone_colors.push_back(color);
+	//		cone_colors.push_back(color);
+	//	}
 
-		cr.set_position_array(ctx, cone_positions);
-		cr.set_color_array(ctx, cone_colors);
+	//	cr.set_position_array(ctx, cone_positions);
+	//	cr.set_color_array(ctx, cone_colors);
 
-		//cr.render(ctx, 0, 2);
+	//	cr.render(ctx, 0, cone_positions.size());
 
-		ctx.pop_modelview_matrix();
-	}
+	//	ctx.pop_modelview_matrix();
+	//}
 
 	// show nodes
 	if (nodes_count > 0)
@@ -621,13 +621,6 @@ void cells_container::draw(cgv::render::context& ctx)
 }
 void cells_container::create_gui()
 {
-	if (begin_tree_node("cones", crs)) {
-		align("\a");
-		add_gui("cone_style", crs);
-		align("\b");
-		end_tree_node(crs);
-	}
-
 	if (begin_tree_node("Cells", cells)) {
 		align("\a");
 		add_member_control(this, "culling_mode", brs.culling_mode, "dropdown", "enums='off,backface,frontface'");
