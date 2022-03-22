@@ -100,9 +100,14 @@ protected:
 	//std::vector<float> attr_values;
 	//std::vector<rgba8> colors;
 
-	// position and direction of the right controller
-	vec3 control_origin = vec3(std::numeric_limits<float>::max());
-	vec3 control_direction = vec3(std::numeric_limits<float>::max());
+	// previous inverse model transform
+	// if it changes (e.g. the table is rotated) the quaternion for rotating control direction must be recalculated
+	mat4 prev_inverse_model_transform;
+	quat control_direction_rotation;
+
+	// previous position and direction of the right controller
+	vec3 prev_control_origin;
+	vec3 prev_control_direction;
 
 	// clipping plane
 	bool clipping_plane_grabbed;
@@ -869,20 +874,37 @@ public:
 		{
 			vec3 direction = -reinterpret_cast<const vec3&>(get_view_ptr()->get_current_vr_state()->controller[1].pose[6]);
 			// control_origin have to be transformed to local space of the cells
-			vec3 co = reinterpret_cast<const vec3&>(get_view_ptr()->get_current_vr_state()->controller[1].pose[9]);
+			vec3 origin = reinterpret_cast<const vec3&>(get_view_ptr()->get_current_vr_state()->controller[1].pose[9]);
 
-			vec4 origin4(get_inverse_model_transform() * co.lift());
-			vec3 origin(origin4 / origin4.w());
+			if (prev_inverse_model_transform != get_inverse_model_transform()) {
+				prev_inverse_model_transform = get_inverse_model_transform();
 
-			if (control_direction != direction || control_origin != origin)
+				mat3 rotation;
+
+				for (size_t i = 0; i < 3; ++i) {
+					vec3 col(get_inverse_model_transform().col(i));
+					col.normalize();
+
+					rotation.set_col(i, col);
+				}
+
+				control_direction_rotation = quat(rotation);
+			}
+
+			vec4 origin4(get_inverse_model_transform() * origin.lift());
+			origin = origin4 / origin4.w();
+
+			control_direction_rotation.rotate(direction);
+
+			if (prev_control_direction != direction || prev_control_origin != origin)
 			{
-				control_direction = direction;
-				control_origin = origin;
+				prev_control_direction = direction;
+				prev_control_origin = origin;
 
 				// TODO: check if plane actually intersects the box, otherwise draw the infinite cutting plane
-				create_clipping_plane = control_origin.x() >= 0.f && control_origin.x() <= 1.f &&
-					control_origin.y() >= 0.f && control_origin.y() <= 1.f &&
-					control_origin.z() >= 0.f && control_origin.z() <= 1.f;
+				create_clipping_plane = origin.x() >= 0.f && origin.x() <= 1.f &&
+					origin.y() >= 0.f && origin.y() <= 1.f &&
+					origin.z() >= 0.f && origin.z() <= 1.f;
 			}
 			else
 			{
@@ -903,9 +925,9 @@ public:
 		{
 			temp_clipping_plane_idx = clipping_planes_ctr->get_num_clipping_planes();
 
-			clipping_planes_ctr->create_clipping_plane(control_origin, control_direction);
+			clipping_planes_ctr->create_clipping_plane(prev_control_origin, prev_control_direction);
 
-			cells_ctr->create_clipping_plane(control_origin, control_direction);
+			cells_ctr->create_clipping_plane(prev_control_origin, prev_control_direction);
 		}
 	}
 	void set_clipping_plane()
