@@ -627,6 +627,9 @@ public:
 
 		if (clipping_plane_grabbed)
 			compute_clipping_planes();
+		
+		cgv::render::shader_program& prog = ctx.ref_surface_shader_program(true);
+		prog.set_uniform(ctx, "map_color_to_material", torch_grabbed ? 3 : 0); // material side front to back or none
 
 		compute_burn();
 
@@ -671,12 +674,12 @@ public:
 				//torch_grabbed = false;
 
 				cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
-				if (vrke.get_key() == vr::VR_MENU) {
-					if (vrke.get_action() != cgv::gui::KA_RELEASE)
-						animate = !animate;
+				//if (vrke.get_key() == vr::VR_MENU) {
+				//	if (vrke.get_action() != cgv::gui::KA_RELEASE)
+				//		animate = !animate;
 
-					return true;
-				}
+				//	return true;
+				//}
 
 				// stop animation when interaction is detected
 				//animate = false;
@@ -684,36 +687,38 @@ public:
 				if (vrke.get_controller_index() == 1) { // only right controller
 					if (vrke.get_action() == cgv::gui::KA_RELEASE) {
 						switch (vrke.get_key()) {
-						case vr::VR_DPAD_LEFT:
-							torch_grabbed = false;
-							return true;
+						//case vr::VR_DPAD_LEFT:
+						//	torch_grabbed = false;
+						//	return true;
 						case vr::VR_INPUT0_TOUCH:
 							li_cell_visible = false;
-							return true;
-						case vr::VR_INPUT1_TOUCH:
-							toggle_cell_visibility();
 							return true;
 						}
 					}
 					else {
 						switch (vrke.get_key()) {
-						case vr::VR_DPAD_LEFT: // put current clipping plane permanently, temporary use this when using only one controller
-							set_clipping_plane();
-							torch_grabbed = !clipping_plane_grabbed;
-							if (torch_grabbed) li_cell_visible = false;
+						case vr::VR_DPAD_LEFT: // put current clipping plane permanently or ignite torch
+							if (clipping_plane_grabbed)
+								set_clipping_plane();
+							else {
+								torch_grabbed = true;
+								li_cell_visible = false;
+							}
 							return true;
 						case vr::VR_DPAD_RIGHT: // remove clipping plane
 							release_clipping_plane();
+							torch_grabbed = false;
 							return true;
 						case vr::VR_INPUT0_TOUCH:
 							li_cell_visible = !clipping_plane_grabbed;
 							return true;
-						case vr::VR_INPUT1_TOUCH: // change tool
-							tool = static_cast<tool_enum>((static_cast<int>(tool) + 1) % (static_cast<int>(tool_enum::torch) + 1));
-							//if (tool != tool_enum::clipping_plane)
-							//	release_clipping_plane();
-							//if (tool != tool_enum::torch)
-							//	torch_grabbed = false;
+						case vr::VR_INPUT1_TOUCH:
+							toggle_cell_visibility();
+						//	tool = static_cast<tool_enum>((static_cast<int>(tool) + 1) % (static_cast<int>(tool_enum::torch) + 1));
+						//	//if (tool != tool_enum::clipping_plane)
+						//	//	release_clipping_plane();
+						//	//if (tool != tool_enum::torch)
+						//	//	torch_grabbed = false;
 							return true;
 						}
 					}
@@ -721,17 +726,20 @@ public:
 				else if (vrke.get_controller_index() == 0) { // only left controller
 					if (vrke.get_action() != cgv::gui::KA_RELEASE) {
 						switch (vrke.get_key()) {
-						case vr::VR_DPAD_LEFT: // put current clipping plane permanently
-							set_clipping_plane();
+						case vr::VR_DPAD_LEFT:
+							animate = false;
+							on_set(&animate);
+							step_back();
 							return true;
-						case vr::VR_DPAD_RIGHT: // forward
-							if (time_step + 1 < times.size())
-								time_step += 1;
-							else
-								time_step = 0;
-
-							on_set(&time_step);
+						case vr::VR_DPAD_RIGHT:
+							animate = false;
+							on_set(&animate);
+							step();
 							return true; 
+						case vr::VR_INPUT1_TOUCH:
+							animate = !animate;
+							on_set(&animate);
+							return true;
 						}
 					}
 					else {
