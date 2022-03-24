@@ -253,9 +253,7 @@ public:
 		cell_index = c_index - 1;
 		node_index = n_index - 1;
 
-		const cell& c = (*cells)[cell_index];
-
-		return is_cell_visible(c.id) && !is_cell_clipped(cell::nodes[c.nodes_start_index + node_index]);
+		return true;
 	}
 
 	void get_closest_index(const vec3& pos, size_t& cell_index, size_t& node_index) const

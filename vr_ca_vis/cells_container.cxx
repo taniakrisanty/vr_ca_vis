@@ -443,6 +443,24 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 
 		const auto& c = (*cells)[cell_index];
 
+		// ignore if cell is invisible
+		if (visibilities[c.id] < 1) continue;
+
+		// ignore if cell is clipped by any clipping planes
+		vec4 node4 = cell::nodes[c.nodes_start_index + node_index].lift();
+
+		bool clipped = false;
+
+		for (const vec4& cp : clipping_planes)
+		{
+			if (dot(node4, cp) < 0) {
+				clipped = true;
+				break;
+			}
+		}
+
+		if (clipped) continue;
+
 		vec4 position_downscaled4(scale_matrix * cell::nodes[c.nodes_start_index + node_index].lift());
 		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
 
