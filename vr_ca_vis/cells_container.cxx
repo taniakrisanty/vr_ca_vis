@@ -707,11 +707,8 @@ void cells_container::set_cell_types(const std::unordered_map<std::string, cell_
 
 	for (size_t i = 0; i < cell_types.size(); ++i) {
 		float hue = float(i) / cell_types.size();
-		add_color_points(cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f), cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.5f, 1.0f, 0.5f));
+		add_color_points(cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.25f, 1.f, 0.5f), cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.75f, 1.f, 0.5f));
 	}
-
-	//for (size_t i = 0; i < cell_types.size(); ++i)
-	//	add_color_points(rgba(59.f / 255, 76.f / 255, 192.f / 255, 1.f), rgba(180.f / 255, 4.f / 255, 38.f / 255, 1.f));
 
 	show_all_checks.resize(cell_types.size(), 1);
 	hide_all_checks.resize(cell_types.size(), 0);
