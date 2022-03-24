@@ -1030,24 +1030,36 @@ public:
 
 		cells_ctr->toggle_cell_visibility(selected_cell_idx);
 	}
+	void peel()
+	{
+		
+	}
 	void update_cell_stats()
 	{
 		if (selected_cell_idx == SIZE_MAX)
 			return;
 
-		const cell& c = cells[selected_cell_idx];
-
 		vr::vr_scene* scene_ptr = get_scene_ptr();
 		if (scene_ptr == NULL)
 			return;
 
+		const cell& c = cells[selected_cell_idx];
+
+		const cell_type& ct = std::next(cell::types.begin(), c.type)->second;
+
+		std::ostringstream oss;
+		oss << "id " << c.id << "\ntype " << ct.name;
+		size_t index = c.properties_start_index;
+		for (const auto& p : ct.properties)
+			oss << "\n" << p << " " << std::setprecision(1) << cell::properties[index];
+
 		if (li_cell_stats == -1) {
-			li_cell_stats = scene_ptr->add_label(" id " + std::to_string(c.id) + " | type " + std::next(cell::types.begin(), c.type)->first + " ", stats_bgclr);
+			li_cell_stats = scene_ptr->add_label(oss.str(), stats_bgclr);
 			scene_ptr->place_label(li_cell_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::right_controller, label_alignment::top);
 			scene_ptr->fix_label_size(li_cell_stats);
 		}
 		else {
-			scene_ptr->update_label_text(li_cell_stats, " id " + std::to_string(c.id) + " | type " + std::next(cell::types.begin(), c.type)->first + " ");
+			scene_ptr->update_label_text(li_cell_stats, oss.str());
 		}
 	}
 	void vibrate(void* hid_kit)
@@ -1063,10 +1075,12 @@ public:
 	// listener for cell point at and grab event
 	void on_cell_pointed_at(size_t cell_index, size_t node_index)
 	{
-		selected_cell_idx = cell_index;
-		selected_node_idx = node_index;
+		if (selected_cell_idx != cell_index || selected_node_idx != node_index) {
+			selected_cell_idx = cell_index;
+			selected_node_idx = node_index;
 
-		update_cell_stats();
+			update_cell_stats();
+		}
 	}
 #pragma endregion cells_container_listener
 
