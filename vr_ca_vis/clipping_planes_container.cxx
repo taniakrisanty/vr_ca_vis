@@ -28,10 +28,6 @@ clipping_planes_container::clipping_planes_container(clipping_planes_container_l
 {
 	debug_point = vec3(0, 0.5f, 0);
 	srs.radius = 0.01f;
-
-#ifdef DEBUG
-	create_clipping_plane(vec3(0.558930457f, 0.278098106f, 0.932542086f), vec3(-0.902267516f, 0, -0.431176722f));
-#endif
 }
 std::string clipping_planes_container::get_type_name() const
 {
@@ -185,15 +181,7 @@ bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& p
 		}
 	}
 
-	if (min_dist < std::numeric_limits<float>::max()) {
-#ifdef DEBUG
-		std::cout << "clipping_planes_container::compute_closest_point query " << point << " = " << origins[primitive_idx] << std::endl;
-#endif
-		return true;
-	}
-	else {
-		return false;
-	}
+	return min_dist < std::numeric_limits<float>::max();
 }
 bool clipping_planes_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
@@ -224,15 +212,7 @@ bool clipping_planes_container::compute_intersection(const vec3& ray_start, cons
 		}
 	}
 
-	if (hit_param < std::numeric_limits<float>::max()) {
-#ifdef DEBUG
-		std::cout << "clipping_planes_container::compute_intersection query " << ray_start << " = " << origins[primitive_idx] << " | hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
-#endif
-		return true;
-	}
-	else {
-		return false;
-	}
+	return hit_param < std::numeric_limits<float>::max();
 }
 bool clipping_planes_container::init(cgv::render::context& ctx)
 {
@@ -256,22 +236,19 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 		glGetIntegerv(GL_BLEND_SRC_ALPHA, &blend_src);
 		glGetIntegerv(GL_BLEND_DST_ALPHA, &blend_dst);
 
-		glDisable(GL_DEPTH_TEST);
-
-		//glEnable(GL_BLEND);
-		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 		for (size_t i = 0; i < origins.size(); ++i)
 		{
+			glDisable(GL_DEPTH_TEST);
+
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 			draw_clipping_plane(i, ctx);
 
 			glDisable(GL_BLEND);
-		}
 
-		//glDisable(GL_BLEND);
+			glEnable(GL_DEPTH_TEST);
+		}
 
 		// restore previous blend configuration
 		if (blend)
@@ -280,8 +257,6 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 			glDisable(GL_BLEND);
 
 		glBlendFunc(blend_src, blend_dst);
-
-		glEnable(GL_DEPTH_TEST);
 	}
 
 	// show points
@@ -464,14 +439,6 @@ void clipping_planes_container::create_gui()
 			end_tree_node(origins[i]);
 		}
 	}
-
-	//add_gui("rotation", rotation, "direction", "options='min=-1;max=1;ticks=true'");
-	//if (begin_tree_node("style", srs)) {
-	//	align("\a");
-	//	add_gui("srs", srs);
-	//	align("\b");
-	//	end_tree_node(srs);
-	//}
 }
 void clipping_planes_container::create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color)
 {
