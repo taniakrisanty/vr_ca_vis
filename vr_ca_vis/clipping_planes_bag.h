@@ -60,19 +60,30 @@ protected:
 	rgb get_modified_color(const rgb& color) const;
 public:
 	clipping_planes_bag(clipping_planes_bag_listener *_listener, const std::string& _name, const vec3& _position, const rgba& _color = rgba(0.f, 1.f, 1.f, 0.1f), const vec3& _extent = vec3(1.f, 1.f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
+	/// return type name
 	std::string get_type_name() const;
+	/// callback on member updates to keep data structure consistent
 	void on_set(void* member_ptr);
 
+	//@name cgv::nui::focusable interface
+	//@{
 	bool focus_change(cgv::nui::focus_change_action action, cgv::nui::refocus_action rfa, const cgv::nui::focus_demand& demand, const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info);
 	void stream_help(std::ostream& os);
 	bool handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request);
+	//@}
 
 	bool compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx);
 
+	//@name cgv::render::drawable interface
+	//@{
+	/// initialization called once per context creation
 	bool init(cgv::render::context& ctx);
+	/// called before context destruction to clean up GPU objects
 	void clear(cgv::render::context& ctx);
+	/// draw scene here
 	void draw(cgv::render::context& ctx);
-
+	//@}
+	/// cgv::gui::provider function to create classic UI
 	void create_gui();
 
 	void set_inverse_model_transform(const mat4& _inverse_model_transform);

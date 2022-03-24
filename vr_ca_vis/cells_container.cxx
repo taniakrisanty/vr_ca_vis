@@ -201,59 +201,61 @@ void cells_container::stream_help(std::ostream& os)
 bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request)
 {
 	// ignore all events in idle mode
-	if (state == state_enum::idle)
+	if (state == state_enum::idle) {
+		point_at_cell(SIZE_MAX, SIZE_MAX);
 		return false;
+	}
 	// ignore events from other hids
 	if (!(dis_info.hid_id == hid_id))
 		return false;
 	bool pressed;
-	// hid independent check if grabbing is activated or deactivated
-	if (is_grab_change(e, pressed)) {
-		if (pressed) {
-			state = state_enum::grabbed;
-			on_set(&state);
-			//drag_begin(request, false, original_config);
-		}
-		else {
-			//drag_end(request, original_config);
-			state = state_enum::close;
-			on_set(&state);
-		}
-		return true;
-	}
-	// check if event is for grabbing
-	if (is_grabbing(e, dis_info)) {
-		const auto& prox_info = get_proximity_info(dis_info);
-		if (state == state_enum::close) {
-			debug_point = prox_info.hit_point;
-			query_point_at_grab = prox_info.query_point;
-			prim_idx = int(prox_info.primitive_index);
+	//// hid independent check if grabbing is activated or deactivated
+	//if (is_grab_change(e, pressed)) {
+	//	if (pressed) {
+	//		state = state_enum::grabbed;
+	//		on_set(&state);
+	//		//drag_begin(request, false, original_config);
+	//	}
+	//	else {
+	//		//drag_end(request, original_config);
+	//		state = state_enum::close;
+	//		on_set(&state);
+	//	}
+	//	return true;
+	//}
+	//// check if event is for grabbing
+	//if (is_grabbing(e, dis_info)) {
+	//	const auto& prox_info = get_proximity_info(dis_info);
+	//	if (state == state_enum::close) {
+	//		debug_point = prox_info.hit_point;
+	//		query_point_at_grab = prox_info.query_point;
+	//		prim_idx = int(prox_info.primitive_index);
 
-			if (prim_idx & cell_sign_bit) {
-				size_t center_index = prim_idx & cell_bitwise_and;
+	//		if (prim_idx & cell_sign_bit) {
+	//			size_t center_index = prim_idx & cell_bitwise_and;
 
-				point_at_cell(center_index);
-			}
-			else {
-				size_t cell_index = (prim_idx >> cell_bitwise_shift) & cell_bitwise_and;
-				size_t node_index = prim_idx & cell_bitwise_and;
+	//			point_at_cell(center_index);
+	//		}
+	//		else {
+	//			size_t cell_index = (prim_idx >> cell_bitwise_shift) & cell_bitwise_and;
+	//			size_t node_index = prim_idx & cell_bitwise_and;
 
-				point_at_cell(cell_index, node_index);
-			}
-		}
-		else if (state == state_enum::grabbed) {
-			debug_point = prox_info.hit_point;
-			//cells[prim_idx].node = position_at_grab + prox_info.query_point - query_point_at_grab;
-			//vec4 translation4(inv_scale_matrix * (prox_info.query_point - query_point_at_grab).lift());
-			//vec3 translation(translation4 / translation4.w());
+	//			point_at_cell(cell_index, node_index);
+	//		}
+	//	}
+	//	else if (state == state_enum::grabbed) {
+	//		debug_point = prox_info.hit_point;
+	//		//cells[prim_idx].node = position_at_grab + prox_info.query_point - query_point_at_grab;
+	//		//vec4 translation4(inv_scale_matrix * (prox_info.query_point - query_point_at_grab).lift());
+	//		//vec3 translation(translation4 / translation4.w());
 
-			//size_t cell_index = prim_idx >> 10;
+	//		//size_t cell_index = prim_idx >> 10;
 
-			//group_translations[(*cells)[cell_index].id] += translation;
-		}
-		post_redraw();
-		return true;
-	}
+	//		//group_translations[(*cells)[cell_index].id] += translation;
+	//	}
+	//	post_redraw();
+	//	return true;
+	//}
 	// hid independent check if object is triggered during pointing
 	if (is_trigger_change(e, pressed)) {
 		if (pressed) {
@@ -275,7 +277,7 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			debug_point = inter_info.hit_point;
 			hit_point_at_trigger = inter_info.hit_point;
 			prim_idx = int(inter_info.primitive_index);
-			
+
 			if (prim_idx & cell_sign_bit) {
 				size_t center_index = prim_idx & cell_bitwise_and;
 
@@ -301,81 +303,80 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 		post_redraw();
 		return true;
 	}
-	//point_at_cell(SIZE_MAX, SIZE_MAX);
 	return false;
 }
-bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
-{
-	if (burn) return false;
-
-	vec4 point_upscaled4(inv_scale_matrix * point.lift());
-	vec3 point_upscaled(point_upscaled4 / point_upscaled4.w());
-
-	float min_dist, max_dist;
-	min_dist = max_dist = std::numeric_limits<float>::max();
-
-	// check closest point to centers
-	vec3 q, n;
-	for (size_t i = cells_start; i < cells_end; ++i) {
-		if (visibilities[i - cells_start] > 0)
-			continue;
-		
-		cgv::math::closest_point_on_sphere_to_point(cell::centers[i], 1.f, point_upscaled, q, n);
-		float dist = (point_upscaled - q).sqr_length();
-		if (dist < min_dist) {
-			primitive_idx = i;
-			min_dist = dist;
-		}
-	}
-	
-	if (min_dist < max_dist) {
-		vec4 position_downscaled4(scale_matrix * cell::centers[primitive_idx].lift());
-		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
-
-		vec4 radius_downscaled4(scale_matrix * vec4(1.f));
-		vec3 radius_downscaled(radius_downscaled4 / radius_downscaled4.w());
-
-		cgv::math::closest_point_on_sphere_to_point(position_downscaled, radius_downscaled.x(), point, q, n);
-
-		prj_point = q;
-
-		min_dist = (point - q).sqr_length();
-
-		primitive_idx |= cell_sign_bit;
-	}
-
-	// check closest point to nodes
-	regular_grid<cell>::result_entry res = grid.closest_point(point_upscaled);
-
-	if (res.sqr_distance < min_dist)
-	{
-		primitive_idx = (res.cell_index << cell_bitwise_shift) | res.node_index;
-
-		const auto& c = (*cells)[res.cell_index];
-
-		vec4 position_downscaled4(scale_matrix * cell::nodes[c.nodes_start_index + res.node_index].lift());
-		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
-
-		vec4 extent_downscaled4(scale_matrix * extent.lift());
-		vec3 extent_downscaled(extent_downscaled4 / extent_downscaled4.w());
-
-		vec3 p = point - position_downscaled;
-		rotation.inverse_rotate(p);
-		for (int i = 0; i < 3; ++i)
-			p[i] = std::max(-0.5f * extent_downscaled[i], std::min(0.5f * extent_downscaled[i], p[i]));
-		rotation.rotate(p);
-		prj_point = p + position_downscaled;
-
-#ifdef DEBUG
-		std::cout << "cells_container::compute_closest_point query " << point << " = " << position_downscaled << std::endl;
-#endif
-	}
-	else {
-		prj_normal = n;
-	}
-
-	return min_dist < max_dist;
-}
+//bool cells_container::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
+//{
+//	if (burn) return false;
+//
+//	vec4 point_upscaled4(inv_scale_matrix * point.lift());
+//	vec3 point_upscaled(point_upscaled4 / point_upscaled4.w());
+//
+//	float min_dist, max_dist;
+//	min_dist = max_dist = std::numeric_limits<float>::max();
+//
+//	// check closest point to centers
+//	vec3 q, n;
+//	for (size_t i = cells_start; i < cells_end; ++i) {
+//		if (visibilities[i - cells_start] > 0)
+//			continue;
+//		
+//		cgv::math::closest_point_on_sphere_to_point(cell::centers[i], 1.f, point_upscaled, q, n);
+//		float dist = (point_upscaled - q).sqr_length();
+//		if (dist < min_dist) {
+//			primitive_idx = i;
+//			min_dist = dist;
+//		}
+//	}
+//	
+//	if (min_dist < max_dist) {
+//		vec4 position_downscaled4(scale_matrix * cell::centers[primitive_idx].lift());
+//		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
+//
+//		vec4 radius_downscaled4(scale_matrix * vec4(1.f));
+//		vec3 radius_downscaled(radius_downscaled4 / radius_downscaled4.w());
+//
+//		cgv::math::closest_point_on_sphere_to_point(position_downscaled, radius_downscaled.x(), point, q, n);
+//
+//		prj_point = q;
+//
+//		min_dist = (point - q).sqr_length();
+//
+//		primitive_idx |= cell_sign_bit;
+//	}
+//
+//	// check closest point to nodes
+//	regular_grid<cell>::result_entry res = grid.closest_point(point_upscaled);
+//
+//	if (res.sqr_distance < min_dist)
+//	{
+//		primitive_idx = (res.cell_index << cell_bitwise_shift) | res.node_index;
+//
+//		const auto& c = (*cells)[res.cell_index];
+//
+//		vec4 position_downscaled4(scale_matrix * cell::nodes[c.nodes_start_index + res.node_index].lift());
+//		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
+//
+//		vec4 extent_downscaled4(scale_matrix * extent.lift());
+//		vec3 extent_downscaled(extent_downscaled4 / extent_downscaled4.w());
+//
+//		vec3 p = point - position_downscaled;
+//		rotation.inverse_rotate(p);
+//		for (int i = 0; i < 3; ++i)
+//			p[i] = std::max(-0.5f * extent_downscaled[i], std::min(0.5f * extent_downscaled[i], p[i]));
+//		rotation.rotate(p);
+//		prj_point = p + position_downscaled;
+//
+//#ifdef DEBUG
+//		std::cout << "cells_container::compute_closest_point query " << point << " = " << position_downscaled << std::endl;
+//#endif
+//	}
+//	else {
+//		prj_normal = n;
+//	}
+//
+//	return min_dist < max_dist;
+//}
 bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
 	if (burn) return false;
@@ -602,6 +603,9 @@ void cells_container::draw(cgv::render::context& ctx)
 	}
 
 	// show points
+	if (state == state_enum::idle)
+		return;
+
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);

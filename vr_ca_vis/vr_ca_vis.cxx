@@ -121,6 +121,9 @@ protected:
 	ivec3 extent;
 	dvec3 extent_scale;
 
+	// counter how many times the controller not pointing to any cell
+	const int max_cell_unselected_counter = 10;
+	int cell_unselected_counter;
 	size_t selected_cell_idx = SIZE_MAX;
 	size_t selected_node_idx = SIZE_MAX;
 
@@ -169,8 +172,10 @@ protected:
 	// Help GUI
 	/// label index to show statistics
 	uint32_t li_clipping_plane_stats, li_cell_stats;
-	/// visibility of statistics label
-	bool li_clipping_plane_visible, li_cell_visible;
+	/// visibility of clipping plane statistics label
+	bool li_clipping_plane_visible;
+	/// visibility of cell statistics label
+	bool li_cell_visible;
 	/// background color of statistics label
 	rgba stats_bgclr;
 
@@ -222,6 +227,8 @@ public:
 	}
 	void reset()
 	{
+		cell_unselected_counter = max_cell_unselected_counter;
+
 		cells_ctr->unset_cells();
 
 		cells.clear();
@@ -597,7 +604,7 @@ public:
 			scene_ptr->hide_label(li_clipping_plane_stats);
 
 		if (li_cell_stats != -1) {
-			if (li_cell_visible && selected_cell_idx < SIZE_MAX)
+			if (li_cell_visible && cell_unselected_counter < max_cell_unselected_counter)
 				scene_ptr->show_label(li_cell_stats);
 			else
 				scene_ptr->hide_label(li_cell_stats);
@@ -1036,9 +1043,6 @@ public:
 	}
 	void update_cell_stats()
 	{
-		if (selected_cell_idx == SIZE_MAX)
-			return;
-
 		vr::vr_scene* scene_ptr = get_scene_ptr();
 		if (scene_ptr == NULL)
 			return;
@@ -1075,11 +1079,20 @@ public:
 	// listener for cell point at and grab event
 	void on_cell_pointed_at(size_t cell_index, size_t node_index)
 	{
+		if (cell_index == SIZE_MAX || node_index == SIZE_MAX) {
+			if (cell_unselected_counter < max_cell_unselected_counter)
+				cell_unselected_counter += 1;
+		}
+		else {
+			cell_unselected_counter = 0;
+		}
+
 		if (selected_cell_idx != cell_index || selected_node_idx != node_index) {
 			selected_cell_idx = cell_index;
 			selected_node_idx = node_index;
 
-			update_cell_stats();
+			if (selected_cell_idx < SIZE_MAX && selected_node_idx < SIZE_MAX)
+				update_cell_stats();
 		}
 	}
 #pragma endregion cells_container_listener

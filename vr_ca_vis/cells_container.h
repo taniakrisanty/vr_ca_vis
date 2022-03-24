@@ -29,7 +29,7 @@ class cells_container :
 	public cgv::base::node,
 	public cgv::render::drawable,
 	public cgv::nui::focusable,
-	public cgv::nui::grabable,
+	//public cgv::nui::grabable,
 	public cgv::nui::pointable,
 	public cgv::gui::provider
 {
@@ -134,8 +134,6 @@ public:
 	cells_container(cells_container_listener* _listener, const std::string& _name, const vec3& _extent = vec3(1.f), const quat& _rotation = quat(1, 0, 0, 0));
 	/// return type name
 	std::string get_type_name() const;
-	/// reflect member variables
-	//bool self_reflect(cgv::reflect::reflection_handler& rh);
 	/// callback on member updates to keep data structure consistent
 	void on_set(void* member_ptr);
 	//@name cgv::nui::focusable interface
@@ -146,7 +144,7 @@ public:
 	//@}
 
 	/// implement closest point algorithm and return whether this was found (failure only for invisible objects) and in this case set \c prj_point to closest point and \c prj_normal to corresponding surface normal
-	bool compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx);
+	//bool compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx);
 	/// implement ray object intersection and return whether intersection was found and in this case set \c hit_param to ray parameter and optionally \c hit_normal to surface normal of intersection
 	bool compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx);
 

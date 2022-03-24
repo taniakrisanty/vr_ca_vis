@@ -285,6 +285,9 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 	}
 
 	// show points
+	if (state == state_enum::idle)
+		return;
+
 	auto& sr = cgv::render::ref_sphere_renderer(ctx);
 	sr.set_render_style(srs);
 	sr.set_position(ctx, debug_point);
