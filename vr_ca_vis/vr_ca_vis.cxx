@@ -714,8 +714,10 @@ public:
 							}
 							return true;
 						case vr::VR_DPAD_RIGHT: // remove clipping plane
-							release_clipping_plane();
-							torch_grabbed = false;
+							if (torch_grabbed)
+								torch_grabbed = false;
+							else
+								release_clipping_plane();
 							return true;
 						case vr::VR_INPUT0_TOUCH:
 							li_cell_visible = !clipping_plane_grabbed;
