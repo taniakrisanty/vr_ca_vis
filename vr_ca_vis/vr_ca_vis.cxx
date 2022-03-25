@@ -113,6 +113,7 @@ protected:
 	bool clipping_plane_grabbed;
 	// index of temporary clipping plane i n clipping planes container
 	int temp_clipping_plane_idx = -1;
+	size_t selected_clipping_plane_idx = SIZE_MAX;
 
 	// burn
 	bool torch_grabbed;
@@ -978,22 +979,33 @@ public:
 	//}
 	void release_clipping_plane()
 	{
-		if (temp_clipping_plane_idx == -1) {
-			if (!clipping_plane_grabbed) { // we are not grabbing a (temporary) clipping plane, clear all installed clipping plane objects
-				clipping_planes_ctr->clear_clipping_planes();
+		if (temp_clipping_plane_idx == -1) { // we are not in the middle of placing a (temporary) clipping plane
+			if (clipping_plane_grabbed) // the clipping plane disc is still attached to the controller
+				clipping_plane_grabbed = false;
+			else {
+				if (selected_clipping_plane_idx == SIZE_MAX) { // we are not pointing at a (permanent) clipping plane
+					clipping_planes_ctr->clear_clipping_planes();
 
-				cells_ctr->clear_clipping_planes();
+					cells_ctr->clear_clipping_planes();
+				} else { // we are pointing at a (permanent) clipping plane
+					size_t index = selected_clipping_plane_idx;
+					selected_clipping_plane_idx = SIZE_MAX;
+
+					clipping_planes_ctr->delete_clipping_plane(index);
+
+					cells_ctr->delete_clipping_plane(index);
+				}
 			}
 		}
-		else {
+		else {	// we are in the middle of placing a (temporary) clipping plane
 			clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
 
 			cells_ctr->delete_clipping_plane(temp_clipping_plane_idx);
+
+			temp_clipping_plane_idx = -1;
+
+			clipping_plane_grabbed = false;
 		}
-
-		temp_clipping_plane_idx = -1;
-
-		clipping_plane_grabbed = false;
 	}
 	void compute_burn()
 	{
@@ -1116,7 +1128,11 @@ public:
 #pragma endregion clipping_planes_bag_listener
 
 #pragma region clipping_planes_container_listener
-	// listener for installed clipping plane drag event inside box
+	// listener for installed clipping plane event inside box
+	void on_clipping_plane_pointed_at(size_t index)
+	{
+		selected_clipping_plane_idx = index;
+	}
 	void on_clipping_plane_updated(size_t index, const vec3& origin, const vec3& direction)
 	{
 		cells_ctr->update_clipping_plane(index, origin, direction);

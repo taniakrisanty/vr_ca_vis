@@ -89,8 +89,10 @@ void clipping_planes_container::stream_help(std::ostream& os)
 bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request)
 {
 	// ignore all events in idle mode
-	if (state == state_enum::idle)
+	if (state == state_enum::idle) {
+		point_at_clipping_plane(SIZE_MAX);
 		return false;
+	}
 	// ignore events from other hids
 	if (!(dis_info.hid_id == hid_id))
 		return false;
@@ -147,6 +149,8 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 			hit_point_at_trigger = inter_info.hit_point;
 			prim_idx = int(inter_info.primitive_index);
 			position_at_trigger = origins[prim_idx];
+
+			point_at_clipping_plane(prim_idx);
 		}
 		else if (state == state_enum::triggered) {
 			// if we still have an intersection point, use as debug point
@@ -472,6 +476,11 @@ void clipping_planes_container::clear_clipping_planes()
 size_t clipping_planes_container::get_num_clipping_planes() const
 {
 	return origins.size();
+}
+void clipping_planes_container::point_at_clipping_plane(size_t index)
+{
+	if (listener)
+		listener->on_clipping_plane_pointed_at(index);
 }
 void clipping_planes_container::end_drag_clipping_plane(size_t index, vec3 p)
 {
