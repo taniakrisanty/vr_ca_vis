@@ -738,7 +738,7 @@ void cells_container::unset_cells()
 
 	grid.build_from_vertices(NULL, 0, 0);
 }
-void cells_container::add_color_points(rgba color0, rgba color1)
+void cells_container::add_color_points(const rgba& color0, const rgba& color1)
 {
 	color_points_maps.push_back({{ 0, color0 }, { 1, color1 }});
 	
@@ -749,7 +749,7 @@ void cells_container::add_color_points(rgba color0, rgba color1)
 		color_maps.back().add_opacity_point(float(cp.first), cp.second.alpha());
 	}
 }
-void cells_container::update_color_point(size_t index, rgba color0, rgba color1)
+void cells_container::update_color_point(size_t index, const rgba& color0, const rgba& color1)
 {
 	color_maps[index].clear();
 

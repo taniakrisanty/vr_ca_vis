@@ -856,12 +856,7 @@ public:
 		//	end_tree_node(box_style);
 		//}
 		inline_object_gui(cells_ctr);
-		if (begin_tree_node("Clipping Planes", clipping_planes_ctr, false)) {
-			align("\a");
-			inline_object_gui(clipping_planes_ctr);
-			align("\b");
-			end_tree_node(clipping_planes_ctr);
-		}
+		inline_object_gui(clipping_planes_ctr);
 	}
 	void compute_visible_points()
 	{
@@ -991,9 +986,9 @@ public:
 					size_t index = selected_clipping_plane_idx;
 					selected_clipping_plane_idx = SIZE_MAX;
 
-					clipping_planes_ctr->delete_clipping_plane(index);
+					//clipping_planes_ctr->delete_clipping_plane(index);
 
-					cells_ctr->delete_clipping_plane(index);
+					//cells_ctr->delete_clipping_plane(index);
 				}
 			}
 		}

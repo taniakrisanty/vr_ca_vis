@@ -189,8 +189,8 @@ private:
 	void set_centers_geometry(cgv::render::context& ctx, control_sphere_renderer& br);
 
 	/// color map
-	void add_color_points(rgba color0, rgba color1);
-	void update_color_point(size_t index, rgba color0, rgba color1);
+	void add_color_points(const rgba& color0, const rgba& color1);
+	void update_color_point(size_t index, const rgba& color0, const rgba& color1);
 
 	void interpolate_colors(bool force = false);
 

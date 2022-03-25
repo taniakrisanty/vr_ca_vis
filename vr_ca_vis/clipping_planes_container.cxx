@@ -39,8 +39,12 @@ void clipping_planes_container::on_set(void* member_ptr)
 
 	size_t clipping_plane_index = SIZE_MAX;
 	if (clipping_plane_index == SIZE_MAX && !origins.empty()) {
-		if (member_ptr >= &origins[0] && member_ptr < &origins[0] + origins.size())
+		if (member_ptr >= &origins[0] && member_ptr < &origins[0] + origins.size()) {
 			clipping_plane_index = static_cast<vec3*>(member_ptr) - &origins[0];
+
+			for (size_t i = 0; i < origins[clipping_plane_index].size(); ++i)
+				update_member(&origins[clipping_plane_index][i]);
+		}
 	}
 	if (clipping_plane_index == SIZE_MAX && !directions.empty()) {
 		if (member_ptr >= &directions[0] && member_ptr < &directions[0] + directions.size()) {
@@ -429,19 +433,25 @@ float clipping_planes_container::signed_distance_from_clipping_plane(size_t inde
 }
 void clipping_planes_container::create_gui()
 {
-	for (size_t i = 0; i < origins.size(); ++i)
-	{
-		if (begin_tree_node("clipping plane " + std::to_string(i + 1), origins[i])) {
-			align("\a");
-			add_member_control(this, "color", colors[i]);
-			add_decorator("origin", "heading", "level=3");
-			add_member_control(this, "x", origins[i][0], "value_slider", "ticks=true;min=0;max=1;log=true");
-			add_member_control(this, "y", origins[i][1], "value_slider", "ticks=true;min=0;max=1;log=true");
-			add_member_control(this, "z", origins[i][2], "value_slider", "ticks=true;min=0;max=1;log=true");
-			add_gui("direction", directions[i], "direction");
-			align("\b");
-			end_tree_node(origins[i]);
+	if (begin_tree_node("Clipping Planes", origins)) {
+		align("\a");
+
+		for (size_t i = 0; i < origins.size(); ++i)
+		{
+			if (begin_tree_node("clipping plane " + std::to_string(i + 1), origins[i])) {
+				align("\a");
+				add_member_control(this, "color", colors[i]);
+				add_decorator("origin", "heading", "level=3");
+				add_member_control(this, "x", origins[i][0], "value_slider", "ticks=true;min=0;max=1;log=true");
+				add_member_control(this, "y", origins[i][1], "value_slider", "ticks=true;min=0;max=1;log=true");
+				add_member_control(this, "z", origins[i][2], "value_slider", "ticks=true;min=0;max=1;log=true");
+				add_gui("direction", directions[i], "direction");
+				align("\b");
+				end_tree_node(origins[i]);
+			}
 		}
+		align("\b");
+		end_tree_node(origins);
 	}
 }
 void clipping_planes_container::create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color)
