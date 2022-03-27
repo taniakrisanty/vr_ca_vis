@@ -131,97 +131,112 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 		post_redraw();
 		return true;
 	}
-	// hid independent check if object is triggered during pointing
-	if (is_trigger_change(e, pressed)) {
-		if (pressed) {
-			state = state_enum::triggered;
-			on_set(&state);
-			drag_begin(request, true, original_config);
-		}
-		else {
-			drag_end(request, original_config);
-			state = state_enum::pointed;
-			on_set(&state);
-		}
-		return true;
-	}
-	// check if event is for pointing
-	if (is_pointing(e, dis_info)) {
-		const auto& inter_info = get_intersection_info(dis_info);
-		if (state == state_enum::pointed) {
-			debug_point = inter_info.hit_point;
-			hit_point_at_trigger = inter_info.hit_point;
-			prim_idx = int(inter_info.primitive_index);
-			position_at_trigger = origins[prim_idx];
+	//// hid independent check if object is triggered during pointing
+	//if (is_trigger_change(e, pressed)) {
+	//	if (pressed) {
+	//		state = state_enum::triggered;
+	//		on_set(&state);
+	//		drag_begin(request, true, original_config);
+	//	}
+	//	else {
+	//		drag_end(request, original_config);
+	//		state = state_enum::pointed;
+	//		on_set(&state);
+	//	}
+	//	return true;
+	//}
+	//// check if event is for pointing
+	//if (is_pointing(e, dis_info)) {
+	//	const auto& inter_info = get_intersection_info(dis_info);
+	//	if (state == state_enum::pointed) {
+	//		debug_point = inter_info.hit_point;
+	//		hit_point_at_trigger = inter_info.hit_point;
+	//		prim_idx = int(inter_info.primitive_index);
+	//		position_at_trigger = origins[prim_idx];
 
-			point_at_clipping_plane(prim_idx);
-		}
-		else if (state == state_enum::triggered) {
-			// if we still have an intersection point, use as debug point
-			if (inter_info.ray_param != std::numeric_limits<float>::max())
-				debug_point = inter_info.hit_point;
-			// to be save even without new intersection, find closest point on ray to hit point at trigger
-			vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
-			end_drag_clipping_plane(prim_idx, position_at_trigger + q - hit_point_at_trigger);
-		}
-		post_redraw();
-		return true;
-	}
+	//		point_at_clipping_plane(prim_idx);
+	//	}
+	//	else if (state == state_enum::triggered) {
+	//		// if we still have an intersection point, use as debug point
+	//		if (inter_info.ray_param != std::numeric_limits<float>::max())
+	//			debug_point = inter_info.hit_point;
+	//		// to be save even without new intersection, find closest point on ray to hit point at trigger
+	//		vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
+	//		end_drag_clipping_plane(prim_idx, position_at_trigger + q - hit_point_at_trigger);
+	//	}
+	//	post_redraw();
+	//	return true;
+	//}
 	return false;
 }
 bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
 {
 	float min_dist = std::numeric_limits<float>::max();
-
+	
 	vec3 q;
 	for (size_t i = 0; i < origins.size(); ++i) {
-		vec3 p = point - origins[i];
-		rotations[i].inverse_rotate(p);
-		cgv::math::closest_point_on_circle_to_point(origins[i], directions[i], 1.f, point, q);
-		float dist = (point - q).length();
-		if (dist < min_dist) {
-			rotations[i].rotate(q);
-
+		float dist = signed_distance_from_clipping_plane(i, point);
+		if (abs(dist) < min_dist) {
+			prj_point = point - (dist * directions[i]);
+			bool outside = false;
+			for (size_t j = 0; j < 3; ++j) {
+				if (prj_point[j] < 0.f || prj_point[j] > 1.f) {
+					outside = true;
+					break;
+				}
+			}
+			if (outside) continue;
 			primitive_idx = i;
-			prj_point = q;
 			prj_normal = directions[i];
-			min_dist = dist;
+			min_dist = abs(dist);
 		}
+		//vec3 p = point - origins[i];
+		//rotations[i].inverse_rotate(p);
+		//cgv::math::closest_point_on_circle_to_point(origins[i], directions[i], 1.f, point, q);
+		//float dist = (point - q).length();
+		//if (dist < min_dist) {
+		//	rotations[i].rotate(q);
+
+		//	primitive_idx = i;
+		//	prj_point = q;
+		//	prj_normal = directions[i];
+		//	min_dist = dist;
+		//}
 	}
 
 	return min_dist < std::numeric_limits<float>::max();
 }
-bool clipping_planes_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
-{
-	hit_param = std::numeric_limits<float>::max();
-
-	for (size_t i = 0; i < origins.size(); ++i) {
-		vec3 rs = ray_start - origins[i];
-		vec3 rd = ray_direction;
-		rotations[i].inverse_rotate(rs);
-		rotations[i].inverse_rotate(rd);
-		vec3 n;
-		vec2 res;
-		if (cgv::math::ray_box_intersection(rs, rd, 0.5f * vec3(1.f, 1.f, 0.01f), res, n) == 0)
-			continue;
-		float param;
-		if (res[0] < 0) {
-			if (res[1] < 0)
-				continue;
-			param = res[1];
-		}
-		else
-			param = res[0];
-		if (param < hit_param) {
-			primitive_idx = i;
-			hit_param = param;
-			rotations[i].rotate(n);
-			hit_normal = n;
-		}
-	}
-
-	return hit_param < std::numeric_limits<float>::max();
-}
+//bool clipping_planes_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
+//{
+//	hit_param = std::numeric_limits<float>::max();
+//
+//	for (size_t i = 0; i < origins.size(); ++i) {
+//		vec3 rs = ray_start - origins[i];
+//		vec3 rd = ray_direction;
+//		rotations[i].inverse_rotate(rs);
+//		rotations[i].inverse_rotate(rd);
+//		vec3 n;
+//		vec2 res;
+//		if (cgv::math::ray_box_intersection(rs, rd, 0.5f * vec3(1.f, 1.f, 0.01f), res, n) == 0)
+//			continue;
+//		float param;
+//		if (res[0] < 0) {
+//			if (res[1] < 0)
+//				continue;
+//			param = res[1];
+//		}
+//		else
+//			param = res[0];
+//		if (param < hit_param) {
+//			primitive_idx = i;
+//			hit_param = param;
+//			rotations[i].rotate(n);
+//			hit_normal = n;
+//		}
+//	}
+//
+//	return hit_param < std::numeric_limits<float>::max();
+//}
 bool clipping_planes_container::init(cgv::render::context& ctx)
 {
 	cgv::render::ref_sphere_renderer(ctx, 1);

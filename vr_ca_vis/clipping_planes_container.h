@@ -24,10 +24,9 @@ class clipping_planes_container :
 	public cgv::render::drawable,
 	public cgv::nui::focusable,
 	public cgv::nui::grabable,
-	public cgv::nui::pointable,
+	//public cgv::nui::pointable,
 	public cgv::gui::provider
-{
-	cgv::render::sphere_render_style srs;
+{	cgv::render::sphere_render_style srs;
 	vec3 debug_point;
 	vec3 query_point_at_grab, position_at_grab;
 	vec3 hit_point_at_trigger, position_at_trigger;
@@ -75,7 +74,7 @@ public:
 	/// implement closest point algorithm and return whether this was found (failure only for invisible objects) and in this case set \c prj_point to closest point and \c prj_normal to corresponding surface normal
 	bool compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx);
 	/// implement ray object intersection and return whether intersection was found and in this case set \c hit_param to ray parameter and optionally \c hit_normal to surface normal of intersection
-	bool compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx);
+	//bool compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx);
 
 	//@name cgv::render::drawable interface
 	//@{
