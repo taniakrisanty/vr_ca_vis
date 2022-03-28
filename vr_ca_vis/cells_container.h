@@ -53,8 +53,6 @@ public:
 protected:
 	cells_container_listener* listener;
 
-	bool show_gui;
-
 	// acceleration data structure
 	regular_grid<cell> grid;
 
@@ -82,6 +80,9 @@ protected:
 
 	std::vector<rgba> group_colors;
 	std::vector<bool> group_colors_overrides;
+
+	std::vector<size_t> peeled_cell_indices;
+	std::vector<size_t> peeled_node_indices;
 
 	// visibility filter by id
 	std::vector<int> visibilities;
@@ -179,6 +180,9 @@ public:
 
 	// visibility
 	void toggle_cell_visibility(size_t cell_index);
+
+	// peel
+	void peel(size_t cell_index, size_t node_index);
 private:
 	void transmit_cells(cgv::render::context& ctx);
 

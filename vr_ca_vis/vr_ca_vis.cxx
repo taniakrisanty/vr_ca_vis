@@ -22,6 +22,7 @@
 #include <unordered_set>
 #include "endian.h"
 #include "cae_file_format.h"
+#include "gui_container.h"
 #include "cells_container.h"
 #include "clipping_planes_bag.h"
 #include "clipping_planes_container.h"
@@ -50,6 +51,7 @@ class vr_ca_vis :
 	public cgv::gui::provider,
 	public vr::vr_tool,
 	public cae::binary_file,
+	public gui_container_listener,
 	public cells_container_listener,
 	public clipping_planes_bag_listener,
 	public clipping_planes_container_listener
@@ -82,6 +84,7 @@ protected:
 	// active tool 
 	tool_enum tool = tool_enum::none;
 
+	gui_container_ptr gui_ctr;
 	cells_container_ptr cells_ctr;
 	clipping_planes_bag_ptr clipping_planes_b;
 	clipping_planes_container_ptr clipping_planes_ctr;
@@ -326,6 +329,7 @@ public:
 			// concatenate
 			//write_file(fn);
 
+			gui_ctr->set_cell_types(cell::types);
 			cells_ctr->set_cell_types(cell::types);
 			return true;
 		}
@@ -422,6 +426,8 @@ public:
 
 		torch_grabbed = false;
 
+		gui_ctr = new gui_container(this, "GUI");
+
 		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 1.f));
 		append_child(clipping_planes_b);
 
@@ -432,7 +438,7 @@ public:
 		append_child(clipping_planes_ctr);
 
 		li_clipping_plane_stats = li_cell_stats = -1;
-		li_clipping_plane_visible = li_cell_visible = false;
+		li_clipping_plane_visible = li_cell_visible = true;
 		stats_bgclr = rgba(0.8f, 0.6f, 0.0f, 0.6f);
 	}
 	std::string get_type_name() const
@@ -605,7 +611,7 @@ public:
 			scene_ptr->hide_label(li_clipping_plane_stats);
 
 		if (li_cell_stats != -1) {
-			if (li_cell_visible && cell_unselected_counter < max_cell_unselected_counter)
+			if (li_cell_visible)// && cell_unselected_counter < max_cell_unselected_counter)
 				scene_ptr->show_label(li_cell_stats);
 			else
 				scene_ptr->hide_label(li_cell_stats);
@@ -641,11 +647,21 @@ public:
 
 		compute_burn();
 
+		gui_ctr->set_inverse_model_transform(get_inverse_model_transform());
+
 		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
 
 		//clipping_planes_ctr->set_model_transform(get_model_transform());
 
 		clipping_planes_b->set_inverse_model_transform(get_inverse_model_transform());
+
+		mat4 c;
+		c.identity();
+
+		if (scene_ptr->is_coordsystem_valid(coordinate_system::left_controller))
+			c *= pose4(scene_ptr->get_coordsystem(coordinate_system::left_controller));
+
+		gui_ctr->set_left_controller_transform(c);
 
 		mat4 h;
 		h.identity();
@@ -723,7 +739,8 @@ public:
 							li_cell_visible = !clipping_plane_grabbed;
 							return true;
 						case vr::VR_INPUT1_TOUCH:
-							toggle_cell_visibility();
+							//toggle_cell_visibility();
+							peel();
 						//	tool = static_cast<tool_enum>((static_cast<int>(tool) + 1) % (static_cast<int>(tool_enum::torch) + 1));
 						//	//if (tool != tool_enum::clipping_plane)
 						//	//	release_clipping_plane();
@@ -955,42 +972,23 @@ public:
 
 		clipping_plane_grabbed = false;
 	}
-	//void reset_clipping_plane()
-	//{
-	//	if (clipping_plane_grabbed) { // we are grabbing a (temporary) clipping plane, duplicate it first, then clear all installed clipping plane objects
-	//		size_t num_clipping_planes = clipping_planes_ctr->get_num_clipping_planes();
-
-	//		clipping_planes_ctr->copy_clipping_plane(temp_clipping_plane_idx);
-	//		clipping_planes_ctr->delete_clipping_plane(0, num_clipping_planes);
-
-	//		cells_ctr->copy_clipping_plane(temp_clipping_plane_idx);
-	//		cells_ctr->delete_clipping_plane(0, num_clipping_planes);
-
-	//		temp_clipping_plane_idx = 0;
-	//	}
-	//	else { // we are not grabbing a (temporary) clipping plane, clear all installed clipping plane objects
-	//		clipping_planes_ctr->clear_clipping_planes();
-
-	//		cells_ctr->clear_clipping_planes();
-	//	}
-	//}
 	void release_clipping_plane()
 	{
 		if (temp_clipping_plane_idx == -1) { // we are not in the middle of placing a (temporary) clipping plane
 			if (clipping_plane_grabbed) // the clipping plane disc is still attached to the controller
 				clipping_plane_grabbed = false;
 			else {
-				if (selected_clipping_plane_idx == SIZE_MAX) { // we are not pointing at a (permanent) clipping plane
+				if (selected_clipping_plane_idx == SIZE_MAX) { // we are not grabbing a (permanent) clipping plane
 					clipping_planes_ctr->clear_clipping_planes();
 
 					cells_ctr->clear_clipping_planes();
-				} else { // we are pointing at a (permanent) clipping plane
+				} else { // we are grabbing a (permanent) clipping plane
 					size_t index = selected_clipping_plane_idx;
 					selected_clipping_plane_idx = SIZE_MAX;
 
-					//clipping_planes_ctr->delete_clipping_plane(index);
+					clipping_planes_ctr->delete_clipping_plane(index);
 
-					//cells_ctr->delete_clipping_plane(index);
+					cells_ctr->delete_clipping_plane(index);
 				}
 			}
 		}
@@ -1048,7 +1046,10 @@ public:
 	}
 	void peel()
 	{
-		
+		if (selected_cell_idx == SIZE_MAX)
+			return;
+
+		cells_ctr->peel(selected_cell_idx, selected_node_idx);
 	}
 	void update_cell_stats()
 	{
@@ -1083,6 +1084,21 @@ public:
 				kit_ptr->set_vibration(1, 0, 50000);
 		}
 	}
+
+#pragma region gui_container_listener
+	uint32_t on_create_label_requested(const std::string& text, const rgba& bgclr, const vec3& position, const quat& rotation)
+	{
+		vr::vr_scene* scene_ptr = get_scene_ptr();
+		if (scene_ptr == NULL)
+			return -1;
+
+		uint32_t label = scene_ptr->add_label(text, bgclr);
+		scene_ptr->fix_label_size(label);
+		scene_ptr->place_label(label, position, rotation, coordinate_system::lab);
+		scene_ptr->show_label(label);
+		return label;
+	}
+#pragma endregion gui_container_listener
 
 #pragma region cells_container_listener
 	// listener for cell point at and grab event

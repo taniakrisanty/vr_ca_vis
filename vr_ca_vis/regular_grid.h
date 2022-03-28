@@ -372,6 +372,121 @@ public:
 		return result_entry();
 	}
 
+	void remove_outermost(const vec3& pos, size_t cell_index, size_t node_index, std::vector<size_t>& cell_indices, std::vector<size_t>& node_indices) const
+	{
+		std::lock_guard<std::mutex> lock(mutex);
+
+		std::vector<int> removed_gi;
+
+		if (!build_grid && cell_grid != NULL && node_grid != NULL && visited_statuses != NULL)
+		{
+			memset(visited_statuses, false, sizeof(bool) * int(extents.x() * extents.y() * extents.z()));
+
+			ivec3 ci = get_position_to_cell_index(pos, cell_extents);
+
+			int gi = get_cell_index_to_grid_index(ci);
+
+			// ignore if outside the grid
+			if (gi < 0)
+				return;
+
+			size_t c_index = cell_grid[gi], n_index = node_grid[gi];
+
+			if (c_index == 0 || n_index == 0)
+				return;
+
+			if (c_index != cell_index + 1 || n_index != node_index + 1)
+				return;
+
+			std::queue<ivec3> gc_indices;
+
+			visited_statuses[gi] = true;
+
+			gc_indices.push(ci);
+
+			do
+			{
+				ci = gc_indices.front();
+				gc_indices.pop();
+
+				std::cout << ci << std::endl;
+
+				int gi = get_cell_index_to_grid_index(ci);
+
+				size_t neighbors = 0;
+
+				std::vector<ivec3> cis{
+					ivec3(ci.x() - 1, ci.y(), ci.z()),	// left
+					ivec3(ci.x() + 1, ci.y(), ci.z()),	// right
+					ivec3(ci.x(), ci.y() - 1, ci.z()),	// bottom
+					ivec3(ci.x(), ci.y() + 1, ci.z()),	// top
+					ivec3(ci.x(), ci.y(), ci.z() - 1),	// back
+					ivec3(ci.x(), ci.y(), ci.z() + 1)	// front
+				};
+
+				for (const ivec3& _ci : cis)
+				{
+					int _gi = get_cell_index_to_grid_index(_ci);
+
+					// ignore if outside the grid
+					if (_gi < 0)
+						continue;
+
+					size_t _c_index = cell_grid[_gi], _n_index = node_grid[_gi];
+
+					if (_c_index == 0 || _n_index == 0)
+						continue;
+
+					neighbors += 1;
+				}
+
+				if (neighbors == 6)
+					continue;
+
+				removed_gi.push_back(gi);
+
+				cell_indices.push_back(cell_grid[gi] - 1);
+				node_indices.push_back(node_grid[gi] - 1);
+
+				cis.push_back(ivec3(ci.x() - 1, ci.y() - 1, ci.z()));	// left - bottom
+				cis.push_back(ivec3(ci.x() - 1, ci.y() + 1, ci.z()));	// left - top
+				cis.push_back(ivec3(ci.x() + 1, ci.y() - 1, ci.z()));	// right - bottom
+				cis.push_back(ivec3(ci.x() + 1, ci.y() + 1, ci.z()));	// right - top
+				cis.push_back(ivec3(ci.x(), ci.y() - 1, ci.z() - 1));	// bottom - back
+				cis.push_back(ivec3(ci.x(), ci.y() - 1, ci.z() + 1));	// bottom - front
+				cis.push_back(ivec3(ci.x(), ci.y() + 1, ci.z() - 1));	// top - back
+				cis.push_back(ivec3(ci.x(), ci.y() + 1, ci.z() + 1));	// top - front
+
+				for (const ivec3& _ci : cis)
+				{
+					int _gi = get_cell_index_to_grid_index(_ci);
+
+					// ignore if outside the grid
+					if (_gi < 0)
+						continue;
+
+					size_t _c_index = cell_grid[_gi], _n_index = node_grid[_gi];
+
+					if (_c_index == 0 || _n_index == 0)
+						continue;
+
+					// ignore if already inside the queue
+					if (visited_statuses[_gi])
+						continue;
+
+					visited_statuses[_gi] = true;
+					
+					gc_indices.push(_ci);
+				}
+			} while (!gc_indices.empty());
+
+			for (size_t i : removed_gi) {
+				cell_grid[i] = 0;
+				node_grid[i] = 0;
+			}
+		}
+	}
+
 	void set_visibilities(const std::vector<int>* _visibilities)
 	{
 		visibilities = _visibilities;

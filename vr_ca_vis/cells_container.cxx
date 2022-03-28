@@ -41,8 +41,6 @@ cells_container::cells_container(cells_container_listener* _listener, const std:
 	crs.radius = 0.005f;
 	crs.rounded_caps = true;
 
-	show_gui = true;
-
 	cells_start = 0;
 	cells_end = 0;
 
@@ -196,7 +194,7 @@ bool cells_container::focus_change(cgv::nui::focus_change_action action, cgv::nu
 }
 void cells_container::stream_help(std::ostream& os)
 {
-	os << "cells_container: grab and point at it" << std::endl;
+	os << "cells_container: point at it" << std::endl;
 }
 bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request)
 {
@@ -841,25 +839,59 @@ void cells_container::toggle_cell_visibility(size_t cell_index)
 	show_checks[c.id] = !show_checks[c.id];
 	on_set(&show_checks[c.id]);
 }
+void cells_container::peel(size_t cell_index, size_t node_index)
+{
+	vec4 scaled_pos4(inv_scale_matrix * hit_point_at_trigger.lift());
+	vec3 scaled_pos = scaled_pos4 / scaled_pos4.w();
+
+	grid.remove_outermost(scaled_pos, cell_index, node_index, peeled_cell_indices, peeled_node_indices);
+
+	cells_out_of_date = true;
+
+	//for (size_t i = 0; i < peeled_cell_indices.size(); ++i) {
+	//	std::cout << peeled_cell_indices[i] << " " << peeled_node_indices[i] << std::endl;
+	//}
+}
 void cells_container::transmit_cells(cgv::render::context& ctx)
 {
 	std::vector<unsigned int> center_ids, node_ids;
+	std::vector<vec3> node_positions;
+
 	center_ids.resize(cells_end - cells_start);
 
 	size_t nodes_start_index = (*cells)[cells_start].nodes_start_index;
 	size_t nodes_end_index = (*cells)[cells_end - 1].nodes_end_index;
 
-	for (size_t i = cells_start; i < cells_end; ++i) {
-		const auto& c = (*cells)[i];
+	if (peeled_cell_indices.empty()) {
+		for (size_t i = cells_start; i < cells_end; ++i) {
+			const auto& c = (*cells)[i];
 
-		center_ids[i - cells_start] = c.id;
+			center_ids[i - cells_start] = c.id;
 
-		for (size_t j = c.nodes_start_index; j < c.nodes_end_index; ++j)
-			node_ids.push_back(c.id);
+			for (size_t j = c.nodes_start_index; j < c.nodes_end_index; ++j)
+				node_ids.push_back(c.id);
+		}
+	}
+	else {
+		for (size_t i = cells_start; i < cells_end; ++i) {
+			const auto& c = (*cells)[i];
+
+			center_ids[i - cells_start] = c.id;
+
+			bool peeled = std::find(peeled_cell_indices.begin(), peeled_cell_indices.end(), c.id) != peeled_cell_indices.end();
+
+			for (size_t j = c.nodes_start_index; j < c.nodes_end_index; ++j) {
+				if (peeled && std::find(peeled_node_indices.begin(), peeled_node_indices.end(), j - c.nodes_start_index) != peeled_node_indices.end())
+					continue;
+
+				node_ids.push_back(c.id);
+				node_positions.push_back(cell::nodes[j]);
+			}
+		}
 	}
 
-	if (nodes_count != nodes_end_index - nodes_start_index) {
-		nodes_count = nodes_end_index - nodes_start_index;
+	if (nodes_count != nodes_end_index - nodes_start_index - peeled_cell_indices.size()) {
+		nodes_count = nodes_end_index - nodes_start_index - peeled_cell_indices.size();
 
 		vb_node_indices.destruct(ctx);
 		vb_nodes.destruct(ctx);
@@ -874,10 +906,18 @@ void cells_container::transmit_cells(cgv::render::context& ctx)
 		else
 			vb_node_indices.replace(ctx, 0, &node_ids[0], nodes_count);
 
-		if (!vb_nodes.is_created())
-			vb_nodes.create(ctx, &cell::nodes[nodes_start_index], nodes_count);
-		else
-			vb_nodes.replace(ctx, 0, &cell::nodes[nodes_start_index], nodes_count);
+		if (peeled_cell_indices.empty()) {
+			if (!vb_nodes.is_created())
+				vb_nodes.create(ctx, &cell::nodes[nodes_start_index], nodes_count);
+			else
+				vb_nodes.replace(ctx, 0, &cell::nodes[nodes_start_index], nodes_count);
+		}
+		else {
+			if (!vb_nodes.is_created())
+				vb_nodes.create(ctx, node_positions);
+			else
+				vb_nodes.replace(ctx, 0, &node_positions, nodes_count);
+		}
 
 		if (!vb_colors.is_created())
 			vb_colors.create(ctx, default_colors);
