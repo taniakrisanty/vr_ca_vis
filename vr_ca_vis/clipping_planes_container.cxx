@@ -6,23 +6,6 @@
 
 cgv::render::shader_program clipping_planes_container::prog;
 
-clipping_planes_container::rgb clipping_planes_container::get_modified_color(const rgb& color) const
-{
-	rgb mod_col(color);
-	switch (state) {
-	case state_enum::grabbed:
-		mod_col[1] = std::min(1.0f, mod_col[0] + 0.2f);
-	case state_enum::close:
-		mod_col[0] = std::min(1.0f, mod_col[0] + 0.2f);
-		break;
-	case state_enum::triggered:
-		mod_col[1] = std::min(1.0f, mod_col[0] + 0.2f);
-	case state_enum::pointed:
-		mod_col[2] = std::min(1.0f, mod_col[2] + 0.2f);
-		break;
-	}
-	return mod_col;
-}
 clipping_planes_container::clipping_planes_container(clipping_planes_container_listener* _listener, const std::string& name)
 	: cgv::base::node(name), listener(_listener)
 {
@@ -49,7 +32,6 @@ void clipping_planes_container::on_set(void* member_ptr)
 	if (clipping_plane_index == SIZE_MAX && !directions.empty()) {
 		if (member_ptr >= &directions[0] && member_ptr < &directions[0] + directions.size()) {
 			clipping_plane_index = static_cast<vec3*>(member_ptr) - &directions[0];
-			update_rotation(clipping_plane_index);
 		}
 	}
 
@@ -123,6 +105,8 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 			query_point_at_grab = prox_info.query_point;
 			prim_idx = int(prox_info.primitive_index);
 			position_at_grab = origins[prim_idx];
+
+			point_at_clipping_plane(prim_idx);
 		}
 		else if (state == state_enum::grabbed) {
 			debug_point = prox_info.hit_point;
@@ -131,42 +115,6 @@ bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui:
 		post_redraw();
 		return true;
 	}
-	//// hid independent check if object is triggered during pointing
-	//if (is_trigger_change(e, pressed)) {
-	//	if (pressed) {
-	//		state = state_enum::triggered;
-	//		on_set(&state);
-	//		drag_begin(request, true, original_config);
-	//	}
-	//	else {
-	//		drag_end(request, original_config);
-	//		state = state_enum::pointed;
-	//		on_set(&state);
-	//	}
-	//	return true;
-	//}
-	//// check if event is for pointing
-	//if (is_pointing(e, dis_info)) {
-	//	const auto& inter_info = get_intersection_info(dis_info);
-	//	if (state == state_enum::pointed) {
-	//		debug_point = inter_info.hit_point;
-	//		hit_point_at_trigger = inter_info.hit_point;
-	//		prim_idx = int(inter_info.primitive_index);
-	//		position_at_trigger = origins[prim_idx];
-
-	//		point_at_clipping_plane(prim_idx);
-	//	}
-	//	else if (state == state_enum::triggered) {
-	//		// if we still have an intersection point, use as debug point
-	//		if (inter_info.ray_param != std::numeric_limits<float>::max())
-	//			debug_point = inter_info.hit_point;
-	//		// to be save even without new intersection, find closest point on ray to hit point at trigger
-	//		vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
-	//		end_drag_clipping_plane(prim_idx, position_at_trigger + q - hit_point_at_trigger);
-	//	}
-	//	post_redraw();
-	//	return true;
-	//}
 	return false;
 }
 bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx)
@@ -178,6 +126,8 @@ bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& p
 		float dist = signed_distance_from_clipping_plane(i, point);
 		if (abs(dist) < min_dist) {
 			prj_point = point - (dist * directions[i]);
+			
+			// closest point is outside wireframe box
 			bool outside = false;
 			for (size_t j = 0; j < 3; ++j) {
 				if (prj_point[j] < 0.f || prj_point[j] > 1.f) {
@@ -186,57 +136,15 @@ bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& p
 				}
 			}
 			if (outside) continue;
+			
 			primitive_idx = i;
 			prj_normal = directions[i];
 			min_dist = abs(dist);
 		}
-		//vec3 p = point - origins[i];
-		//rotations[i].inverse_rotate(p);
-		//cgv::math::closest_point_on_circle_to_point(origins[i], directions[i], 1.f, point, q);
-		//float dist = (point - q).length();
-		//if (dist < min_dist) {
-		//	rotations[i].rotate(q);
-
-		//	primitive_idx = i;
-		//	prj_point = q;
-		//	prj_normal = directions[i];
-		//	min_dist = dist;
-		//}
 	}
 
 	return min_dist < std::numeric_limits<float>::max();
 }
-//bool clipping_planes_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
-//{
-//	hit_param = std::numeric_limits<float>::max();
-//
-//	for (size_t i = 0; i < origins.size(); ++i) {
-//		vec3 rs = ray_start - origins[i];
-//		vec3 rd = ray_direction;
-//		rotations[i].inverse_rotate(rs);
-//		rotations[i].inverse_rotate(rd);
-//		vec3 n;
-//		vec2 res;
-//		if (cgv::math::ray_box_intersection(rs, rd, 0.5f * vec3(1.f, 1.f, 0.01f), res, n) == 0)
-//			continue;
-//		float param;
-//		if (res[0] < 0) {
-//			if (res[1] < 0)
-//				continue;
-//			param = res[1];
-//		}
-//		else
-//			param = res[0];
-//		if (param < hit_param) {
-//			primitive_idx = i;
-//			hit_param = param;
-//			rotations[i].rotate(n);
-//			hit_normal = n;
-//		}
-//	}
-//
-//	return hit_param < std::numeric_limits<float>::max();
-//}
 bool clipping_planes_container::init(cgv::render::context& ctx)
 {
 	cgv::render::ref_sphere_renderer(ctx, 1);
@@ -292,16 +200,6 @@ void clipping_planes_container::draw(cgv::render::context& ctx)
 	rgb color(0.5f, 0.5f, 0.5f);
 	sr.set_color_array(ctx, &color, 1);
 	sr.render(ctx, 0, 1);
-	if (state == state_enum::grabbed) {
-		sr.set_position(ctx, query_point_at_grab);
-		sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
-		sr.render(ctx, 0, 1);
-	}
-	if (state == state_enum::triggered) {
-		sr.set_position(ctx, hit_point_at_trigger);
-		sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
-		sr.render(ctx, 0, 1);
-	}
 }
 void clipping_planes_container::draw_clipping_plane(size_t index, cgv::render::context & ctx)
 {
@@ -474,9 +372,6 @@ void clipping_planes_container::create_clipping_plane(const vec3& origin, const 
 	origins.emplace_back(origin);
 	directions.emplace_back(direction);
 	colors.emplace_back(color);
-	rotations.emplace_back();
-
-	update_rotation(rotations.size() - 1);
 
 	post_recreate_gui();
 }
@@ -484,7 +379,6 @@ void clipping_planes_container::delete_clipping_plane(size_t index, size_t count
 {
 	origins.erase(origins.begin() + index, origins.begin() + index + count);
 	directions.erase(directions.begin() + index, directions.begin() + index + count);
-	rotations.erase(rotations.begin() + index, rotations.begin() + index + count);
 	colors.erase(colors.begin() + index, colors.begin() + index + count);
 
 	post_recreate_gui();
@@ -493,7 +387,6 @@ void clipping_planes_container::clear_clipping_planes()
 {
 	origins.clear();
 	directions.clear();
-	rotations.clear();
 	colors.clear();
 
 	post_recreate_gui();
@@ -510,21 +403,11 @@ void clipping_planes_container::point_at_clipping_plane(size_t index)
 void clipping_planes_container::end_drag_clipping_plane(size_t index, vec3 p)
 {
 	for (size_t i = 0; i < 3; ++i)
-		p[i] = std::max(0.f, std::min(p[i], 1.f)); 
+		p[i] = std::max(0.f, std::min(p[i], 1.f));
 
 	if (origins[index] != p) {
 		origins[index] = p;
 
 		on_set(origins[index]);
 	}
-}
-void clipping_planes_container::update_rotation(size_t index)
-{
-	mat3 rotation_matrix;
-
-	rotation_matrix.set_col(2, directions[index]);
-	rotation_matrix.set_col(0, normalize(cross(vec3(0.f, 1.f, 0.f), rotation_matrix.col(2))));
-	rotation_matrix.set_col(1, normalize(cross(rotation_matrix.col(2), rotation_matrix.col(0))));
-
-	rotations[index] = quat(rotation_matrix);
 }

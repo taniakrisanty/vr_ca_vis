@@ -24,12 +24,10 @@ class clipping_planes_container :
 	public cgv::render::drawable,
 	public cgv::nui::focusable,
 	public cgv::nui::grabable,
-	//public cgv::nui::pointable,
 	public cgv::gui::provider
 {	cgv::render::sphere_render_style srs;
 	vec3 debug_point;
 	vec3 query_point_at_grab, position_at_grab;
-	vec3 hit_point_at_trigger, position_at_trigger;
 	cgv::nui::focus_configuration original_config;
 	static cgv::render::shader_program prog;
 public:
@@ -48,7 +46,6 @@ protected:
 	// geometry of clipping planes with color
 	std::vector<vec3> origins;
 	std::vector<vec3> directions;
-	std::vector<quat> rotations;
 	std::vector<rgba> colors;
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
@@ -56,8 +53,6 @@ protected:
 	int prim_idx = -1;
 	// state of object
 	state_enum state = state_enum::idle;
-	/// return color modified based on state
-	rgb get_modified_color(const rgb& color) const;
 public:
 	clipping_planes_container(clipping_planes_container_listener* _listener, const std::string& name);
 	/// return type name
@@ -73,8 +68,6 @@ public:
 
 	/// implement closest point algorithm and return whether this was found (failure only for invisible objects) and in this case set \c prj_point to closest point and \c prj_normal to corresponding surface normal
 	bool compute_closest_point(const vec3& point, vec3& prj_point, vec3& prj_normal, size_t& primitive_idx);
-	/// implement ray object intersection and return whether intersection was found and in this case set \c hit_param to ray parameter and optionally \c hit_normal to surface normal of intersection
-	//bool compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx);
 
 	//@name cgv::render::drawable interface
 	//@{
@@ -100,8 +93,6 @@ private:
 
 	void point_at_clipping_plane(size_t index);
 	void end_drag_clipping_plane(size_t index, vec3 p);
-
-	void update_rotation(size_t index);
 };
 
 typedef cgv::data::ref_ptr<clipping_planes_container> clipping_planes_container_ptr;
