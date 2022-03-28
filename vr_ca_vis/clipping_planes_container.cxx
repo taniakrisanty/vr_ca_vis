@@ -70,7 +70,7 @@ bool clipping_planes_container::focus_change(cgv::nui::focus_change_action actio
 }
 void clipping_planes_container::stream_help(std::ostream& os)
 {
-	os << "clipping_planes_container: grab and point at it" << std::endl;
+	os << "clipping_planes_container: grab it" << std::endl;
 }
 bool clipping_planes_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request)
 {

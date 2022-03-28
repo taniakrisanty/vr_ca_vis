@@ -26,7 +26,6 @@ class clipping_planes_bag :
 	cgv::render::box_render_style brs;
 	cgv::render::sphere_render_style srs;
 	vec3 debug_point;
-	vec3 query_point_at_grab, position_at_grab;
 	vec3 hit_point_at_trigger, position_at_trigger;
 	cgv::nui::focus_configuration original_config;
 	static cgv::render::shader_program prog;
@@ -56,8 +55,6 @@ protected:
 	cgv::nui::hid_identifier hid_id;
 	// state of object
 	state_enum state = state_enum::idle;
-	/// return color modified based on state
-	rgb get_modified_color(const rgb& color) const;
 public:
 	clipping_planes_bag(clipping_planes_bag_listener *_listener, const std::string& _name, const vec3& _position, const rgba& _color = rgba(0.f, 1.f, 1.f, 0.1f), const vec3& _extent = vec3(1.f, 1.f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
 	/// return type name

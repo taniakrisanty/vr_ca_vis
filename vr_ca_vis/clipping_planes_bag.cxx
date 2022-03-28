@@ -6,23 +6,6 @@
 
 cgv::render::shader_program clipping_planes_bag::prog;
 
-clipping_planes_bag::rgb clipping_planes_bag::get_modified_color(const rgb& color) const
-{
-	rgb mod_col(color);
-	switch (state) {
-	case state_enum::grabbed:
-		mod_col[1] = std::min(1.0f, mod_col[0] + 0.2f);
-	case state_enum::close:
-		mod_col[0] = std::min(1.0f, mod_col[0] + 0.2f);
-		break;
-	case state_enum::triggered:
-		mod_col[1] = std::min(1.0f, mod_col[0] + 0.2f);
-	case state_enum::pointed:
-		mod_col[2] = std::min(1.0f, mod_col[2] + 0.2f);
-		break;
-	}
-	return mod_col;
-}
 clipping_planes_bag::clipping_planes_bag(clipping_planes_bag_listener* _listener, const std::string& _name, const vec3& _position, const rgba& _color, const vec3& _extent, const quat& _rotation)
 	: cgv::base::node(_name), listener(_listener), position(_position), color(_color), extent(_extent), rotation(_rotation)
 {
@@ -72,7 +55,7 @@ bool clipping_planes_bag::focus_change(cgv::nui::focus_change_action action, cgv
 }
 void clipping_planes_bag::stream_help(std::ostream& os)
 {
-	os << "clipping_planes_bag: grab and point at it" << std::endl;
+	os << "clipping_planes_bag: point at it" << std::endl;
 }
 bool clipping_planes_bag::handle(const cgv::gui::event& e, const cgv::nui::dispatch_info& dis_info, cgv::nui::focus_request& request)
 {
@@ -144,28 +127,22 @@ bool clipping_planes_bag::compute_intersection(const vec3& ray_start, const vec3
 	rotation.rotate(n);
 	hit_normal = n;
 
-	if (hit_param < std::numeric_limits<float>::max()) {
-#ifdef DEBUG
-		std::cout << "clipping_planes_bag::compute_intersection query " << ray_start << " = " << position_in_table << " | hit param " << hit_param << " | hit normal " << hit_normal << std::endl;
-#endif
-		return true;
-	}
-	else {
-		return false;
-	}
+	return hit_param < std::numeric_limits<float>::max();
 }
 bool clipping_planes_bag::init(cgv::render::context& ctx)
 {
 	cgv::render::ref_sphere_renderer(ctx, 1);
 
-	auto& br = cgv::render::ref_box_renderer(ctx, 1);
-	if (prog.is_linked())
-		return true;
-	return br.build_program(ctx, prog, brs);
+	//auto& br = cgv::render::ref_box_renderer(ctx, 1);
+	//if (prog.is_linked())
+	//	return true;
+	//return br.build_program(ctx, prog, brs);
+
+	return true;
 }
 void clipping_planes_bag::clear(cgv::render::context& ctx)
 {
-	cgv::render::ref_box_renderer(ctx, -1);
+	//cgv::render::ref_box_renderer(ctx, -1);
 	cgv::render::ref_sphere_renderer(ctx, -1);
 }
 void clipping_planes_bag::draw(cgv::render::context& ctx)
@@ -196,16 +173,6 @@ void clipping_planes_bag::draw(cgv::render::context& ctx)
 	sr.set_position(ctx, debug_point);
 	sr.set_color_array(ctx, &color, 1);
 	sr.render(ctx, 0, 1);
-	if (state == state_enum::grabbed) {
-		sr.set_position(ctx, query_point_at_grab);
-		sr.set_color(ctx, rgb(0.5f, 0.5f, 0.5f));
-		sr.render(ctx, 0, 1);
-	}
-	if (state == state_enum::triggered) {
-		sr.set_position(ctx, hit_point_at_trigger);
-		sr.set_color(ctx, rgb(0.3f, 0.3f, 0.3f));
-		sr.render(ctx, 0, 1);
-	}
 }
 void clipping_planes_bag::create_gui()
 {
