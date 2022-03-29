@@ -22,7 +22,7 @@
 class cells_container_listener
 {
 public:
-	virtual void on_cell_pointed_at(size_t cell_index, size_t node_index) = 0;
+	virtual void on_cell_pointed_at(size_t cell_index, size_t node_index, const cgv::render::render_types::rgba& color = cgv::render::render_types::rgba()) = 0;
 };
 
 class cells_container :

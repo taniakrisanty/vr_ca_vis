@@ -23,7 +23,7 @@ gui_container::rgb gui_container::get_modified_color(const rgb& color) const
 	return mod_col;
 }
 gui_container::gui_container(gui_container_listener* _listener, const std::string& _name, const vec3& _extent, const quat& _rotation)
-	: cgv::base::node(_name), listener(_listener)
+	: cgv::base::node(_name), listener(_listener), extent(_extent), rotation(_rotation)
 {
 	debug_point = vec3(0, 0.5f, 0);
 	
@@ -75,7 +75,7 @@ bool gui_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_in
 {
 	// ignore all events in idle mode
 	if (state == state_enum::idle) {
-		//point_at_cell(SIZE_MAX, SIZE_MAX);
+		prim_idx = -1;
 		return false;
 	}
 	// ignore events from other hids
@@ -87,10 +87,8 @@ bool gui_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_in
 		if (pressed) {
 			state = state_enum::triggered;
 			on_set(&state);
-			//drag_begin(request, true, original_config);
 		}
 		else {
-			//drag_end(request, original_config);
 			state = state_enum::pointed;
 			on_set(&state);
 		}
@@ -103,18 +101,6 @@ bool gui_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_in
 			debug_point = inter_info.hit_point;
 			hit_point_at_trigger = inter_info.hit_point;
 			prim_idx = int(inter_info.primitive_index);
-
-			//if (prim_idx & cell_sign_bit) {
-			//	size_t center_index = prim_idx & cell_bitwise_and;
-
-			//	point_at_cell(center_index);
-			//}
-			//else {
-			//	size_t cell_index = (prim_idx >> cell_bitwise_shift) & cell_bitwise_and;
-			//	size_t node_index = prim_idx & cell_bitwise_and;
-
-			//	point_at_cell(cell_index, node_index);
-			//}
 		}
 		else if (state == state_enum::triggered) {
 			// if we still have an intersection point, use as debug point
@@ -122,9 +108,7 @@ bool gui_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_in
 				debug_point = inter_info.hit_point;
 			// to be save even without new intersection, find closest point on ray to hit point at trigger
 			vec3 q = cgv::math::closest_point_on_line_to_point(inter_info.ray_origin, inter_info.ray_direction, hit_point_at_trigger);
-			//cells[prim_idx].node = position_at_trigger + q - hit_point_at_trigger;
-			//vec4 translation4(inv_scale_matrix * (q - hit_point_at_trigger).lift());
-			//vec3 translation(translation4 / translation4.w());
+			select_gui(prim_idx);
 		}
 		post_redraw();
 		return true;
@@ -136,8 +120,7 @@ bool gui_container::compute_intersection(const vec3& ray_start, const vec3& ray_
 	// point, prj_point, and prj_normal are in table coordinate
 	// positions are in left controller coordinate
 
-	float max_hit_param = std::numeric_limits<float>::max();
-	hit_param = max_hit_param;
+	hit_param = std::numeric_limits<float>::max();
 
 	for (size_t i = 0; i < positions.size(); ++i) {
 		vec4 position_in_table4(inv_model_transform * left_controller_transform * positions[i].lift());
@@ -150,20 +133,24 @@ bool gui_container::compute_intersection(const vec3& ray_start, const vec3& ray_
 		vec3 n;
 		vec2 res;
 		if (cgv::math::ray_box_intersection(rs, rd, 0.5f * extent, res, n) == 0)
-			return false;
+			continue;
+		float param;
 		if (res[0] < 0) {
 			if (res[1] < 0)
-				return false;
-			hit_param = res[1];
+				continue;
+			param = res[1];
 		}
-		else {
-			hit_param = res[0];
+		else
+			param = res[0];
+		if (param < hit_param) {
+			primitive_idx = i;
+			hit_param = param;
+			rotation.rotate(n);
+			hit_normal = n;
 		}
-		rotation.rotate(n);
-		hit_normal = n;
 	}
 
-	return hit_param < max_hit_param;
+	return hit_param < std::numeric_limits<float>::max();
 }
 bool gui_container::init(cgv::render::context& ctx)
 {
@@ -225,17 +212,17 @@ void gui_container::draw(cgv::render::context& ctx)
 	if (state == state_enum::idle)
 		return;
 
-	auto& sr = cgv::render::ref_sphere_renderer(ctx);
-	sr.set_render_style(srs);
-	sr.set_position(ctx, debug_point);
-	rgb color(0.5f, 0.5f, 0.5f);
-	sr.set_color_array(ctx, &color, 1);
-	sr.render(ctx, 0, 1);
-	if (state == state_enum::triggered) {
-		sr.set_position(ctx, hit_point_at_trigger);
-		sr.set_color(ctx, rgb(0.5f, 0.3f, 0.3f));
-		sr.render(ctx, 0, 1);
-	}
+	//auto& sr = cgv::render::ref_sphere_renderer(ctx);
+	//sr.set_render_style(srs);
+	//sr.set_position(ctx, debug_point);
+	//rgb color(0.5f, 0.5f, 0.5f);
+	//sr.set_color_array(ctx, &color, 1);
+	//sr.render(ctx, 0, 1);
+	//if (state == state_enum::triggered) {
+	//	sr.set_position(ctx, hit_point_at_trigger);
+	//	sr.set_color(ctx, rgb(0.5f, 0.3f, 0.3f));
+	//	sr.render(ctx, 0, 1);
+	//}
 }
 void gui_container::create_gui()
 {}
@@ -246,23 +233,21 @@ void gui_container::set_cell_types(const std::unordered_map<std::string, cell_ty
 	// TODO delete menu labels
 	if (menu_labels.size() != cell_types.size()) {
 		menu_labels.resize(cell_types.size(), -1);
+		positions.resize(cell_types.size());
 
 		size_t type_index = 0;
 		for (const auto& type : cell_types) {
 			if (menu_labels[type_index] == -1) {
-				//uint32_t label = add_label(type.second.name, rgba(0.5f, 0.5f, 0.5f, 1.f));
-				//place_label(label, vec3(0.f, 0.5f, -2.f), quat(vec3(1, 0, 0), 0.f), coordinate_system::lab, label_alignment::top);
-				//fix_label_size(label);
-
-				//menu_labels[type_index] = label;
-
 				if (listener) {
-					vec3 position(0.f, 0.5f, -2.f);
-					uint32_t label = listener->on_create_label_requested(type.second.name, rgba(0.5f, 0.5f, 0.5f, 1.f), position, quat(vec3(1, 0, 0), 0.f));
+					vec3 position(0.f, 0.1f, -0.1f);
+					uint32_t label = listener->on_create_label_requested(type.second.name, rgba(0.5f, 0.5f, 0.5f, 1.f), position, quat(1, 0, 0, 0));
 
 					menu_labels[type_index] = label;
-					positions.push_back(position);
+					positions[type_index] = position;
 				}
+			}
+			else {
+
 			}
 			++type_index;
 		}
@@ -285,6 +270,10 @@ void gui_container::set_left_controller_transform(const mat4& _left_controller_t
 
 		rotation = quat(rotation_matrix);
 	}
+}
+void gui_container::select_gui(int index)
+{
+
 }
 //void cells_container::add_color_points(const rgba& color0, const rgba& color1)
 //{

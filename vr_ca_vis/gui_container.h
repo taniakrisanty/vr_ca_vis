@@ -22,6 +22,7 @@ class gui_container_listener
 {
 public:
 	virtual uint32_t on_create_label_requested(const std::string& text, const cgv::render::render_types::rgba& bgclr, const vec3& position, const cgv::render::render_types::quat& rotation) = 0;
+	virtual void on_label_pointed_at(size_t index) = 0;
 };
 
 class gui_container :
@@ -91,7 +92,7 @@ protected:
 	rgb get_modified_color(const rgb& color) const;
 
 public:
-	gui_container(gui_container_listener* _listener, const std::string& _name, const vec3& _extent = vec3(1.f), const quat& _rotation = quat(1, 0, 0, 0));
+	gui_container(gui_container_listener* _listener, const std::string& _name, const vec3& _extent = vec3(1.f, 1.f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
 	/// return type name
 	std::string get_type_name() const;
 	/// callback on member updates to keep data structure consistent
@@ -132,6 +133,8 @@ private:
 	//void interpolate_colors(bool force = false);
 
 	//void point_at_cell(size_t cell_index, size_t node_index = SIZE_MAX) const;
+
+	void select_gui(int index);
 };
 
 typedef cgv::data::ref_ptr<gui_container> gui_container_ptr;

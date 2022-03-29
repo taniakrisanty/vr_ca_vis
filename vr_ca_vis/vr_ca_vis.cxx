@@ -130,6 +130,7 @@ protected:
 	int cell_unselected_counter;
 	size_t selected_cell_idx = SIZE_MAX;
 	size_t selected_node_idx = SIZE_MAX;
+	rgba selected_cell_color = rgba();
 
 	// attributes
 	uint32_t selected_attr;
@@ -427,6 +428,7 @@ public:
 		torch_grabbed = false;
 
 		gui_ctr = new gui_container(this, "GUI");
+		append_child(gui_ctr);
 
 		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 1.f));
 		append_child(clipping_planes_b);
@@ -438,7 +440,7 @@ public:
 		append_child(clipping_planes_ctr);
 
 		li_clipping_plane_stats = li_cell_stats = -1;
-		li_clipping_plane_visible = li_cell_visible = true;
+		li_clipping_plane_visible = li_cell_visible = false;
 		stats_bgclr = rgba(0.8f, 0.6f, 0.0f, 0.6f);
 	}
 	std::string get_type_name() const
@@ -1075,6 +1077,8 @@ public:
 		else {
 			scene_ptr->update_label_text(li_cell_stats, oss.str());
 		}
+
+		scene_ptr->update_label_background_color(li_cell_stats, selected_cell_color);
 	}
 	void vibrate(void* hid_kit)
 	{
@@ -1094,15 +1098,24 @@ public:
 
 		uint32_t label = scene_ptr->add_label(text, bgclr);
 		scene_ptr->fix_label_size(label);
-		scene_ptr->place_label(label, position, rotation, coordinate_system::lab);
+		scene_ptr->place_label(label, position, rotation, coordinate_system::left_controller);
 		scene_ptr->show_label(label);
 		return label;
+	}
+
+	void on_label_pointed_at(uint32_t label)
+	{
+		vr::vr_scene* scene_ptr = get_scene_ptr();
+		if (scene_ptr == NULL)
+			return;
+
+		//scene_ptr->set_label_border_color(label, );
 	}
 #pragma endregion gui_container_listener
 
 #pragma region cells_container_listener
 	// listener for cell point at and grab event
-	void on_cell_pointed_at(size_t cell_index, size_t node_index)
+	void on_cell_pointed_at(size_t cell_index, size_t node_index, const rgba& color)
 	{
 		if (cell_index == SIZE_MAX || node_index == SIZE_MAX) {
 			if (cell_unselected_counter < max_cell_unselected_counter)
@@ -1115,6 +1128,7 @@ public:
 		if (selected_cell_idx != cell_index || selected_node_idx != node_index) {
 			selected_cell_idx = cell_index;
 			selected_node_idx = node_index;
+			selected_cell_color = color;
 
 			if (selected_cell_idx < SIZE_MAX && selected_node_idx < SIZE_MAX)
 				update_cell_stats();

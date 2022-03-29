@@ -980,6 +980,14 @@ void cells_container::set_centers_geometry(cgv::render::context& ctx, control_sp
 }
 void cells_container::point_at_cell(size_t cell_index, size_t node_index) const
 {
-	if (listener)
-		listener->on_cell_pointed_at(cell_index, node_index);
+	if (listener) {
+		if (cell_index < SIZE_MAX) {
+			const cell& c = (*cells)[cell_index];
+
+			listener->on_cell_pointed_at(cell_index, node_index, group_colors[c.id]);
+		}
+		else {
+			listener->on_cell_pointed_at(cell_index, node_index);
+		}
+	}
 }
