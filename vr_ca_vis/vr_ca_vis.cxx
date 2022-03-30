@@ -23,8 +23,8 @@
 #include "endian.h"
 #include "cae_file_format.h"
 #include "gui_container.h"
+#include "tool_bag.h"
 #include "cells_container.h"
-#include "clipping_planes_bag.h"
 #include "clipping_planes_container.h"
 #include "model_parser.h"
 #include "gzip_inflater.h"
@@ -53,7 +53,7 @@ class vr_ca_vis :
 	public cae::binary_file,
 	public gui_container_listener,
 	public cells_container_listener,
-	public clipping_planes_bag_listener,
+	public tool_bag_listener,
 	public clipping_planes_container_listener
 {
 public:
@@ -86,7 +86,7 @@ protected:
 
 	gui_container_ptr gui_ctr;
 	cells_container_ptr cells_ctr;
-	clipping_planes_bag_ptr clipping_planes_b;
+	tool_bag_ptr tool_b;
 	clipping_planes_container_ptr clipping_planes_ctr;
 
 	// keep reference to vr_view_interactor
@@ -113,13 +113,9 @@ protected:
 	vec3 prev_control_direction;
 
 	// clipping plane
-	bool clipping_plane_grabbed;
-	// index of temporary clipping plane i n clipping planes container
+	// index of temporary clipping plane in clipping planes container
 	int temp_clipping_plane_idx = -1;
 	size_t selected_clipping_plane_idx = SIZE_MAX;
-
-	// burn
-	bool torch_grabbed;
 
 	// extent
 	ivec3 extent;
@@ -134,11 +130,6 @@ protected:
 
 	// attributes
 	uint32_t selected_attr;
-
-	// per group information
-	//std::vector<rgba> group_colors;
-	//std::vector<vec3> group_translations;
-	//std::vector<vec4> group_rotations;
 
 	// scaling factor for dataset
 	double scale;
@@ -176,11 +167,11 @@ protected:
 
 	// Help GUI
 	/// label index to show statistics
-	uint32_t li_clipping_plane_stats, li_cell_stats;
-	/// visibility of clipping plane statistics label
-	bool li_clipping_plane_visible;
-	/// visibility of cell statistics label
-	bool li_cell_visible;
+	uint32_t li_tool_stats, li_cell_stats;
+	/// visibility of statistics label
+	bool li_tool_visible, li_cell_visible;
+	/// how long this label has been visible
+	float li_tool_time_delta, li_cell_time_delta;
 	/// background color of statistics label
 	rgba stats_bgclr;
 
@@ -389,6 +380,18 @@ public:
 				step();
 			}
 		}
+
+		if (li_tool_visible) {
+			li_tool_time_delta += (float)dt;
+			if (li_tool_time_delta >= 5.f)
+				li_tool_visible = false;
+		}
+
+		//if (li_cell_visible) {
+		//	li_cell_time_delta += (float)dt;
+		//	if (li_cell_time_delta >= 5.f)
+		//		li_cell_visible = false;
+		//}
 	}
 	/// define format and texture filters in constructor
 	vr_ca_vis() : cgv::base::group("vr_ca_vis"), box_extent(1, 1, 1)
@@ -423,15 +426,14 @@ public:
 		surf_rs.material.set_transparency(0.75f);
 		surf_rs.halo_color = rgba(0, 0.8f, 1.0f, 0.8f);
 
-		clipping_plane_grabbed = false;
-
-		torch_grabbed = false;
-
 		gui_ctr = new gui_container(this, "GUI");
 		append_child(gui_ctr);
 
-		clipping_planes_b = new clipping_planes_bag(this, "Clipping Planes Bag", vec3(0.f, 0.f, 1.f));
-		append_child(clipping_planes_b);
+		tool_b = new tool_bag(this, "Tool Bag");
+		tool_b->add_tool(static_cast<int>(tool_enum::clipping_plane), "Clipping Plane", vec3(0.f, 0.f, 1.f), vec3(1.f, 1.f, 0.1f));
+		tool_b->add_tool(static_cast<int>(tool_enum::gun), "Visibility Toggle", vec3(0.25f, -1.5f, 0.25f), vec3(0.5f, 1.f, 1.f));
+		tool_b->add_tool(static_cast<int>(tool_enum::torch), "Torch", vec3(-0.25f, -1.5f, 0.25f), vec3(0.5f, 1.f, 1.f));
+		append_child(tool_b);
 
 		cells_ctr = new cells_container(this, "Cells");
 		append_child(cells_ctr);
@@ -439,9 +441,9 @@ public:
 		clipping_planes_ctr = new clipping_planes_container(this, "Clipping Planes");
 		append_child(clipping_planes_ctr);
 
-		li_clipping_plane_stats = li_cell_stats = -1;
-		li_clipping_plane_visible = li_cell_visible = false;
-		stats_bgclr = rgba(0.8f, 0.6f, 0.0f, 0.6f);
+		li_tool_stats = li_cell_stats = -1;
+		li_tool_visible = li_cell_visible = false;
+		stats_bgclr = rgba(0.8f, 0.6f, 0.0f, 0.8f);
 	}
 	std::string get_type_name() const
 	{
@@ -589,7 +591,7 @@ public:
 			return;
 
 		// draw infinite clipping plane (as a disc) only when outside of wireframe box
-		if (clipping_plane_grabbed && temp_clipping_plane_idx == -1 && scene_ptr->is_coordsystem_valid(coordinate_system::right_controller))
+		if (tool == tool_enum::clipping_plane && temp_clipping_plane_idx == -1 && scene_ptr->is_coordsystem_valid(coordinate_system::right_controller))
 		{
 			ctx.push_modelview_matrix();
 			ctx.mul_modelview_matrix(pose4(scene_ptr->get_coordsystem(coordinate_system::right_controller)));
@@ -600,20 +602,14 @@ public:
 			ctx.pop_modelview_matrix();
 		}
 
-		// draw information about clipping planes
-		if (li_clipping_plane_stats == -1) {
-			li_clipping_plane_stats = scene_ptr->add_label(get_clipping_planes_stats(), stats_bgclr);
-			scene_ptr->fix_label_size(li_clipping_plane_stats);
-			scene_ptr->place_label(li_clipping_plane_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::left_controller, label_alignment::top);
-		}
-
-		if (li_clipping_plane_visible)
-			scene_ptr->show_label(li_clipping_plane_stats);
-		else
-			scene_ptr->hide_label(li_clipping_plane_stats);
+		if (li_tool_stats != -1)
+			if (li_tool_visible)
+				scene_ptr->show_label(li_tool_stats);
+			else
+				scene_ptr->hide_label(li_tool_stats);
 
 		if (li_cell_stats != -1) {
-			if (li_cell_visible)// && cell_unselected_counter < max_cell_unselected_counter)
+			if (li_cell_visible && cell_unselected_counter < max_cell_unselected_counter)
 				scene_ptr->show_label(li_cell_stats);
 			else
 				scene_ptr->hide_label(li_cell_stats);
@@ -641,11 +637,11 @@ public:
 
 		draw_box(ctx);
 
-		if (clipping_plane_grabbed)
+		if (tool == tool_enum::clipping_plane)
 			compute_clipping_planes();
 		
 		cgv::render::shader_program& prog = ctx.ref_surface_shader_program(true);
-		prog.set_uniform(ctx, "map_color_to_material", torch_grabbed ? 3 : 0); // material side front to back or none
+		prog.set_uniform(ctx, "map_color_to_material", tool == tool_enum::torch ? 3 : 0); // material side front to back or none
 
 		compute_burn();
 
@@ -653,9 +649,7 @@ public:
 
 		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
 
-		//clipping_planes_ctr->set_model_transform(get_model_transform());
-
-		clipping_planes_b->set_inverse_model_transform(get_inverse_model_transform());
+		tool_b->set_inverse_model_transform(get_inverse_model_transform());
 
 		mat4 c;
 		c.identity();
@@ -671,7 +665,7 @@ public:
 		if (scene_ptr->is_coordsystem_valid(coordinate_system::head))
 			h *= pose4(scene_ptr->get_coordsystem(coordinate_system::head));
 
-		clipping_planes_b->set_head_transform(h);
+		tool_b->set_head_transform(h);
 
 		if (blend) {
 			glEnable(GL_BLEND);
@@ -713,9 +707,6 @@ public:
 				if (vrke.get_controller_index() == 1) { // only right controller
 					if (vrke.get_action() == cgv::gui::KA_RELEASE) {
 						switch (vrke.get_key()) {
-						//case vr::VR_DPAD_LEFT:
-						//	torch_grabbed = false;
-						//	return true;
 						case vr::VR_INPUT0_TOUCH:
 							li_cell_visible = false;
 							return true;
@@ -723,31 +714,37 @@ public:
 					}
 					else {
 						switch (vrke.get_key()) {
-						case vr::VR_DPAD_LEFT: // put current clipping plane permanently or ignite torch
-							if (clipping_plane_grabbed)
-								set_clipping_plane();
-							else {
-								torch_grabbed = true;
-								li_cell_visible = false;
+						case vr::VR_DPAD_LEFT:
+							switch (tool) {
+							case tool_enum::clipping_plane:
+								set_clipping_plane(); // put current clipping plane permanently
+								break;
+							case tool_enum::gun:
+								toggle_cell_visibility(); // toggle cell visibility
+								break;
+							default:
+								break;
 							}
 							return true;
 						case vr::VR_DPAD_RIGHT: // remove clipping plane
-							if (torch_grabbed)
-								torch_grabbed = false;
-							else
+							switch (tool) {
+							case tool_enum::clipping_plane:
 								release_clipping_plane();
+							case tool_enum::gun:
+							case tool_enum::torch:
+								tool = tool_enum::none;
+								break;
+							default:
+								release_clipping_plane();
+								tool = tool_enum::none;
+								break;
+							}
 							return true;
 						case vr::VR_INPUT0_TOUCH:
-							li_cell_visible = !clipping_plane_grabbed;
+							li_cell_visible = true;
 							return true;
 						case vr::VR_INPUT1_TOUCH:
-							//toggle_cell_visibility();
-							peel();
-						//	tool = static_cast<tool_enum>((static_cast<int>(tool) + 1) % (static_cast<int>(tool_enum::torch) + 1));
-						//	//if (tool != tool_enum::clipping_plane)
-						//	//	release_clipping_plane();
-						//	//if (tool != tool_enum::torch)
-						//	//	torch_grabbed = false;
+							//peel();
 							return true;
 						}
 					}
@@ -768,13 +765,6 @@ public:
 						case vr::VR_INPUT1_TOUCH:
 							animate = !animate;
 							on_set(&animate);
-							return true;
-						}
-					}
-					else {
-						switch (vrke.get_key()) {
-						case vr::VR_MENU: // toggle help
-							li_clipping_plane_visible = !li_clipping_plane_visible;
 							return true;
 						}
 					}
@@ -876,6 +866,7 @@ public:
 		//	align("\b");
 		//	end_tree_node(box_style);
 		//}
+		inline_object_gui(tool_b);
 		inline_object_gui(cells_ctr);
 		inline_object_gui(clipping_planes_ctr);
 	}
@@ -896,7 +887,7 @@ public:
 		if (temp_clipping_plane_idx > -1)
 			num_clipping_planes += 1;
 
-		return "Clipping Planes: " + std::to_string(num_clipping_planes) + "/" + std::to_string(clipped_box_renderer::MAX_CLIPPING_PLANES);
+		return "Clipping Planes active (" + std::to_string(num_clipping_planes) + " left)";
 	}
 	void compute_clipping_planes()
 	{
@@ -966,47 +957,36 @@ public:
 	{
 		temp_clipping_plane_idx = -1;
 
-		if (li_clipping_plane_stats != -1) {
-			vr::vr_scene* scene_ptr = get_scene_ptr();
-			if (scene_ptr)
-				scene_ptr->update_label_text(li_clipping_plane_stats, get_clipping_planes_stats());
-		}
-
-		clipping_plane_grabbed = false;
+		tool = tool_enum::none;
 	}
 	void release_clipping_plane()
 	{
-		if (temp_clipping_plane_idx == -1) { // we are not in the middle of placing a (temporary) clipping plane
-			if (clipping_plane_grabbed) // the clipping plane disc is still attached to the controller
-				clipping_plane_grabbed = false;
-			else {
-				if (selected_clipping_plane_idx == SIZE_MAX) { // we are not grabbing a (permanent) clipping plane
-					clipping_planes_ctr->clear_clipping_planes();
-
-					cells_ctr->clear_clipping_planes();
-				} else { // we are grabbing a (permanent) clipping plane
-					size_t index = selected_clipping_plane_idx;
-					selected_clipping_plane_idx = SIZE_MAX;
-
-					clipping_planes_ctr->delete_clipping_plane(index);
-
-					cells_ctr->delete_clipping_plane(index);
-				}
-			}
-		}
-		else {	// we are in the middle of placing a (temporary) clipping plane
+		if (temp_clipping_plane_idx != -1) { // we are in the middle of placing a (temporary) clipping plane
 			clipping_planes_ctr->delete_clipping_plane(temp_clipping_plane_idx);
 
 			cells_ctr->delete_clipping_plane(temp_clipping_plane_idx);
 
 			temp_clipping_plane_idx = -1;
+		}
+		else {
+			if (selected_clipping_plane_idx == SIZE_MAX) { // we are not grabbing a (permanent) clipping plane
+				clipping_planes_ctr->clear_clipping_planes();
 
-			clipping_plane_grabbed = false;
+				cells_ctr->clear_clipping_planes();
+			}
+			else { // we are grabbing a (permanent) clipping plane
+				size_t index = selected_clipping_plane_idx;
+				selected_clipping_plane_idx = SIZE_MAX;
+
+				clipping_planes_ctr->delete_clipping_plane(index);
+
+				cells_ctr->delete_clipping_plane(index);
+			}
 		}
 	}
 	void compute_burn()
 	{
-		if (torch_grabbed && get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(coordinate_system::right_controller))
+		if (tool == tool_enum::torch && get_scene_ptr() && get_scene_ptr()->is_coordsystem_valid(coordinate_system::right_controller))
 		{
 			const vr_view_interactor* vr_view_ptr = get_view_ptr();
 			if (!vr_view_ptr) {
@@ -1079,6 +1059,8 @@ public:
 		}
 
 		scene_ptr->update_label_background_color(li_cell_stats, selected_cell_color);
+
+		li_cell_time_delta = 0;
 	}
 	void vibrate(void* hid_kit)
 	{
@@ -1115,9 +1097,9 @@ public:
 
 #pragma region cells_container_listener
 	// listener for cell point at and grab event
-	void on_cell_pointed_at(size_t cell_index, size_t node_index, const rgba& color)
+	void on_cell_pointed_at(size_t cell_index, size_t node_index, const rgb& color)
 	{
-		if (cell_index == SIZE_MAX || node_index == SIZE_MAX) {
+		if (cell_index == SIZE_MAX) {
 			if (cell_unselected_counter < max_cell_unselected_counter)
 				cell_unselected_counter += 1;
 		}
@@ -1128,31 +1110,105 @@ public:
 		if (selected_cell_idx != cell_index || selected_node_idx != node_index) {
 			selected_cell_idx = cell_index;
 			selected_node_idx = node_index;
-			selected_cell_color = color;
+			selected_cell_color = rgba(color.R(), color.G(), color.B(), 0.8f);
 
-			if (selected_cell_idx < SIZE_MAX && selected_node_idx < SIZE_MAX)
+			if (selected_cell_idx < SIZE_MAX)
 				update_cell_stats();
 		}
 	}
 #pragma endregion cells_container_listener
 
-#pragma region clipping_planes_bag_listener
-	// listener for clipping plane grab event inside bag
-	void on_clipping_plane_grabbed(void* hid_kit)
+#pragma region tool_bag_listener
+	// listener for tool grab event inside bag
+	void on_tool_grabbed(int id, void* hid_kit)
 	{
-		// automatically enable clipping plane mode
-		tool = tool_enum::clipping_plane;
+		tool_enum _tool = static_cast<tool_enum>(id);
 
-		// ignore if user is already holding a clipping plane
-		// or no clipping plane left (the maximum is 8)
-		if (clipping_plane_grabbed || clipping_planes_ctr->get_num_clipping_planes() == clipped_box_renderer::MAX_CLIPPING_PLANES)
+		if (tool == _tool)
 			return;
 
-		clipping_plane_grabbed = true;
+		switch (_tool) {
+		case tool_enum::clipping_plane:
+			// ignore if user is already holding a clipping plane
+			// or no clipping plane left (the maximum is 8)
+			if (clipping_planes_ctr->get_num_clipping_planes() == clipped_box_renderer::MAX_CLIPPING_PLANES)
+				return;
 
-		vibrate(hid_kit);
+			tool = _tool;
+
+			vibrate(hid_kit);
+
+			{
+				vr::vr_scene* scene_ptr = get_scene_ptr();
+				if (scene_ptr) {
+					// draw information about clipping planes
+					if (li_tool_stats == -1) {
+						li_tool_stats = scene_ptr->add_label(get_clipping_planes_stats(), stats_bgclr);
+						scene_ptr->fix_label_size(li_tool_stats);
+						scene_ptr->place_label(li_tool_stats, vec3(0.f, 0.f, -0.5f), quat(1, 0, 0, 0), coordinate_system::head, label_alignment::top);
+					}
+					else {
+						scene_ptr->update_label_text(li_tool_stats, get_clipping_planes_stats());
+					}
+				}
+
+				li_tool_time_delta = 0;
+				li_tool_visible = true;
+			}
+			break;
+		case tool_enum::gun:
+			release_clipping_plane();
+
+			tool = _tool;
+
+			vibrate(hid_kit);
+
+			{
+				vr::vr_scene* scene_ptr = get_scene_ptr();
+				if (scene_ptr) {
+					// draw information about visibility toggle
+					if (li_tool_stats == -1) {
+						li_tool_stats = scene_ptr->add_label(get_clipping_planes_stats(), stats_bgclr);
+						scene_ptr->fix_label_size(li_tool_stats);
+						scene_ptr->place_label(li_tool_stats, vec3(0.f, 0.f, -0.5f), quat(1, 0, 0, 0), coordinate_system::head, label_alignment::top);
+					}
+					
+					scene_ptr->update_label_text(li_tool_stats, "Visibility toggle active");
+				}
+
+				li_tool_time_delta = 0;
+				li_tool_visible = true;
+			}
+			break;
+		case tool_enum::torch:
+			release_clipping_plane();
+
+			tool = _tool;
+
+			vibrate(hid_kit);
+
+			{
+				vr::vr_scene* scene_ptr = get_scene_ptr();
+				if (scene_ptr) {
+					// draw information about torch
+					if (li_tool_stats == -1) {
+						li_tool_stats = scene_ptr->add_label(get_clipping_planes_stats(), stats_bgclr);
+						scene_ptr->fix_label_size(li_tool_stats);
+						scene_ptr->place_label(li_tool_stats, vec3(0.f, 0.f, -0.5f), quat(1, 0, 0, 0), coordinate_system::head, label_alignment::top);
+					}
+
+					scene_ptr->update_label_text(li_tool_stats, "Torch active");
+				}
+
+				li_tool_time_delta = 0;
+				li_tool_visible = true;
+			}
+			break;
+		default:
+			break;
+		}
 	}
-#pragma endregion clipping_planes_bag_listener
+#pragma endregion tool_bag_listener
 
 #pragma region clipping_planes_container_listener
 	// listener for installed clipping plane event inside box

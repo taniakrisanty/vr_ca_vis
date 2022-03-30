@@ -10,13 +10,13 @@
 #include <cgv_gl/box_renderer.h>
 #include <cgv_gl/sphere_renderer.h>
 
-class clipping_planes_bag_listener
+class tool_bag_listener
 {
 public:
-	virtual void on_clipping_plane_grabbed(void* kit_ptr) = 0;
+	virtual void on_tool_grabbed(int id, void* kit_ptr) = 0;
 };
 
-class clipping_planes_bag :
+class tool_bag :
 	public cgv::base::node,
 	public cgv::render::drawable,
 	public cgv::nui::focusable,
@@ -40,23 +40,29 @@ public:
 	};
 
 protected:
-	clipping_planes_bag_listener* listener;
+	tool_bag_listener* listener;
 
 	// invert model transform applied by bag's parent
 	mat4 inv_model_transform;
 	mat4 head_transform;
 
-	// geometry of bag with color
-	vec3 position;
-	vec3 extent;
+	// geometry of tool bag
+	int show;
+	std::vector<int> ids;
+	std::vector<std::string> names;
+	std::vector<vec3> positions;
+	std::vector<vec3> extents;
+	std::vector<rgba> colors;
 	quat rotation;
-	rgba color;
+
 	// hid with focus on object
 	cgv::nui::hid_identifier hid_id;
+	// index of focused primitive
+	int prim_idx = -1;
 	// state of object
 	state_enum state = state_enum::idle;
 public:
-	clipping_planes_bag(clipping_planes_bag_listener *_listener, const std::string& _name, const vec3& _position, const rgba& _color = rgba(0.f, 1.f, 1.f, 0.1f), const vec3& _extent = vec3(1.f, 1.f, 0.1f), const quat& _rotation = quat(1, 0, 0, 0));
+	tool_bag(tool_bag_listener *_listener, const std::string& _name);
 	/// return type name
 	std::string get_type_name() const;
 	/// callback on member updates to keep data structure consistent
@@ -85,8 +91,10 @@ public:
 
 	void set_inverse_model_transform(const mat4& _inverse_model_transform);
 	void set_head_transform(const mat4& _head_transform);
+
+	void add_tool(int id, const std::string& name, const vec3& position, const vec3& extent = vec3(1.f), const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
 private:
-	void grab_clipping_plane(void* hid_kit) const;
+	void grab_tool(int index, void* hid_kit) const;
 };
 
-typedef cgv::data::ref_ptr<clipping_planes_bag> clipping_planes_bag_ptr;
+typedef cgv::data::ref_ptr<tool_bag> tool_bag_ptr;

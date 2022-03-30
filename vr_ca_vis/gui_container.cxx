@@ -231,27 +231,27 @@ void gui_container::set_cell_types(const std::unordered_map<std::string, cell_ty
 	cell_types = _cell_types;
 
 	// TODO delete menu labels
-	if (menu_labels.size() != cell_types.size()) {
-		menu_labels.resize(cell_types.size(), -1);
-		positions.resize(cell_types.size());
+	//if (menu_labels.size() != cell_types.size()) {
+	//	menu_labels.resize(cell_types.size(), -1);
+	//	positions.resize(cell_types.size());
 
-		size_t type_index = 0;
-		for (const auto& type : cell_types) {
-			if (menu_labels[type_index] == -1) {
-				if (listener) {
-					vec3 position(0.f, 0.1f, -0.1f);
-					uint32_t label = listener->on_create_label_requested(type.second.name, rgba(0.5f, 0.5f, 0.5f, 1.f), position, quat(1, 0, 0, 0));
+	//	size_t type_index = 0;
+	//	for (const auto& type : cell_types) {
+	//		if (menu_labels[type_index] == -1) {
+	//			if (listener) {
+	//				vec3 position(0.f, 0.1f, -0.1f);
+	//				uint32_t label = listener->on_create_label_requested(type.second.name, rgba(0.5f, 0.5f, 0.5f, 1.f), position, quat(1, 0, 0, 0));
 
-					menu_labels[type_index] = label;
-					positions[type_index] = position;
-				}
-			}
-			else {
+	//				menu_labels[type_index] = label;
+	//				positions[type_index] = position;
+	//			}
+	//		}
+	//		else {
 
-			}
-			++type_index;
-		}
-	}
+	//		}
+	//		++type_index;
+	//	}
+	//}
 }
 void gui_container::set_inverse_model_transform(const mat4& _inv_model_transform)
 {

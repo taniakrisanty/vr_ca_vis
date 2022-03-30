@@ -377,8 +377,6 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 //}
 bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
-	if (burn) return false;
-
 	vec4 ray_origin_upscaled4(inv_scale_matrix * ray_start.lift());
 	vec3 ray_origin_upscaled(ray_origin_upscaled4 / ray_origin_upscaled4.w());
 
@@ -445,7 +443,8 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		if (visibilities[c.id] < 1) continue;
 
 		// ignore if cell is clipped by any clipping planes
-		vec4 node4 = cell::nodes[c.nodes_start_index + node_index].lift();
+		vec3 node = cell::nodes[c.nodes_start_index + node_index];
+		vec4 node4 = node.lift();
 
 		bool clipped = false;
 
@@ -458,6 +457,9 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		}
 
 		if (clipped) continue;
+
+		// ignore if cell is burned
+		if (burn && (node - burn_center).sqr_length() < burn_distance * burn_distance) continue;
 
 		vec4 position_downscaled4(scale_matrix * cell::nodes[c.nodes_start_index + node_index].lift());
 		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
@@ -705,7 +707,7 @@ void cells_container::set_cell_types(const std::unordered_map<std::string, cell_
 
 	for (size_t i = 0; i < cell_types.size(); ++i) {
 		float hue = float(i) / cell_types.size();
-		add_color_points(cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.25f, 1.f, 0.5f), cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.75f, 1.f, 0.5f));
+		add_color_points(cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.25f, 1.f, 1.f), cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(hue, 0.75f, 1.f, 1.f));
 	}
 
 	show_all_checks.resize(cell_types.size(), 1);
