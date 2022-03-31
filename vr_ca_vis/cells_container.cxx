@@ -45,10 +45,6 @@ cells_container::cells_container(cells_container_listener* _listener, const std:
 	cells_end = 0;
 
 	scale_matrix.identity();
-	
-	grid.set_visibilities(&visibilities);
-	
-	grid.set_clipping_planes(&clipping_planes);
 }
 std::string cells_container::get_type_name() const
 {
