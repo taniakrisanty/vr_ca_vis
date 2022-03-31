@@ -81,7 +81,7 @@ public:
 	/// cgv::gui::provider function to create classic UI
 	void create_gui();
 	
-	void create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
+	void create_clipping_plane(const vec3& origin, const vec3& direction, const rgba& color = rgba(0.f, 1.f, 1.f, 0.05f));
 	void delete_clipping_plane(size_t index, size_t count = 1);
 	void clear_clipping_planes();
 
