@@ -726,16 +726,16 @@ public:
 								break;
 							}
 							return true;
-						case vr::VR_DPAD_RIGHT: // remove clipping plane
+						case vr::VR_DPAD_RIGHT:
 							switch (tool) {
 							case tool_enum::clipping_plane:
-								release_clipping_plane();
+								release_clipping_plane(); // release clipping plane disc
 							case tool_enum::gun:
 							case tool_enum::torch:
 								tool = tool_enum::none;
 								break;
 							default:
-								release_clipping_plane();
+								delete_clipping_plane();
 								tool = tool_enum::none;
 								break;
 							}
@@ -968,20 +968,21 @@ public:
 
 			temp_clipping_plane_idx = -1;
 		}
-		else {
-			if (selected_clipping_plane_idx == SIZE_MAX) { // we are not grabbing a (permanent) clipping plane
-				clipping_planes_ctr->clear_clipping_planes();
+	}
+	void delete_clipping_plane()
+	{
+		if (selected_clipping_plane_idx == SIZE_MAX) { // we are not grabbing a (permanent) clipping plane
+			clipping_planes_ctr->clear_clipping_planes();
 
-				cells_ctr->clear_clipping_planes();
-			}
-			else { // we are grabbing a (permanent) clipping plane
-				size_t index = selected_clipping_plane_idx;
-				selected_clipping_plane_idx = SIZE_MAX;
+			cells_ctr->clear_clipping_planes();
+		}
+		else { // we are grabbing a (permanent) clipping plane
+			size_t index = selected_clipping_plane_idx;
+			selected_clipping_plane_idx = SIZE_MAX;
 
-				clipping_planes_ctr->delete_clipping_plane(index);
+			clipping_planes_ctr->delete_clipping_plane(index);
 
-				cells_ctr->delete_clipping_plane(index);
-			}
+			cells_ctr->delete_clipping_plane(index);
 		}
 	}
 	void compute_burn()
@@ -1129,8 +1130,7 @@ public:
 
 		switch (_tool) {
 		case tool_enum::clipping_plane:
-			// ignore if user is already holding a clipping plane
-			// or no clipping plane left (the maximum is 8)
+			// ignore if no clipping plane left (the maximum is 8)
 			if (clipping_planes_ctr->get_num_clipping_planes() == clipped_box_renderer::MAX_CLIPPING_PLANES)
 				return;
 
