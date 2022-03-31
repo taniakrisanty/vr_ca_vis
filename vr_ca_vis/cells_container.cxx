@@ -196,7 +196,8 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 {
 	// ignore all events in idle mode
 	if (state == state_enum::idle) {
-		point_at_cell(SIZE_MAX, SIZE_MAX);
+		point_at_cell_type(SIZE_MAX);
+		point_at_cell(SIZE_MAX);
 		return false;
 	}
 	// ignore events from other hids
@@ -272,15 +273,23 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 			hit_point_at_trigger = inter_info.hit_point;
 			prim_idx = int(inter_info.primitive_index);
 
-			if (prim_idx & cell_sign_bit) {
+			if (prim_idx & label_sign_bit) {
+				size_t label_index = prim_idx & cell_bitwise_and;
+
+				point_at_cell_type(label_index);
+				point_at_cell(SIZE_MAX);
+			}
+			else if (prim_idx & cell_sign_bit) {
 				size_t center_index = prim_idx & cell_bitwise_and;
 
+				point_at_cell_type(SIZE_MAX);
 				point_at_cell(center_index);
 			}
 			else {
 				size_t cell_index = (prim_idx >> cell_bitwise_shift) & cell_bitwise_and;
 				size_t node_index = prim_idx & cell_bitwise_and;
 
+				point_at_cell_type(SIZE_MAX);
 				point_at_cell(cell_index, node_index);
 			}
 		}
@@ -373,12 +382,42 @@ bool cells_container::handle(const cgv::gui::event& e, const cgv::nui::dispatch_
 //}
 bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ray_direction, float& hit_param, vec3& hit_normal, size_t& primitive_idx)
 {
-	vec4 ray_origin_upscaled4(inv_scale_matrix * ray_start.lift());
-	vec3 ray_origin_upscaled(ray_origin_upscaled4 / ray_origin_upscaled4.w());
-
 	float max_hit_param = std::numeric_limits<float>::max();
 	hit_param = max_hit_param;
 
+	// check for intersection with labels
+	for (size_t i = 0; i < label_positions.size(); ++i) {
+		vec4 position_in_table4(inv_model_transform * left_controller_transform * label_positions[i].lift());
+		vec3 position_in_table(position_in_table4 / position_in_table4.w());
+
+		vec3 rs = ray_start - position_in_table;
+		vec3 rd = ray_direction;
+		rotation.inverse_rotate(rs);
+		rotation.inverse_rotate(rd);
+		vec3 n;
+		vec2 res;
+		if (cgv::math::ray_box_intersection(rs, rd, 0.5f * label_extents[i], res, n) == 0)
+			continue;
+		float param;
+		if (res[0] < 0) {
+			if (res[1] < 0)
+				continue;
+			param = res[1];
+		}
+		else
+			param = res[0];
+		if (param < hit_param) {
+			primitive_idx = i | label_sign_bit;
+			hit_param = param;
+			rotation.rotate(n);
+			hit_normal = n;
+		}
+	}
+
+	vec4 ray_origin_upscaled4(inv_scale_matrix * ray_start.lift());
+	vec3 ray_origin_upscaled(ray_origin_upscaled4 / ray_origin_upscaled4.w());
+
+	// check for intersection with cell centers
 	for (size_t i = cells_start; i < cells_end; ++i) {
 		if (visibilities[i - cells_start] > 0)
 			continue;
@@ -400,7 +439,7 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		}
 	}
 
-	if (hit_param < max_hit_param) {
+	if (hit_param < max_hit_param && (primitive_idx & label_sign_bit) == 0) {
 		vec4 position_downscaled4(scale_matrix * cell::centers[primitive_idx].lift());
 		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
 
@@ -422,6 +461,7 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		primitive_idx |= cell_sign_bit;
 	}
 
+	// check for intersection with cells in regular grid
 	grid_traverser trav(ray_origin_upscaled, ray_direction, grid.get_cell_extents());
 	for (int i = 0; ; ++i, trav++)
 	{
@@ -539,45 +579,6 @@ void cells_container::draw(cgv::render::context& ctx)
 
 		ctx.pop_modelview_matrix();
 	}
-
-	// show labels
-	//if (cells_count > 0)
-	//{
-	//	ctx.push_modelview_matrix();
-	//	ctx.mul_modelview_matrix(scale_matrix);
-
-	//	crs.radius_scale = 0.25f * std::max(inv_scale_matrix.x(), std::max(inv_scale_matrix.y(), inv_scale_matrix.z()));
-
-	//	auto& cr = cgv::render::ref_cone_renderer(ctx);
-	//	cr.set_render_style(crs);
-
-	//	std::vector<vec3> cone_positions;
-	//	std::vector<rgb> cone_colors;
-
-	//	cone_positions.resize(2 * cells_count);
-	//	cone_colors.resize(2 * cells_count);
-
-	//	size_t nodes_start_index = (*cells)[cells_start].nodes_start_index;
-	//	size_t nodes_end_index = (*cells)[cells_end - 1].nodes_end_index;
-
-	//	for (size_t i = cells_start; i < cells_end; ++i) {
-	//		const auto& center = cell::centers[i - cells_start];
-
-	//		cone_positions[2 * (i - cells_start)] = center;
-	//		cone_positions[2 * (i - cells_start) + 1] = vec3(center.x(), inv_scale_matrix[5], center.z());
-
-	//		rgb color = rgb(1, 1, 1);
-	//		cone_colors.push_back(color);
-	//		cone_colors.push_back(color);
-	//	}
-
-	//	cr.set_position_array(ctx, cone_positions);
-	//	cr.set_color_array(ctx, cone_colors);
-
-	//	cr.render(ctx, 0, cone_positions.size());
-
-	//	ctx.pop_modelview_matrix();
-	//}
 
 	// show nodes
 	if (nodes_count > 0)
@@ -703,6 +704,24 @@ void cells_container::set_scale_matrix(const mat4& _scale_matrix)
 #endif
 	}
 }
+void cells_container::set_inverse_model_transform(const mat4& _inv_model_transform)
+{
+	inv_model_transform = _inv_model_transform;
+}
+void cells_container::set_left_controller_transform(const mat4& _left_controller_transform)
+{
+	if (left_controller_transform != _left_controller_transform) {
+		left_controller_transform = _left_controller_transform;
+
+		mat3 rotation_matrix;
+
+		rotation_matrix.set_col(0, normalize(left_controller_transform.col(0)));
+		rotation_matrix.set_col(1, normalize(left_controller_transform.col(1)));
+		rotation_matrix.set_col(2, normalize(left_controller_transform.col(2)));
+
+		left_controller_rotation = quat(rotation_matrix);
+	}
+}
 void cells_container::set_cell_types(const std::unordered_map<std::string, cell_type>& _cell_types)
 {
 	cell_types = _cell_types;
@@ -718,14 +737,25 @@ void cells_container::set_cell_types(const std::unordered_map<std::string, cell_
 	show_all_checks.resize(cell_types.size(), 1);
 	hide_all_checks.resize(cell_types.size(), 0);
 
+	if (label_ids.size() != cell_types.size()) {
+		label_ids.resize(cell_types.size(), -1);
+		label_positions.resize(cell_types.size());
+		label_extents.resize(cell_types.size());
+	}
+
 	size_t type_index = 0;
 	for (const auto& type : cell_types) {
-		vec3 position(0.f, 0.f, -1.f);
+		vec3 position(0.f, type_index * 0.05f + 0.05f, 0.f);
 	
-		//uint32_t label = label_drawable->add_label(type.second.name, rgba(0.5f, 0.5f, 0.5f, 1.f));
-		//label_drawable->fix_label_size(label);
-		//label_drawable->place_label(label, position, quat(1, 0, 0, 0), cgv::nui::label_drawable::coordinate_system::head);
-		//label_drawable->show_label(label);
+		if (listener) {
+			if (label_ids[type_index] == -1) {
+				label_ids[type_index] = listener->on_create_label_requested(type.second.name, color_points_maps[type_index][0], position, quat(1, 0, 0, 0));
+				label_positions[type_index] = position;
+				label_extents[type_index] = vec3(0.2f, 0.05f, 0.01f);
+			}
+			else
+				listener->on_update_label_requested(label_ids[type_index], type.second.name);
+		}
 
 		++type_index;
 	}
@@ -851,6 +881,11 @@ void cells_container::set_torch(bool _burn, bool _burn_outside, const vec3& _uns
 		// TODO should distance be in cells local coordinate?
 		burn_distance = _burn_distance;
 	}
+}
+void cells_container::toggle_cell_type_visibility(size_t cell_type)
+{
+	hide_all_checks[cell_type] = !hide_all_checks[cell_type];
+	on_set(&hide_all_checks[cell_type]);
 }
 void cells_container::toggle_cell_visibility(size_t cell_index)
 {
@@ -997,6 +1032,11 @@ void cells_container::set_centers_geometry(cgv::render::context& ctx, control_sp
 		csr.set_position_array<vec3>(ctx, vb_centers, 0, cells_count);
 		csr.set_color_array<rgba>(ctx, vb_colors, 0, cells_count);
 	}
+}
+void cells_container::point_at_cell_type(size_t cell_type) const
+{
+	if (listener)
+		listener->on_cell_type_pointed_at(cell_type);
 }
 void cells_container::point_at_cell(size_t cell_index, size_t node_index) const
 {

@@ -22,7 +22,6 @@
 #include <unordered_set>
 #include "endian.h"
 #include "cae_file_format.h"
-#include "gui_container.h"
 #include "tool_bag.h"
 #include "cells_container.h"
 #include "clipping_planes_container.h"
@@ -51,7 +50,6 @@ class vr_ca_vis :
 	public cgv::gui::provider,
 	public vr::vr_tool,
 	public cae::binary_file,
-	public gui_container_listener,
 	public cells_container_listener,
 	public tool_bag_listener,
 	public clipping_planes_container_listener
@@ -84,7 +82,6 @@ protected:
 	// active tool 
 	tool_enum tool = tool_enum::none;
 
-	//gui_container_ptr gui_ctr;
 	cells_container_ptr cells_ctr;
 	tool_bag_ptr tool_b;
 	clipping_planes_container_ptr clipping_planes_ctr;
@@ -131,6 +128,8 @@ protected:
 	size_t selected_node_idx = SIZE_MAX;
 	rgba selected_cell_color = rgba();
 
+	size_t selected_cell_type = SIZE_MAX;
+
 	// attributes
 	uint32_t selected_attr;
 
@@ -170,11 +169,11 @@ protected:
 
 	// Help GUI
 	/// label index to show statistics
-	uint32_t li_tool_stats, li_cell_stats;
+	uint32_t li_tool_stats, li_selected_cell_stats;
 	/// visibility of statistics label
-	bool li_tool_visible, li_cell_visible;
+	bool li_tool_visible, li_selected_cell_visible;
 	/// how long this label has been visible
-	float li_tool_time_delta, li_cell_time_delta;
+	float li_tool_time_delta, li_selected_cell_time_delta;
 	/// background color of statistics label
 	rgba stats_bgclr;
 
@@ -324,7 +323,6 @@ public:
 			// concatenate
 			//write_file(fn);
 
-			//gui_ctr->set_cell_types(cell::types);
 			cells_ctr->set_cell_types(cell::types);
 			return true;
 		}
@@ -390,10 +388,10 @@ public:
 				li_tool_visible = false;
 		}
 
-		//if (li_cell_visible) {
+		//if (li_selected_cell_visible) {
 		//	li_cell_time_delta += (float)dt;
 		//	if (li_cell_time_delta >= 5.f)
-		//		li_cell_visible = false;
+		//		li_selected_cell_visible = false;
 		//}
 	}
 	/// define format and texture filters in constructor
@@ -429,13 +427,10 @@ public:
 		surf_rs.material.set_transparency(0.75f);
 		surf_rs.halo_color = rgba(0, 0.8f, 1.0f, 0.8f);
 
-		//gui_ctr = new gui_container(this, "GUI");
-		//append_child(gui_ctr);
-
 		tool_b = new tool_bag(this, "Tool Bag");
 		tool_b->add_tool(static_cast<int>(tool_enum::clipping_plane), "Clipping Plane", vec3(0.f, 0.f, 1.f), vec3(1.f, 1.f, 0.1f));
-		tool_b->add_tool(static_cast<int>(tool_enum::gun), "Visibility Toggle", vec3(0.25f, -1.5f, 0.25f), vec3(0.5f, 1.f, 1.f));
-		tool_b->add_tool(static_cast<int>(tool_enum::torch), "Torch", vec3(-0.25f, -1.5f, 0.25f), vec3(0.5f, 1.f, 1.f));
+		tool_b->add_tool(static_cast<int>(tool_enum::gun), "Visibility Toggle", vec3(0.75f, -1.5f, 0.25f), vec3(0.5f, 1.f, 1.f));
+		tool_b->add_tool(static_cast<int>(tool_enum::torch), "Torch", vec3(-0.75f, -1.5f, 0.25f), vec3(0.5f, 1.f, 1.f));
 		append_child(tool_b);
 
 		cells_ctr = new cells_container(this, "Cells");
@@ -444,8 +439,8 @@ public:
 		clipping_planes_ctr = new clipping_planes_container(this, "Clipping Planes");
 		append_child(clipping_planes_ctr);
 
-		li_tool_stats = li_cell_stats = -1;
-		li_tool_visible = li_cell_visible = false;
+		li_tool_stats = li_selected_cell_stats = -1;
+		li_tool_visible = li_selected_cell_visible = false;
 		stats_bgclr = rgba(0.8f, 0.6f, 0.0f, 0.8f);
 	}
 	std::string get_type_name() const
@@ -611,11 +606,11 @@ public:
 			else
 				scene_ptr->hide_label(li_tool_stats);
 
-		if (li_cell_stats != -1) {
-			if (li_cell_visible && cell_unselected_counter < max_cell_unselected_counter)
-				scene_ptr->show_label(li_cell_stats);
+		if (li_selected_cell_stats != -1) {
+			if (li_selected_cell_visible && cell_unselected_counter < max_cell_unselected_counter)
+				scene_ptr->show_label(li_selected_cell_stats);
 			else
-				scene_ptr->hide_label(li_cell_stats);
+				scene_ptr->hide_label(li_selected_cell_stats);
 		}
 	}
 	void draw(cgv::render::context& ctx)
@@ -648,11 +643,7 @@ public:
 
 		compute_burn();
 
-		//gui_ctr->set_inverse_model_transform(get_inverse_model_transform());
-
-		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
-
-		tool_b->set_inverse_model_transform(get_inverse_model_transform());
+		cells_ctr->set_inverse_model_transform(get_inverse_model_transform());
 
 		mat4 c;
 		c.identity();
@@ -660,7 +651,11 @@ public:
 		if (scene_ptr->is_coordsystem_valid(coordinate_system::left_controller))
 			c *= pose4(scene_ptr->get_coordsystem(coordinate_system::left_controller));
 
-		//gui_ctr->set_left_controller_transform(c);
+		cells_ctr->set_left_controller_transform(c);
+
+		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
+
+		tool_b->set_inverse_model_transform(get_inverse_model_transform());
 
 		mat4 h;
 		h.identity();
@@ -711,7 +706,7 @@ public:
 					if (vrke.get_action() == cgv::gui::KA_RELEASE) {
 						switch (vrke.get_key()) {
 						case vr::VR_INPUT0_TOUCH:
-							li_cell_visible = false;
+							li_selected_cell_visible = false;
 							return true;
 						}
 					}
@@ -744,7 +739,7 @@ public:
 							}
 							return true;
 						case vr::VR_INPUT0_TOUCH:
-							li_cell_visible = true;
+							li_selected_cell_visible = true;
 							return true;
 						case vr::VR_INPUT1_TOUCH:
 							//peel();
@@ -1027,10 +1022,10 @@ public:
 	}
 	void toggle_cell_visibility()
 	{
-		if (selected_cell_idx == SIZE_MAX)
-			return;
-
-		cells_ctr->toggle_cell_visibility(selected_cell_idx);
+		if (selected_cell_type < SIZE_MAX)
+			cells_ctr->toggle_cell_type_visibility(selected_cell_type);
+		else if (selected_cell_idx < SIZE_MAX)
+			cells_ctr->toggle_cell_visibility(selected_cell_idx);
 	}
 	void peel()
 	{
@@ -1039,7 +1034,7 @@ public:
 
 		cells_ctr->peel(selected_cell_idx, selected_node_idx);
 	}
-	void update_cell_stats()
+	void update_selected_cell_stats()
 	{
 		vr::vr_scene* scene_ptr = get_scene_ptr();
 		if (scene_ptr == NULL)
@@ -1055,18 +1050,18 @@ public:
 		for (const auto& p : ct.properties)
 			oss << "\n" << p << " " << std::setprecision(1) << cell::properties[index];
 
-		if (li_cell_stats == -1) {
-			li_cell_stats = scene_ptr->add_label(oss.str(), stats_bgclr);
-			scene_ptr->place_label(li_cell_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::right_controller, label_alignment::top);
-			scene_ptr->fix_label_size(li_cell_stats);
+		if (li_selected_cell_stats == -1) {
+			li_selected_cell_stats = scene_ptr->add_label(oss.str(), stats_bgclr);
+			scene_ptr->place_label(li_selected_cell_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::right_controller, label_alignment::top);
+			scene_ptr->fix_label_size(li_selected_cell_stats);
 		}
 		else {
-			scene_ptr->update_label_text(li_cell_stats, oss.str());
+			scene_ptr->update_label_text(li_selected_cell_stats, oss.str());
 		}
 
-		scene_ptr->update_label_background_color(li_cell_stats, selected_cell_color);
+		scene_ptr->update_label_background_color(li_selected_cell_stats, selected_cell_color);
 
-		li_cell_time_delta = 0;
+		li_selected_cell_time_delta = 0;
 	}
 	void vibrate(void* hid_kit)
 	{
@@ -1077,7 +1072,7 @@ public:
 		}
 	}
 
-#pragma region gui_container_listener
+#pragma region cells_container_listener
 	uint32_t on_create_label_requested(const std::string& text, const rgba& bgclr, const vec3& position, const quat& rotation)
 	{
 		vr::vr_scene* scene_ptr = get_scene_ptr();
@@ -1091,18 +1086,21 @@ public:
 		return label;
 	}
 
-	void on_label_pointed_at(uint32_t label)
+	void on_update_label_requested(uint32_t id, const std::string& text)
 	{
 		vr::vr_scene* scene_ptr = get_scene_ptr();
 		if (scene_ptr == NULL)
 			return;
 
-		//scene_ptr->set_label_border_color(label, );
+		scene_ptr->update_label_text(id, text);
 	}
-#pragma endregion gui_container_listener
 
-#pragma region cells_container_listener
-	// listener for cell point at and grab event
+	void on_cell_type_pointed_at(size_t cell_type)
+	{
+		selected_cell_type = cell_type;
+	}
+
+	// listener for cell point at event
 	void on_cell_pointed_at(size_t cell_index, size_t node_index, const rgb& color)
 	{
 		if (cell_index == SIZE_MAX) {
@@ -1119,7 +1117,7 @@ public:
 			selected_cell_color = rgba(color.R(), color.G(), color.B(), 0.8f);
 
 			if (selected_cell_idx < SIZE_MAX)
-				update_cell_stats();
+				update_selected_cell_stats();
 		}
 	}
 #pragma endregion cells_container_listener

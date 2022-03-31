@@ -21,6 +21,10 @@
 class cells_container_listener
 {
 public:
+	virtual uint32_t on_create_label_requested(const std::string& text, const cgv::render::render_types::rgba& bgclr, const vec3& position, const cgv::render::render_types::quat& rotation) = 0;
+	virtual void on_update_label_requested(uint32_t id, const std::string& text) = 0;
+	virtual void on_cell_type_pointed_at(size_t cell_type) = 0;
+
 	virtual void on_cell_pointed_at(size_t cell_index, size_t node_index, const cgv::render::render_types::rgb& color = cgv::render::render_types::rgb()) = 0;
 };
 
@@ -52,6 +56,11 @@ public:
 protected:
 	cells_container_listener* listener;
 
+	// GUI
+	std::vector<uint32_t> label_ids;
+	std::vector<vec3> label_positions;
+	std::vector<vec3> label_extents;
+
 	// acceleration data structure
 	regular_grid<cell> grid;
 
@@ -62,6 +71,11 @@ protected:
 	mat4 scale_matrix;
 	// inv_scale_matrix is used to prevent expensive scaling of all cells
 	mat4 inv_scale_matrix;
+
+	// invert model transform applied by gui's parent
+	mat4 inv_model_transform;
+	mat4 left_controller_transform;
+	quat left_controller_rotation;
 
 	// cell types (ct1, ct2, etc)
 	std::unordered_map<std::string, cell_type> cell_types;
@@ -123,7 +137,8 @@ protected:
 	// index of focused primitive
 	int prim_idx = -1;
 	// assuming that size_t in this particular system is at least 32-bit 
-	const unsigned int cell_sign_bit = 0x40000000; // sign bit is the second bit
+	const unsigned int label_sign_bit = 0x80000000; // label sign bit is the first bit
+	const unsigned int cell_sign_bit = 0x40000000; // cell sign bit is the second bit
 	const unsigned int cell_bitwise_shift = 15;
 	const unsigned int cell_bitwise_and = 0x7FFF;
 	// state of object
@@ -163,6 +178,9 @@ public:
 	/// cgv::gui::provider function to create classic UI
 	void create_gui();
 
+	void set_inverse_model_transform(const mat4& _inverse_model_transform);
+	void set_left_controller_transform(const mat4& _left_controller_transform);
+
 	void set_scale_matrix(const mat4& _scale_matrix);
 	void set_cell_types(const std::unordered_map<std::string, cell_type>& _cell_types);
 	void set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents);
@@ -179,6 +197,7 @@ public:
 	void set_torch(bool _burn, bool _burn_outside = false, const vec3& _unscaled_burn_center = vec3(), float _burn_distance = 0);
 
 	// visibility
+	void toggle_cell_type_visibility(size_t cell_type);
 	void toggle_cell_visibility(size_t cell_index);
 
 	// peel
@@ -198,6 +217,7 @@ private:
 
 	void interpolate_colors(bool force = false);
 
+	void point_at_cell_type(size_t cell_type) const;
 	void point_at_cell(size_t cell_index, size_t node_index = SIZE_MAX) const;
 };
 
