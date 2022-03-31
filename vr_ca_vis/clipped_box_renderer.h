@@ -32,6 +32,7 @@ protected:
 	vec4 clipping_planes[MAX_CLIPPING_PLANES];
 
 	bool burn;
+	bool burn_outside;
 	vec3 burn_center;
 	float burn_distance;
 
@@ -61,5 +62,5 @@ public:
 
 	void set_clipping_planes(const std::vector<vec4>& _clipping_planes);
 
-	void set_torch(bool _burn, const vec3& _burn_center, float _burn_distance);
+	void set_torch(bool _burn, bool _burn_outside, const vec3& _burn_center, float _burn_distance);
 };

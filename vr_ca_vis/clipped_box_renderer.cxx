@@ -21,6 +21,7 @@ clipped_box_renderer::clipped_box_renderer()
 	num_clipping_planes = 0;
 
 	burn = false;
+	burn_outside = false;
 	burn_distance = 0;
 }
 bool clipped_box_renderer::validate_attributes(const cgv::render::context& ctx) const
@@ -52,6 +53,7 @@ bool clipped_box_renderer::enable(cgv::render::context & ctx)
 		ref_prog().set_uniform_array(ctx, "clipping_planes", clipping_planes, MAX_CLIPPING_PLANES);
 		// burn
 		ref_prog().set_uniform(ctx, "burn", burn);
+		ref_prog().set_uniform(ctx, "burn_outside", burn_outside);
 		ref_prog().set_uniform(ctx, "burn_center", burn_center);
 		ref_prog().set_uniform(ctx, "burn_distance", burn_distance);
 	}
@@ -79,9 +81,10 @@ void clipped_box_renderer::set_clipping_planes(const std::vector<vec4>& _clippin
 	num_clipping_planes = std::min(_clipping_planes.size(), MAX_CLIPPING_PLANES);
 	std::copy(_clipping_planes.begin(), _clipping_planes.begin() + num_clipping_planes, clipping_planes);
 }
-void clipped_box_renderer::set_torch(bool _burn, const vec3& _burn_center, float _burn_distance)
+void clipped_box_renderer::set_torch(bool _burn, bool _burn_outside, const vec3& _burn_center, float _burn_distance)
 {
 	burn = _burn;
+	burn_outside = _burn_outside;
 	burn_center = _burn_center;
 	burn_distance = _burn_distance;
 }

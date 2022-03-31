@@ -6,7 +6,6 @@
 #include <cgv/render/drawable.h>
 #include <cg_nui/focusable.h>
 #include <cg_nui/pointable.h>
-#include <cg_nui/grabable.h>
 #include <cgv/gui/provider.h>
 #include <cgv_gl/sphere_renderer.h>
 #include <cgv_gl/cone_renderer.h>
@@ -113,6 +112,7 @@ protected:
 
 	// torch that is used by clipped_box geometry shader
 	bool burn;
+	bool burn_outside;
 	vec3 burn_center;
 	float burn_distance;
 
@@ -176,7 +176,7 @@ public:
 	void update_clipping_plane(size_t index, const vec3& origin, const vec3& direction);
 
 	// torch
-	void set_torch(bool _burn, const vec3& _unscaled_burn_center = vec3(), float _burn_distance = 0);
+	void set_torch(bool _burn, bool _burn_outside = false, const vec3& _unscaled_burn_center = vec3(), float _burn_distance = 0);
 
 	// visibility
 	void toggle_cell_visibility(size_t cell_index);

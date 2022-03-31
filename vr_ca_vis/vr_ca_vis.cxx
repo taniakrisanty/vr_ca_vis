@@ -84,7 +84,7 @@ protected:
 	// active tool 
 	tool_enum tool = tool_enum::none;
 
-	gui_container_ptr gui_ctr;
+	//gui_container_ptr gui_ctr;
 	cells_container_ptr cells_ctr;
 	tool_bag_ptr tool_b;
 	clipping_planes_container_ptr clipping_planes_ctr;
@@ -116,6 +116,9 @@ protected:
 	// index of temporary clipping plane in clipping planes container
 	int temp_clipping_plane_idx = -1;
 	size_t selected_clipping_plane_idx = SIZE_MAX;
+
+	// torch
+	bool burn_outside = false;
 
 	// extent
 	ivec3 extent;
@@ -321,7 +324,7 @@ public:
 			// concatenate
 			//write_file(fn);
 
-			gui_ctr->set_cell_types(cell::types);
+			//gui_ctr->set_cell_types(cell::types);
 			cells_ctr->set_cell_types(cell::types);
 			return true;
 		}
@@ -426,8 +429,8 @@ public:
 		surf_rs.material.set_transparency(0.75f);
 		surf_rs.halo_color = rgba(0, 0.8f, 1.0f, 0.8f);
 
-		gui_ctr = new gui_container(this, "GUI");
-		append_child(gui_ctr);
+		//gui_ctr = new gui_container(this, "GUI");
+		//append_child(gui_ctr);
 
 		tool_b = new tool_bag(this, "Tool Bag");
 		tool_b->add_tool(static_cast<int>(tool_enum::clipping_plane), "Clipping Plane", vec3(0.f, 0.f, 1.f), vec3(1.f, 1.f, 0.1f));
@@ -645,7 +648,7 @@ public:
 
 		compute_burn();
 
-		gui_ctr->set_inverse_model_transform(get_inverse_model_transform());
+		//gui_ctr->set_inverse_model_transform(get_inverse_model_transform());
 
 		cells_ctr->set_scale_matrix(cgv::math::scale4<double>(extent_scale));
 
@@ -657,7 +660,7 @@ public:
 		if (scene_ptr->is_coordsystem_valid(coordinate_system::left_controller))
 			c *= pose4(scene_ptr->get_coordsystem(coordinate_system::left_controller));
 
-		gui_ctr->set_left_controller_transform(c);
+		//gui_ctr->set_left_controller_transform(c);
 
 		mat4 h;
 		h.identity();
@@ -745,6 +748,8 @@ public:
 							return true;
 						case vr::VR_INPUT1_TOUCH:
 							//peel();
+							if (tool == tool_enum::torch)
+								burn_outside = !burn_outside;
 							return true;
 						}
 					}
@@ -1013,7 +1018,7 @@ public:
 				return;
 			}
 
-			cells_ctr->set_torch(true, origin, 20.f);
+			cells_ctr->set_torch(true, burn_outside, origin, 20.f);
 		}
 		else
 		{
@@ -1203,6 +1208,8 @@ public:
 				li_tool_time_delta = 0;
 				li_tool_visible = true;
 			}
+
+			burn_outside = false;
 			break;
 		default:
 			break;

@@ -455,7 +455,16 @@ bool cells_container::compute_intersection(const vec3& ray_start, const vec3& ra
 		if (clipped) continue;
 
 		// ignore if cell is burned
-		if (burn && (node - burn_center).sqr_length() < burn_distance * burn_distance) continue;
+		if (burn) {
+			float distance = (node - burn_center).sqr_length();
+
+			if (burn_outside) {
+				if (distance > burn_distance * burn_distance) continue;
+			}
+			else {
+				if (distance <= burn_distance * burn_distance) continue;
+			}
+		}
 
 		vec4 position_downscaled4(scale_matrix * cell::nodes[c.nodes_start_index + node_index].lift());
 		vec3 position_downscaled(position_downscaled4 / position_downscaled4.w());
@@ -599,7 +608,7 @@ void cells_container::draw(cgv::render::context& ctx)
 		br.set_extent(ctx, extent);
 		//br.set_rotation_array(ctx, &rotation, cells.size());
 		br.set_clipping_planes(clipping_planes);
-		br.set_torch(burn, burn_center, burn_distance);
+		br.set_torch(burn, burn_outside, burn_center, burn_distance);
 		br.render(ctx, 0, nodes_count);
 
 		for (size_t i = 0; i < clipping_planes.size(); ++i)
@@ -708,6 +717,18 @@ void cells_container::set_cell_types(const std::unordered_map<std::string, cell_
 
 	show_all_checks.resize(cell_types.size(), 1);
 	hide_all_checks.resize(cell_types.size(), 0);
+
+	size_t type_index = 0;
+	for (const auto& type : cell_types) {
+		vec3 position(0.f, 0.f, -1.f);
+	
+		//uint32_t label = label_drawable->add_label(type.second.name, rgba(0.5f, 0.5f, 0.5f, 1.f));
+		//label_drawable->fix_label_size(label);
+		//label_drawable->place_label(label, position, quat(1, 0, 0, 0), cgv::nui::label_drawable::coordinate_system::head);
+		//label_drawable->show_label(label);
+
+		++type_index;
+	}
 }
 void cells_container::set_cells(const std::vector<cell>* _cells, size_t _cells_start, size_t _cells_end, const ivec3& extents)
 {
@@ -814,9 +835,10 @@ void cells_container::update_clipping_plane(size_t index, const vec3& origin, co
 
 	clipping_planes[index] = vec4(direction, -dot(scaled_origin, direction));
 }
-void cells_container::set_torch(bool _burn, const vec3& _unscaled_burn_center, float _burn_distance)
+void cells_container::set_torch(bool _burn, bool _burn_outside, const vec3& _unscaled_burn_center, float _burn_distance)
 {
 	burn = _burn;
+	burn_outside = _burn_outside;
 
 	if (burn) {
 		if (unscaled_burn_center != _unscaled_burn_center) {
