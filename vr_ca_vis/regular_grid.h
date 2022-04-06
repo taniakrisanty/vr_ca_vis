@@ -41,6 +41,9 @@ private:
 			if (node_grid) delete[] node_grid;
 			if (visited_statuses) delete[] visited_statuses;
 
+			cell_grid = node_grid = NULL;
+			visited_statuses = NULL;
+
 			extents = e;
 
 			if (count > 0) {
