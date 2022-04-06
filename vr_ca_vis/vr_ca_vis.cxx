@@ -116,6 +116,9 @@ protected:
 
 	// torch
 	bool burn_outside = false;
+	float min_burn_radius = 5.0f;
+	float max_burn_radius = 50.f;
+	float burn_radius = 25.0f;
 
 	// extent
 	ivec3 extent;
@@ -720,6 +723,11 @@ public:
 							case tool_enum::gun:
 								toggle_cell_visibility(); // toggle cell visibility
 								break;
+							case tool_enum::torch:
+								burn_radius += 5.f;
+								if (burn_radius > max_burn_radius)
+									burn_radius = min_burn_radius;
+								break;
 							default:
 								break;
 							}
@@ -1013,7 +1021,7 @@ public:
 				return;
 			}
 
-			cells_ctr->set_torch(true, burn_outside, origin, 20.f);
+			cells_ctr->set_torch(true, burn_outside, origin, burn_radius);
 		}
 		else
 		{
