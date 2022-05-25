@@ -495,39 +495,41 @@ public:
 		if (!s_renderer.init(ctx))
 			return false;
 		s_renderer.set_render_style(sphere_style);
-
-		if (view_ptr = find_view_as_node()) {
-			view_ptr->set_focus(vec3(0.5f, 0.5f, 0.5f));
-			s_renderer.set_y_view_angle(float(view_ptr->get_y_view_angle()));
-
-			//view_ptr->set_eye_keep_view_angle(dvec3(0, 4, -4));
-			// if the view points to a vr_view_interactor
-			vr_view_ptr = dynamic_cast<vr_view_interactor*>(view_ptr);
-			if (vr_view_ptr) {
-				// configure vr event processing
-				vr_view_ptr->set_event_type_flags(
-					cgv::gui::VREventTypeFlags(
-						cgv::gui::VRE_DEVICE +
-						cgv::gui::VRE_STATUS +
-						cgv::gui::VRE_KEY +
-						cgv::gui::VRE_ONE_AXIS_GENERATES_KEY +
-						cgv::gui::VRE_ONE_AXIS +
-						cgv::gui::VRE_TWO_AXES +
-						cgv::gui::VRE_TWO_AXES_GENERATES_DPAD +
-						cgv::gui::VRE_POSE
-					));
-				vr_view_ptr->enable_vr_event_debugging(false);
-				// configure vr rendering
-				vr_view_ptr->draw_action_zone(false);
-				vr_view_ptr->draw_vr_kits(true);
-				vr_view_ptr->enable_blit_vr_views(true);
-				vr_view_ptr->set_blit_vr_view_width(200);
-			}
-		}
 		return true;
 	}
 	void init_frame(cgv::render::context& ctx)
 	{
+		if (!view_ptr) {
+			view_ptr = find_view_as_node();
+			if (view_ptr) {
+				view_ptr->set_focus(vec3(0.5f, 0.5f, 0.5f));
+				s_renderer.set_y_view_angle(float(view_ptr->get_y_view_angle()));
+
+				//view_ptr->set_eye_keep_view_angle(dvec3(0, 4, -4));
+				// if the view points to a vr_view_interactor
+				vr_view_ptr = dynamic_cast<vr_view_interactor*>(view_ptr);
+				if (vr_view_ptr) {
+					// configure vr event processing
+					vr_view_ptr->set_event_type_flags(
+						cgv::gui::VREventTypeFlags(
+							cgv::gui::VRE_DEVICE +
+							cgv::gui::VRE_STATUS +
+							cgv::gui::VRE_KEY +
+							cgv::gui::VRE_ONE_AXIS_GENERATES_KEY +
+							cgv::gui::VRE_ONE_AXIS +
+							cgv::gui::VRE_TWO_AXES +
+							cgv::gui::VRE_TWO_AXES_GENERATES_DPAD +
+							cgv::gui::VRE_POSE
+						));
+					vr_view_ptr->enable_vr_event_debugging(false);
+					// configure vr rendering
+					vr_view_ptr->draw_action_zone(false);
+					vr_view_ptr->draw_vr_kits(true);
+					vr_view_ptr->enable_blit_vr_views(true);
+					vr_view_ptr->set_blit_vr_view_width(200);
+				}
+			}
+		}
 		if (current_time_step != time_step) {
 			current_time_step = time_step;
 
@@ -619,11 +621,7 @@ public:
 	void draw(cgv::render::context& ctx)
 	{
 		const vr::vr_scene* scene_ptr = get_scene_ptr();
-		if (!scene_ptr)
-			return;
-
-		// draw wireframe box and cells on top of the table
-		if (!scene_ptr->is_coordsystem_valid(coordinate_system::head))
+		if (!scene_ptr || !scene_ptr->is_coordsystem_valid(coordinate_system::table))
 			return;
 
 		mat4 model_transform(pose4(scene_ptr->get_coordsystem(coordinate_system::table)));
@@ -675,8 +673,9 @@ public:
 	}
 	void finish_draw(cgv::render::context& ctx)
 	{
-		if (blend)
-			glDisable(GL_BLEND);
+		const vr::vr_scene* scene_ptr = get_scene_ptr();
+		if (!scene_ptr || !scene_ptr->is_coordsystem_valid(coordinate_system::table))
+			return;
 
 		ctx.pop_modelview_matrix();
 	}
@@ -1241,3 +1240,10 @@ public:
 };
 
 cgv::base::object_registration<vr_ca_vis> or_vr_ca_vis("vr_ca_vis");
+
+#ifdef REGISTER_SHADER_FILES
+#include <vr_ca_vis_shader_inc.h>
+#endif
+#ifdef CGV_FORCE_STATIC
+cgv::base::registration_order_definition ro_def("vr_view_interactor;vr_emulator;vr_scene;vr_screen;vr_table;vr_ca_vis");
+#endif
