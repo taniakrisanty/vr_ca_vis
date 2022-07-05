@@ -22,7 +22,7 @@ class cells_container_listener
 {
 public:
 	virtual uint32_t on_create_label_requested(const std::string& text, const cgv::render::render_types::rgba& bgclr, const vec3& position, const cgv::render::render_types::quat& rotation) = 0;
-	virtual void on_update_label_requested(uint32_t id, const std::string& text) = 0;
+	virtual void on_update_label_requested(uint32_t id, const std::string& text, const cgv::render::render_types::rgba& bgclr) = 0;
 	virtual void on_cell_type_pointed_at(size_t cell_type) = 0;
 
 	virtual void on_cell_pointed_at(size_t cell_index, size_t node_index, const cgv::render::render_types::rgb& color = cgv::render::render_types::rgb()) = 0;

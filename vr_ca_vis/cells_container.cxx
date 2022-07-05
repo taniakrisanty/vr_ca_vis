@@ -754,7 +754,7 @@ void cells_container::set_cell_types(const std::unordered_map<std::string, cell_
 				label_extents[type_index] = vec3(0.2f, 0.05f, 0.01f);
 			}
 			else
-				listener->on_update_label_requested(label_ids[type_index], type.second.name);
+				listener->on_update_label_requested(label_ids[type_index], type.second.name, color_points_maps[type_index][0]);
 		}
 
 		++type_index;
@@ -803,6 +803,14 @@ void cells_container::update_color_point(size_t index, const rgba& color0, const
 	for (const auto& cp : color_points_maps[index]) {
 		color_maps[index].add_color_point(float(cp.first), cp.second);
 		color_maps[index].add_opacity_point(float(cp.first), cp.second.alpha());
+	}
+
+	size_t type_index = 0;
+	for (const auto& type : cell_types) {
+		if (listener && label_ids[type_index] != -1)
+			listener->on_update_label_requested(label_ids[type_index], type.second.name, color_points_maps[type_index][0]);
+
+		++type_index;
 	}
 }
 void cells_container::interpolate_colors(bool force)
@@ -914,8 +922,13 @@ void cells_container::transmit_cells(cgv::render::context& ctx)
 
 	center_ids.resize(cells_end - cells_start);
 
-	size_t nodes_start_index = (*cells)[cells_start].nodes_start_index;
-	size_t nodes_end_index = (*cells)[cells_end - 1].nodes_end_index;
+	size_t nodes_start_index = 0;
+	size_t nodes_end_index = 0;
+
+	if (cells != NULL) {
+		nodes_start_index = (*cells)[cells_start].nodes_start_index;
+		nodes_end_index = (*cells)[cells_end - 1].nodes_end_index;
+	}
 
 	if (peeled_cell_indices.empty()) {
 		for (size_t i = cells_start; i < cells_end; ++i) {

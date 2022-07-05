@@ -140,7 +140,7 @@ protected:
 	double scale;
 
 	// current time step
-	uint32_t current_time_step;
+	uint32_t current_time_step = UINT32_MAX;
 	uint32_t time_step;
 
 	// ooc handling
@@ -458,6 +458,7 @@ public:
 		}
 		if (member_ptr == &dir_name) {
 			read_data_dir_ascii(dir_name);
+			current_time_step = UINT32_MAX;
 			time_step = 0;
 			on_set(&time_step);
 			post_recreate_gui();
@@ -1052,18 +1053,22 @@ public:
 		const cell_type& ct = std::next(cell::types.begin(), c.type)->second;
 
 		std::ostringstream oss;
-		oss << "id " << c.id << "\ntype " << ct.name;
+		oss << " id " << cgv::utils::to_string(c.id) << "  \n type " << ct.name;
 		size_t index = c.properties_start_index;
 		for (const auto& p : ct.properties)
-			oss << "\n" << p << " " << std::setprecision(1) << cell::properties[index];
+			oss << "  \n " << p << " " << std::setprecision(1) << cell::properties[index];
+		oss << " ";
+
+		std::string s(oss.str());
 
 		if (li_selected_cell_stats == -1) {
-			li_selected_cell_stats = scene_ptr->add_label(oss.str(), stats_bgclr);
+			li_selected_cell_stats = scene_ptr->add_label(s, stats_bgclr);
 			scene_ptr->place_label(li_selected_cell_stats, vec3(0.f, 0.15f, -0.03f), quat(vec3(1, 0, 0), -1.5f), coordinate_system::right_controller, label_alignment::top);
 			scene_ptr->fix_label_size(li_selected_cell_stats);
 		}
 		else {
-			scene_ptr->update_label_text(li_selected_cell_stats, oss.str());
+			scene_ptr->update_label_text(li_selected_cell_stats, s);
+			scene_ptr->fix_label_size(li_selected_cell_stats);
 		}
 
 		scene_ptr->update_label_background_color(li_selected_cell_stats, selected_cell_color);
@@ -1093,13 +1098,14 @@ public:
 		return label;
 	}
 
-	void on_update_label_requested(uint32_t id, const std::string& text)
+	void on_update_label_requested(uint32_t id, const std::string& text, const rgba& bgclr)
 	{
 		vr::vr_scene* scene_ptr = get_scene_ptr();
 		if (scene_ptr == NULL)
 			return;
 
 		scene_ptr->update_label_text(id, text);
+		scene_ptr->update_label_background_color(id, bgclr);
 	}
 
 	void on_cell_type_pointed_at(size_t cell_type)
