@@ -212,7 +212,7 @@ void clipping_planes_container::draw_clipping_plane(size_t index, cgv::render::c
 	ctx.ref_default_shader_program().enable(ctx);
 	ctx.set_color(colors[index]);
 
-	std::vector<float> N, V, T;
+	std::vector<float> N, V;
 	std::vector<int> FN, F;
 
 	vec3 a(polygon[0] - polygon[1]);

@@ -11,7 +11,6 @@
 #include <cgv/gui/provider.h>
 #include <cgv/gui/trigger.h>
 #include <cgv/gui/event_handler.h>
-#include <cgv/gui/key_event.h>
 #include <cgv/render/drawable.h>
 #include <cgv/media/color_scale.h>
 #include <cgv_gl/sphere_renderer.h>
