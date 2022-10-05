@@ -9,7 +9,7 @@
 #include <cgv/gui/provider.h>
 #include <cgv_gl/sphere_renderer.h>
 #include <cgv_gl/cone_renderer.h>
-#include <cgv_glutil/color_map.h>
+#include <cgv/render/color_map.h>
 
 #include <unordered_map>
 
@@ -85,7 +85,7 @@ protected:
 	const std::vector<cell>* cells = NULL;
 
 	// color map
-	std::vector<cgv::glutil::color_map> color_maps;
+	std::vector<cgv::render::color_map> color_maps;
 	std::vector<std::map<unsigned int, rgba>> color_points_maps;
 
 	// per group information
