@@ -1249,6 +1249,9 @@ cgv::base::object_registration<vr_ca_vis> or_vr_ca_vis("vr_ca_vis");
 #ifdef REGISTER_SHADER_FILES
 #include <vr_ca_vis_shader_inc.h>
 #endif
+#ifdef REGISTER_SHADER_FILES_WALL
+#include <vr_ca_vis_wall_shader_inc.h>
+#endif
 #ifdef CGV_FORCE_STATIC
-cgv::base::registration_order_definition ro_def("vr_view_interactor;vr_emulator;vr_scene;vr_screen;vr_table;vr_ca_vis");
+cgv::base::registration_order_definition ro_def("vr_view_interactor;vr_emulator;vr_scene;vr_screen;vr_table;vr_wall;vr_ca_vis");
 #endif
