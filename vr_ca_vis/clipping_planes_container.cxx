@@ -121,7 +121,6 @@ bool clipping_planes_container::compute_closest_point(const vec3& point, vec3& p
 {
 	float min_dist = std::numeric_limits<float>::max();
 	
-	vec3 q;
 	for (size_t i = 0; i < origins.size(); ++i) {
 		float dist = signed_distance_from_clipping_plane(i, point);
 		if (abs(dist) < min_dist) {

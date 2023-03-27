@@ -240,6 +240,9 @@ public:
 	}
 	bool read_xml_dir(const std::string& dir_name)
 	{
+		time_step_start.clear();
+		times.clear();
+
 		std::vector<std::string> file_names;
 		if (cgv::utils::dir::glob(dir_name, file_names, "*.xml"))
 		{
