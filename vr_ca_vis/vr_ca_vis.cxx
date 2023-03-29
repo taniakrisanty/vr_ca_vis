@@ -40,6 +40,8 @@
 #include <cg_nui/focusable.h>
 #include <cg_nui/transforming.h>
 
+#include <cg_gamepad/gamepad_server.h>
+
 class vr_ca_vis :
 	public cgv::base::group,
 	public cgv::render::drawable,
@@ -447,6 +449,16 @@ public:
 		li_tool_stats = li_selected_cell_stats = -1;
 		li_tool_visible = li_selected_cell_visible = false;
 		stats_bgclr = rgba(0.8f, 0.6f, 0.0f, 0.8f);
+
+		static bool gamepad_started = false;
+
+		if (!gamepad_started) {
+
+			cgv::gui::connect_gamepad_server();
+
+			gamepad_started = true;
+
+		}
 	}
 	std::string get_type_name() const
 	{
@@ -791,12 +803,15 @@ public:
 		if (ke.get_action() == cgv::gui::KA_RELEASE)
 			return false;
 		switch (ke.get_key()) {
+		case cgv::gui::KEY_Up:
+			tool_b->toggle_visibility();
+			return true;
 		case cgv::gui::KEY_Right:
 			step();
 			return true;
 		case cgv::gui::KEY_Left:
 			step_back();
-			return true;
+			return true;	
 		case cgv::gui::KEY_Home:
 			time_step = 0;
 			on_set(&time_step);

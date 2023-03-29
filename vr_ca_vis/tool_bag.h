@@ -93,6 +93,8 @@ public:
 	void set_head_transform(const mat4& _head_transform);
 
 	void add_tool(int id, const std::string& name, const vec3& position, const vec3& extent = vec3(1.f), const rgba& color = rgba(0.f, 1.f, 1.f, 0.1f));
+
+	void toggle_visibility();
 private:
 	void grab_tool(int index, void* hid_kit) const;
 };

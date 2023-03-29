@@ -245,3 +245,8 @@ void tool_bag::grab_tool(int index, void* hid_kit) const
 	if (listener)
 		listener->on_tool_grabbed(ids[index], hid_kit);
 }
+void tool_bag::toggle_visibility()
+{
+	show = show > 0 ? 0 : 1;
+	on_set(&show);
+}
