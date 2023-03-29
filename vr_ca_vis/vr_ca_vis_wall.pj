@@ -6,10 +6,11 @@ addProjectDirs=[CGV_DIR."/libs", CGV_DIR."/plugins", CGV_DIR."/test"];
 addIncDirs=[CGV_DIR."/libs",CGV_DIR."/3rd/zlib", CGV_BUILD_DIR."/".projectName];
 
 addProjectDeps=["cgv_utils", "cgv_type", "cgv_reflect", "cgv_data", "cgv_signal", "cgv_base", "cgv_media", "cgv_gui", 
-"cgv_render", "cgv_os", "cgv_viewer","cg_fltk", "crg_light", "cmi_io", "crg_grid", "cgv_gl", "cgv_app", "cgv_g2d", "cgv_gpgpu", "glew", "cmf_tt_gl_font", 
+"cgv_render", "cgv_os", "cgv_viewer","cg_fltk", "crg_light", "cg_gamepad", "cmi_io", "crg_grid", "cgv_gl", "cgv_app", "cgv_g2d", "cgv_gpgpu", "glew", "cmf_tt_gl_font", 
 "crg_vr_view", "vr_lab", "cg_vr", "vr_emulator", "openvr_driver", "crg_vr_wall"
 ];
 if(SYSTEM=="windows") {
+	addDefines=["GAMEPAD_SUPPORT"];
 	addStaticDefines=["REGISTER_SHADER_FILES_WALL"];
 }
 

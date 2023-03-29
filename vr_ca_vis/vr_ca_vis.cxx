@@ -40,6 +40,10 @@
 #include <cg_nui/focusable.h>
 #include <cg_nui/transforming.h>
 
+#ifdef GAMEPAD_SUPPORT
+#include <cg_gamepad/gamepad_server.h>
+#endif
+
 class vr_ca_vis :
 	public cgv::base::group,
 	public cgv::render::drawable,
@@ -418,6 +422,14 @@ public:
 		box_style.map_color_to_material = cgv::render::CM_COLOR;
 		box_style.use_group_color = true;
 		time_step = 0;
+
+#ifdef GAMEPAD_SUPPORT
+		static bool gamepad_started = false;
+		if (!gamepad_started) {
+			cgv::gui::connect_gamepad_server();
+			gamepad_started = true;
+		}
+#endif
 		connect(cgv::gui::get_animation_trigger().shoot, this, &vr_ca_vis::timer_event);
 
 		vr_view_ptr = 0;
