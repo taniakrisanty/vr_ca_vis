@@ -40,7 +40,9 @@
 #include <cg_nui/focusable.h>
 #include <cg_nui/transforming.h>
 
+#ifdef GAMEPAD_SUPPORT
 #include <cg_gamepad/gamepad_server.h>
+#endif
 
 class vr_ca_vis :
 	public cgv::base::group,
@@ -420,6 +422,14 @@ public:
 		box_style.map_color_to_material = cgv::render::CM_COLOR;
 		box_style.use_group_color = true;
 		time_step = 0;
+
+#ifdef GAMEPAD_SUPPORT
+		static bool gamepad_started = false;
+		if (!gamepad_started) {
+			cgv::gui::connect_gamepad_server();
+			gamepad_started = true;
+		}
+#endif
 		connect(cgv::gui::get_animation_trigger().shoot, this, &vr_ca_vis::timer_event);
 
 		vr_view_ptr = 0;
@@ -449,16 +459,6 @@ public:
 		li_tool_stats = li_selected_cell_stats = -1;
 		li_tool_visible = li_selected_cell_visible = false;
 		stats_bgclr = rgba(0.8f, 0.6f, 0.0f, 0.8f);
-
-		static bool gamepad_started = false;
-
-		if (!gamepad_started) {
-
-			cgv::gui::connect_gamepad_server();
-
-			gamepad_started = true;
-
-		}
 	}
 	std::string get_type_name() const
 	{
@@ -803,15 +803,12 @@ public:
 		if (ke.get_action() == cgv::gui::KA_RELEASE)
 			return false;
 		switch (ke.get_key()) {
-		case cgv::gui::KEY_Up:
-			tool_b->toggle_visibility();
-			return true;
 		case cgv::gui::KEY_Right:
 			step();
 			return true;
 		case cgv::gui::KEY_Left:
 			step_back();
-			return true;	
+			return true;
 		case cgv::gui::KEY_Home:
 			time_step = 0;
 			on_set(&time_step);
@@ -1267,6 +1264,9 @@ cgv::base::object_registration<vr_ca_vis> or_vr_ca_vis("vr_ca_vis");
 #ifdef REGISTER_SHADER_FILES
 #include <vr_ca_vis_shader_inc.h>
 #endif
+#ifdef REGISTER_SHADER_FILES_WALL
+#include <vr_ca_vis_wall_shader_inc.h>
+#endif
 #ifdef CGV_FORCE_STATIC
-cgv::base::registration_order_definition ro_def("vr_view_interactor;vr_emulator;vr_scene;vr_screen;vr_table;vr_ca_vis");
+cgv::base::registration_order_definition ro_def("vr_view_interactor;vr_emulator;vr_scene;vr_screen;vr_table;vr_wall;vr_ca_vis");
 #endif

@@ -7,8 +7,8 @@
 /********** main **********/
 
 // configure startup window size and turn off gamma correction
-name(main):W=1280;H=720
-name(main):gamma=1.0
+name(Main):W=1280;H=720
+name(Main):gamma=1.0
 
 /********** vr_emulator **********/
 
